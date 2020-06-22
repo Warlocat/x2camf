@@ -58,7 +58,21 @@ MatrixXd GTO_SPINOR::get_h1e(const string& intType, const bool& uncontracted_) c
                     h1e_single_shell(ii,jj) = 4*a1*a2 * auxiliary_1e(2*ll + 3, a1 + a2);
                     if(ll!=0)
                         h1e_single_shell(ii,jj) += pow(ll + kappa + 1.0, 2) * auxiliary_1e(2*ll-1, a1 + a2) - 2.0*(ll + kappa + 1.0)*(a1 + a2)*auxiliary_1e(2*ll + 1, a1 + a2);
-                        h1e_single_shell(ii,jj) *= -atomNumber;
+                    h1e_single_shell(ii,jj) *= -atomNumber;
+                }
+                else if(intType == "s_p_nuc_s_p_sf")
+                {
+                    h1e_single_shell(ii,jj) = 4*a1*a2 * auxiliary_1e(2*ll + 3, a1 + a2);
+                    if(ll!=0)
+                        h1e_single_shell(ii,jj) += (2*ll*ll + ll) * auxiliary_1e(2*ll-1, a1 + a2) - 2.0*ll*(a1 + a2)*auxiliary_1e(2*ll + 1, a1 + a2);
+                    h1e_single_shell(ii,jj) *= -atomNumber;
+                }
+                else if(intType == "s_p_nuc_s_p_sd")
+                {
+                    h1e_single_shell(ii,jj) = 0.0;
+                    if(ll!=0)
+                        h1e_single_shell(ii,jj) += (kappa + 1.0) * auxiliary_1e(2*ll-1, a1 + a2);
+                    h1e_single_shell(ii,jj) *= -atomNumber;
                 }
                 else if(intType == "s_p_s_p" )
                 {
@@ -242,6 +256,12 @@ MatrixXd GTO_SPINOR::get_h2e(const string& integralTYPE, const bool& uncontracte
                                 radial_tilde(tmp) += shell_list(ishell).coeff(iii,ii) * shell_list(jshell).coeff(jjj,jj) * shell_list(kshell).coeff(kkk,kk) * shell_list(lshell).coeff(lll,ll) * int2e_get_radial_SSLL(l_k, k_k, shell_list(kshell).exp_a(kkk), l_l, k_l, shell_list(lshell).exp_a(lll), l_i, k_i, shell_list(ishell).exp_a(iii), l_j, k_j, shell_list(jshell).exp_a(jjj), tmp) / norm;
                             else if(integralTYPE == "SSSS")
                                 radial_tilde(tmp) += shell_list(ishell).coeff(iii,ii) * shell_list(jshell).coeff(jjj,jj) * shell_list(kshell).coeff(kkk,kk) * shell_list(lshell).coeff(lll,ll) * int2e_get_radial_SSSS(l_i, k_i, shell_list(ishell).exp_a(iii), l_j, k_j, shell_list(jshell).exp_a(jjj), l_k, k_k, shell_list(kshell).exp_a(kkk), l_l, k_l, shell_list(lshell).exp_a(lll), tmp) / norm;
+                            else if(integralTYPE == "SSLL_SF")
+                                radial_tilde(tmp) += shell_list(ishell).coeff(iii,ii) * shell_list(jshell).coeff(jjj,jj) * shell_list(kshell).coeff(kkk,kk) * shell_list(lshell).coeff(lll,ll) * int2e_get_radial_SSLL_SF(l_i, k_i, shell_list(ishell).exp_a(iii), l_j, k_j, shell_list(jshell).exp_a(jjj), l_k, k_k, shell_list(kshell).exp_a(kkk), l_l, k_l, shell_list(lshell).exp_a(lll), tmp) / norm;
+                            else if(integralTYPE == "LLSS_SF")
+                                radial_tilde(tmp) += shell_list(ishell).coeff(iii,ii) * shell_list(jshell).coeff(jjj,jj) * shell_list(kshell).coeff(kkk,kk) * shell_list(lshell).coeff(lll,ll) * int2e_get_radial_SSLL_SF(l_k, k_k, shell_list(kshell).exp_a(kkk), l_l, k_l, shell_list(lshell).exp_a(lll), l_i, k_i, shell_list(ishell).exp_a(iii), l_j, k_j, shell_list(jshell).exp_a(jjj), tmp) / norm;
+                            else if(integralTYPE == "SSSS_SF")
+                                radial_tilde(tmp) += shell_list(ishell).coeff(iii,ii) * shell_list(jshell).coeff(jjj,jj) * shell_list(kshell).coeff(kkk,kk) * shell_list(lshell).coeff(lll,ll) * int2e_get_radial_SSSS_SF(l_i, k_i, shell_list(ishell).exp_a(iii), l_j, k_j, shell_list(jshell).exp_a(jjj), l_k, k_k, shell_list(kshell).exp_a(kkk), l_l, k_l, shell_list(lshell).exp_a(lll), tmp) / norm;
                             else
                             {
                                 cout << "ERROR: integralTYPE of get_h2e must be one of these:\n";
@@ -349,6 +369,12 @@ MatrixXd GTO_SPINOR::get_h2e(const string& integralTYPE, const bool& uncontracte
                             radial_tilde(tmp) = int2e_get_radial_SSLL(l_k, k_k, shell_list(kshell).exp_a(kk), l_l, k_l, shell_list(lshell).exp_a(ll), l_i, k_i, shell_list(ishell).exp_a(ii), l_j, k_j, shell_list(jshell).exp_a(jj), tmp) / norm;
                         else if(integralTYPE == "SSSS")
                             radial_tilde(tmp) = int2e_get_radial_SSSS(l_i, k_i, shell_list(ishell).exp_a(ii), l_j, k_j, shell_list(jshell).exp_a(jj), l_k, k_k, shell_list(kshell).exp_a(kk), l_l, k_l, shell_list(lshell).exp_a(ll), tmp) / norm;
+                        else if(integralTYPE == "SSLL_SF")
+                            radial_tilde(tmp) = int2e_get_radial_SSLL_SF(l_i, k_i, shell_list(ishell).exp_a(ii), l_j, k_j, shell_list(jshell).exp_a(jj), l_k, k_k, shell_list(kshell).exp_a(kk), l_l, k_l, shell_list(lshell).exp_a(ll), tmp) / norm;
+                        else if(integralTYPE == "LLSS_SF")
+                            radial_tilde(tmp) = int2e_get_radial_SSLL_SF(l_k, k_k, shell_list(kshell).exp_a(kk), l_l, k_l, shell_list(lshell).exp_a(ll), l_i, k_i, shell_list(ishell).exp_a(ii), l_j, k_j, shell_list(jshell).exp_a(jj), tmp) / norm;
+                        else if(integralTYPE == "SSSS_SF")
+                            radial_tilde(tmp) = int2e_get_radial_SSSS_SF(l_i, k_i, shell_list(ishell).exp_a(ii), l_j, k_j, shell_list(jshell).exp_a(jj), l_k, k_k, shell_list(kshell).exp_a(kk), l_l, k_l, shell_list(lshell).exp_a(ll), tmp) / norm;
                         else
                         {
                             cout << "ERROR: integralTYPE of get_h2e must be one of these:\n";
@@ -455,6 +481,70 @@ double GTO_SPINOR::int2e_get_radial_SSSS(const int& l1, const double& k1, const 
                 - 4*a1*a2*(2*a3*lk4+2*a4*lk3) * GTO::int2e_get_radial(l1+1,a1,l2+1,a2,l3,a3,l4,a4,LL);
         else if(l3 != 0 || l4 != 0)
             value +=- 4*a1*a2*(2*a3*lk4+2*a4*lk3) * GTO::int2e_get_radial(l1+1,a1,l2+1,a2,l3,a3,l4,a4,LL);
+        else
+            value += 0.0;
+    }
+    
+    
+    return value;
+}
+double GTO_SPINOR::int2e_get_radial_SSLL_SF(const int& l1, const double& k1, const double& a1, const int& l2, const double& k2, const double& a2, const int& l3, const double& k3, const double& a3, const int& l4, const double& k4, const double& a4, const int& LL) const
+{
+    double value = 4.0*a1*a2 * GTO::int2e_get_radial(l1+1,a1,l2+1,a2,l3,a3,l4,a4,LL);
+    if(l1 != 0 && l2 != 0)
+        value += (l1*l2 + l1*(l1+1)/2 + l2*(l2+1)/2 - LL*(LL+1)/2) * GTO::int2e_get_radial(l1-1,a1,l2-1,a2,l3,a3,l4,a4,LL)
+                - (2.0*a1*l2+2.0*a2*l1) * GTO::int2e_get_radial(l1,a1,l2,a2,l3,a3,l4,a4,LL);
+    else if(l1 != 0 || l2 != 0)
+        value += - (2.0*a1*l2+2.0*a2*l1) * GTO::int2e_get_radial(l1,a1,l2,a2,l3,a3,l4,a4,LL);
+    return value;
+}
+double GTO_SPINOR::int2e_get_radial_SSSS_SF(const int& l1, const double& k1, const double& a1, const int& l2, const double& k2, const double& a2, const int& l3, const double& k3, const double& a3, const int& l4, const double& k4, const double& a4, const int& LL) const
+{
+    int l12 = l1*l2 + l1*(l1+1)/2 + l2*(l2+1)/2 - LL*(LL+1)/2, l34 = l3*l4 + l3*(l3+1)/2 + l4*(l4+1)/2 - LL*(LL+1)/2;
+    double value = 4*a1*a2*4*a3*a4 * GTO::int2e_get_radial(l1+1,a1,l2+1,a2,l3+1,a3,l4+1,a4,LL);
+    if(l1 != 0 && l2 != 0)
+    {
+        if(l3 != 0 && l4 != 0)
+            value += l12*l34 * GTO::int2e_get_radial(l1-1,a1,l2-1,a2,l3-1,a3,l4-1,a4,LL)
+                - (2*a1*l2+2*a2*l1)*l34 * GTO::int2e_get_radial(l1,a1,l2,a2,l3-1,a3,l4-1,a4,LL)
+                + 4*a1*a2*l34 * GTO::int2e_get_radial(l1+1,a1,l2+1,a2,l3-1,a3,l4-1,a4,LL)
+                - l12*(2*a3*l4+2*a4*l3) * GTO::int2e_get_radial(l1-1,a1,l2-1,a2,l3,a3,l4,a4,LL)
+                + (2*a1*l2+2*a2*l1)*(2*a3*l4+2*a4*l3) * GTO::int2e_get_radial(l1,a1,l2,a2,l3,a3,l4,a4,LL)
+                - 4*a1*a2*(2*a3*l4+2*a4*l3) * GTO::int2e_get_radial(l1+1,a1,l2+1,a2,l3,a3,l4,a4,LL)
+                + l12*4*a3*a4 * GTO::int2e_get_radial(l1-1,a1,l2-1,a2,l3+1,a3,l4+1,a4,LL)
+                - (2*a1*l2+2*a2*l1)*4*a3*a4 * GTO::int2e_get_radial(l1,a1,l2,a2,l3+1,a3,l4+1,a4,LL);
+        else if(l3 != 0 || l4 != 0)
+            value += - l12*(2*a3*l4+2*a4*l3) * GTO::int2e_get_radial(l1-1,a1,l2-1,a2,l3,a3,l4,a4,LL)
+                + (2*a1*l2+2*a2*l1)*(2*a3*l4+2*a4*l3) * GTO::int2e_get_radial(l1,a1,l2,a2,l3,a3,l4,a4,LL)
+                - 4*a1*a2*(2*a3*l4+2*a4*l3) * GTO::int2e_get_radial(l1+1,a1,l2+1,a2,l3,a3,l4,a4,LL)
+                + l12*4*a3*a4 * GTO::int2e_get_radial(l1-1,a1,l2-1,a2,l3+1,a3,l4+1,a4,LL)
+                - (2*a1*l2+2*a2*l1)*4*a3*a4 * GTO::int2e_get_radial(l1,a1,l2,a2,l3+1,a3,l4+1,a4,LL);
+        else
+            value += l12*4*a3*a4 * GTO::int2e_get_radial(l1-1,a1,l2-1,a2,l3+1,a3,l4+1,a4,LL)
+                - (2*a1*l2+2*a2*l1)*4*a3*a4 * GTO::int2e_get_radial(l1,a1,l2,a2,l3+1,a3,l4+1,a4,LL);
+    }
+    else if(l1 != 0 || l2 != 0)
+    {
+        if(l3 != 0 && l4 != 0)
+            value += - (2*a1*l2+2*a2*l1)*l34 * GTO::int2e_get_radial(l1,a1,l2,a2,l3-1,a3,l4-1,a4,LL)
+                + 4*a1*a2*l34 * GTO::int2e_get_radial(l1+1,a1,l2+1,a2,l3-1,a3,l4-1,a4,LL)
+                + (2*a1*l2+2*a2*l1)*(2*a3*l4+2*a4*l3) * GTO::int2e_get_radial(l1,a1,l2,a2,l3,a3,l4,a4,LL)
+                - 4*a1*a2*(2*a3*l4+2*a4*l3) * GTO::int2e_get_radial(l1+1,a1,l2+1,a2,l3,a3,l4,a4,LL)
+                - (2*a1*l2+2*a2*l1)*4*a3*a4 * GTO::int2e_get_radial(l1,a1,l2,a2,l3+1,a3,l4+1,a4,LL);
+        else if(l3 != 0 || l4 != 0)
+            value += (2*a1*l2+2*a2*l1)*(2*a3*l4+2*a4*l3) * GTO::int2e_get_radial(l1,a1,l2,a2,l3,a3,l4,a4,LL)
+                - 4*a1*a2*(2*a3*l4+2*a4*l3) * GTO::int2e_get_radial(l1+1,a1,l2+1,a2,l3,a3,l4,a4,LL)
+                - (2*a1*l2+2*a2*l1)*4*a3*a4 * GTO::int2e_get_radial(l1,a1,l2,a2,l3+1,a3,l4+1,a4,LL);
+        else
+            value += - (2*a1*l2+2*a2*l1)*4*a3*a4 * GTO::int2e_get_radial(l1,a1,l2,a2,l3+1,a3,l4+1,a4,LL);
+    }
+    else
+    {
+        if(l3 != 0 && l4 != 0)
+            value += 4*a1*a2*l34 * GTO::int2e_get_radial(l1+1,a1,l2+1,a2,l3-1,a3,l4-1,a4,LL)
+                - 4*a1*a2*(2*a3*l4+2*a4*l3) * GTO::int2e_get_radial(l1+1,a1,l2+1,a2,l3,a3,l4,a4,LL);
+        else if(l3 != 0 || l4 != 0)
+            value +=- 4*a1*a2*(2*a3*l4+2*a4*l3) * GTO::int2e_get_radial(l1+1,a1,l2+1,a2,l3,a3,l4,a4,LL);
         else
             value += 0.0;
     }
