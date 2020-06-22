@@ -1,0 +1,7 @@
+.vscode/*
+*.txt
+*.exe
+*.o
+*.xyz
+*test/*
+cfour*/*

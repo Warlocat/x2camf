@@ -1,0 +1,7 @@
+KR         atomName
+PVDZ        basisSet
+0           charge
+1           spin_2S+1
+SCF         jobs
+XSFX2C1E     rel
+0           unc
