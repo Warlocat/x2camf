@@ -218,8 +218,8 @@ MatrixXd GTO_SPINOR::get_h2e(const string& integralTYPE, const bool& uncontracte
             {
                 int sym_ai = twojj_i - 2*l_i, sym_aj = twojj_j - 2*l_j, sym_ak = twojj_k - 2*l_k, sym_al = twojj_l - 2*l_l;
                 double k_i = -(twojj_i+1.0)*sym_ai/2.0, k_j = -(twojj_j+1.0)*sym_aj/2.0, k_k = -(twojj_k+1.0)*sym_ak/2.0, k_l = -(twojj_l+1.0)*sym_al/2.0;
+                
                 VectorXd array_angular[twojj_i + 1][twojj_j + 1][twojj_k + 1][twojj_l + 1];
-
                 for(int mi = 0; mi < twojj_i + 1; mi++)
                 for(int mj = 0; mj < twojj_j + 1; mj++)
                 for(int mk = 0; mk < twojj_k + 1; mk++)
@@ -230,6 +230,42 @@ MatrixXd GTO_SPINOR::get_h2e(const string& integralTYPE, const bool& uncontracte
                     for(int tmp = Lmax; tmp >= 0; tmp = tmp - 2)
                         array_angular[mi][mj][mk][ml](tmp) = int2e_get_angular(l_i, 2*mi-twojj_i, sym_ai, l_j, 2*mj-twojj_j, sym_aj, l_k, 2*mk-twojj_k, sym_ak, l_l, 2*ml-twojj_l, sym_al, tmp);
                 }
+                
+                VectorXd array_radial[size_gtos_i][size_gtos_j][size_gtos_k][size_gtos_l];
+                for(int ii = 0; ii < size_gtos_i; ii++)
+                for(int jj = 0; jj < size_gtos_j; jj++)
+                for(int kk = 0; kk < size_gtos_k; kk++)
+                for(int ll = 0; ll < size_gtos_l; ll++)
+                {
+                    array_radial[ii][jj][kk][ll].resize(Lmax+1);
+                    array_radial[ii][jj][kk][ll] = VectorXd::Zero(Lmax+1);
+                    double norm = shell_list(ishell).norm(ii) * shell_list(jshell).norm(jj) * shell_list(kshell).norm(kk) * shell_list(lshell).norm(ll);
+
+                    for(int tmp = Lmax; tmp >= 0; tmp = tmp - 2)
+                    {
+                        if(integralTYPE == "LLLL")
+                            array_radial[ii][jj][kk][ll](tmp) = int2e_get_radial_LLLL(l_i, k_i, shell_list(ishell).exp_a(ii), l_j, k_j, shell_list(jshell).exp_a(jj), l_k, k_k, shell_list(kshell).exp_a(kk), l_l, k_l, shell_list(lshell).exp_a(ll), tmp) / norm;
+                        else if(integralTYPE == "SSLL")
+                            array_radial[ii][jj][kk][ll](tmp) = int2e_get_radial_SSLL(l_i, k_i, shell_list(ishell).exp_a(ii), l_j, k_j, shell_list(jshell).exp_a(jj), l_k, k_k, shell_list(kshell).exp_a(kk), l_l, k_l, shell_list(lshell).exp_a(ll), tmp) / norm;
+                        else if(integralTYPE == "LLSS")
+                            array_radial[ii][jj][kk][ll](tmp) = int2e_get_radial_SSLL(l_k, k_k, shell_list(kshell).exp_a(kk), l_l, k_l, shell_list(lshell).exp_a(ll), l_i, k_i, shell_list(ishell).exp_a(ii), l_j, k_j, shell_list(jshell).exp_a(jj), tmp) / norm;
+                        else if(integralTYPE == "SSSS")
+                            array_radial[ii][jj][kk][ll](tmp) = int2e_get_radial_SSSS(l_i, k_i, shell_list(ishell).exp_a(ii), l_j, k_j, shell_list(jshell).exp_a(jj), l_k, k_k, shell_list(kshell).exp_a(kk), l_l, k_l, shell_list(lshell).exp_a(ll), tmp) / norm;
+                        else if(integralTYPE == "SSLL_SF")
+                            array_radial[ii][jj][kk][ll](tmp) = int2e_get_radial_SSLL_SF(l_i, k_i, shell_list(ishell).exp_a(ii), l_j, k_j, shell_list(jshell).exp_a(jj), l_k, k_k, shell_list(kshell).exp_a(kk), l_l, k_l, shell_list(lshell).exp_a(ll), tmp) / norm;
+                        else if(integralTYPE == "LLSS_SF")
+                            array_radial[ii][jj][kk][ll](tmp) = int2e_get_radial_SSLL_SF(l_k, k_k, shell_list(kshell).exp_a(kk), l_l, k_l, shell_list(lshell).exp_a(ll), l_i, k_i, shell_list(ishell).exp_a(ii), l_j, k_j, shell_list(jshell).exp_a(jj), tmp) / norm;
+                        else if(integralTYPE == "SSSS_SF")
+                            array_radial[ii][jj][kk][ll](tmp) = int2e_get_radial_SSSS_SF(l_i, k_i, shell_list(ishell).exp_a(ii), l_j, k_j, shell_list(jshell).exp_a(jj), l_k, k_k, shell_list(kshell).exp_a(kk), l_l, k_l, shell_list(lshell).exp_a(ll), tmp) / norm;
+                        else
+                        {
+                            cout << "ERROR: integralTYPE of get_h2e must be one of these:\n";
+                            cout << "       LLLL,  SSLL,  LLSS, SSSS, LLSS_SF, SSSS_SF\n";
+                            exit(99);
+                        }
+                    }
+                }
+
 
                 for(int ii = 0; ii < size_subshell_i; ii++)
                 for(int jj = 0; jj < size_subshell_j; jj++)
@@ -242,32 +278,12 @@ MatrixXd GTO_SPINOR::get_h2e(const string& integralTYPE, const bool& uncontracte
                     for(int kkk = 0; kkk < size_gtos_k; kkk++)
                     for(int lll = 0; lll < size_gtos_l; lll++)
                     {
-                        double norm = shell_list(ishell).norm(iii) * shell_list(jshell).norm(jjj) * shell_list(kshell).norm(kkk) * shell_list(lshell).norm(lll);
                         /*
                             radial_tilde is the contracted radial part
                         */
                         for(int tmp = Lmax; tmp >= 0; tmp = tmp - 2)
                         {
-                            if(integralTYPE == "LLLL")
-                                radial_tilde(tmp) += shell_list(ishell).coeff(iii,ii) * shell_list(jshell).coeff(jjj,jj) * shell_list(kshell).coeff(kkk,kk) * shell_list(lshell).coeff(lll,ll) * int2e_get_radial_LLLL(l_i, k_i, shell_list(ishell).exp_a(iii), l_j, k_j, shell_list(jshell).exp_a(jjj), l_k, k_k, shell_list(kshell).exp_a(kkk), l_l, k_l, shell_list(lshell).exp_a(lll), tmp) / norm;
-                            else if(integralTYPE == "SSLL")
-                                radial_tilde(tmp) += shell_list(ishell).coeff(iii,ii) * shell_list(jshell).coeff(jjj,jj) * shell_list(kshell).coeff(kkk,kk) * shell_list(lshell).coeff(lll,ll) * int2e_get_radial_SSLL(l_i, k_i, shell_list(ishell).exp_a(iii), l_j, k_j, shell_list(jshell).exp_a(jjj), l_k, k_k, shell_list(kshell).exp_a(kkk), l_l, k_l, shell_list(lshell).exp_a(lll), tmp) / norm;
-                            else if(integralTYPE == "LLSS")
-                                radial_tilde(tmp) += shell_list(ishell).coeff(iii,ii) * shell_list(jshell).coeff(jjj,jj) * shell_list(kshell).coeff(kkk,kk) * shell_list(lshell).coeff(lll,ll) * int2e_get_radial_SSLL(l_k, k_k, shell_list(kshell).exp_a(kkk), l_l, k_l, shell_list(lshell).exp_a(lll), l_i, k_i, shell_list(ishell).exp_a(iii), l_j, k_j, shell_list(jshell).exp_a(jjj), tmp) / norm;
-                            else if(integralTYPE == "SSSS")
-                                radial_tilde(tmp) += shell_list(ishell).coeff(iii,ii) * shell_list(jshell).coeff(jjj,jj) * shell_list(kshell).coeff(kkk,kk) * shell_list(lshell).coeff(lll,ll) * int2e_get_radial_SSSS(l_i, k_i, shell_list(ishell).exp_a(iii), l_j, k_j, shell_list(jshell).exp_a(jjj), l_k, k_k, shell_list(kshell).exp_a(kkk), l_l, k_l, shell_list(lshell).exp_a(lll), tmp) / norm;
-                            else if(integralTYPE == "SSLL_SF")
-                                radial_tilde(tmp) += shell_list(ishell).coeff(iii,ii) * shell_list(jshell).coeff(jjj,jj) * shell_list(kshell).coeff(kkk,kk) * shell_list(lshell).coeff(lll,ll) * int2e_get_radial_SSLL_SF(l_i, k_i, shell_list(ishell).exp_a(iii), l_j, k_j, shell_list(jshell).exp_a(jjj), l_k, k_k, shell_list(kshell).exp_a(kkk), l_l, k_l, shell_list(lshell).exp_a(lll), tmp) / norm;
-                            else if(integralTYPE == "LLSS_SF")
-                                radial_tilde(tmp) += shell_list(ishell).coeff(iii,ii) * shell_list(jshell).coeff(jjj,jj) * shell_list(kshell).coeff(kkk,kk) * shell_list(lshell).coeff(lll,ll) * int2e_get_radial_SSLL_SF(l_k, k_k, shell_list(kshell).exp_a(kkk), l_l, k_l, shell_list(lshell).exp_a(lll), l_i, k_i, shell_list(ishell).exp_a(iii), l_j, k_j, shell_list(jshell).exp_a(jjj), tmp) / norm;
-                            else if(integralTYPE == "SSSS_SF")
-                                radial_tilde(tmp) += shell_list(ishell).coeff(iii,ii) * shell_list(jshell).coeff(jjj,jj) * shell_list(kshell).coeff(kkk,kk) * shell_list(lshell).coeff(lll,ll) * int2e_get_radial_SSSS_SF(l_i, k_i, shell_list(ishell).exp_a(iii), l_j, k_j, shell_list(jshell).exp_a(jjj), l_k, k_k, shell_list(kshell).exp_a(kkk), l_l, k_l, shell_list(lshell).exp_a(lll), tmp) / norm;
-                            else
-                            {
-                                cout << "ERROR: integralTYPE of get_h2e must be one of these:\n";
-                                cout << "       LLLL,  SSLL,  LLSS, SSSS\n";
-                                exit(99);
-                            }
+                            radial_tilde(tmp) += shell_list(ishell).coeff(iii,ii) * shell_list(jshell).coeff(jjj,jj) * shell_list(kshell).coeff(kkk,kk) * shell_list(lshell).coeff(lll,ll) * array_radial[iii][jjj][kkk][lll](tmp);
                         }
                     }
                     
@@ -336,8 +352,8 @@ MatrixXd GTO_SPINOR::get_h2e(const string& integralTYPE, const bool& uncontracte
             {
                 int sym_ai = twojj_i - 2*l_i, sym_aj = twojj_j - 2*l_j, sym_ak = twojj_k - 2*l_k, sym_al = twojj_l - 2*l_l;
                 double k_i = -(twojj_i+1.0)*sym_ai/2.0, k_j = -(twojj_j+1.0)*sym_aj/2.0, k_k = -(twojj_k+1.0)*sym_ak/2.0, k_l = -(twojj_l+1.0)*sym_al/2.0;
+                
                 VectorXd array_angular[twojj_i + 1][twojj_j + 1][twojj_k + 1][twojj_l + 1];
-
                 for(int mi = 0; mi < twojj_i + 1; mi++)
                 for(int mj = 0; mj < twojj_j + 1; mj++)
                 for(int mk = 0; mk < twojj_k + 1; mk++)
@@ -349,39 +365,51 @@ MatrixXd GTO_SPINOR::get_h2e(const string& integralTYPE, const bool& uncontracte
                         array_angular[mi][mj][mk][ml](tmp) = int2e_get_angular(l_i, 2*mi-twojj_i, sym_ai, l_j, 2*mj-twojj_j, sym_aj, l_k, 2*mk-twojj_k, sym_ak, l_l, 2*ml-twojj_l, sym_al, tmp);
                 }
 
+                VectorXd array_radial[size_gtos_i][size_gtos_j][size_gtos_k][size_gtos_l];
+                for(int ii = 0; ii < size_gtos_i; ii++)
+                for(int jj = 0; jj < size_gtos_j; jj++)
+                for(int kk = 0; kk < size_gtos_k; kk++)
+                for(int ll = 0; ll < size_gtos_l; ll++)
+                {
+                    array_radial[ii][jj][kk][ll].resize(Lmax+1);
+                    array_radial[ii][jj][kk][ll] = VectorXd::Zero(Lmax+1);
+                    double norm = shell_list(ishell).norm(ii) * shell_list(jshell).norm(jj) * shell_list(kshell).norm(kk) * shell_list(lshell).norm(ll);
+
+                    for(int tmp = Lmax; tmp >= 0; tmp = tmp - 2)
+                    {
+                        if(integralTYPE == "LLLL")
+                            array_radial[ii][jj][kk][ll](tmp) = int2e_get_radial_LLLL(l_i, k_i, shell_list(ishell).exp_a(ii), l_j, k_j, shell_list(jshell).exp_a(jj), l_k, k_k, shell_list(kshell).exp_a(kk), l_l, k_l, shell_list(lshell).exp_a(ll), tmp) / norm;
+                        else if(integralTYPE == "SSLL")
+                            array_radial[ii][jj][kk][ll](tmp) = int2e_get_radial_SSLL(l_i, k_i, shell_list(ishell).exp_a(ii), l_j, k_j, shell_list(jshell).exp_a(jj), l_k, k_k, shell_list(kshell).exp_a(kk), l_l, k_l, shell_list(lshell).exp_a(ll), tmp) / norm;
+                        else if(integralTYPE == "LLSS")
+                            array_radial[ii][jj][kk][ll](tmp) = int2e_get_radial_SSLL(l_k, k_k, shell_list(kshell).exp_a(kk), l_l, k_l, shell_list(lshell).exp_a(ll), l_i, k_i, shell_list(ishell).exp_a(ii), l_j, k_j, shell_list(jshell).exp_a(jj), tmp) / norm;
+                        else if(integralTYPE == "SSSS")
+                            array_radial[ii][jj][kk][ll](tmp) = int2e_get_radial_SSSS(l_i, k_i, shell_list(ishell).exp_a(ii), l_j, k_j, shell_list(jshell).exp_a(jj), l_k, k_k, shell_list(kshell).exp_a(kk), l_l, k_l, shell_list(lshell).exp_a(ll), tmp) / norm;
+                        else if(integralTYPE == "SSLL_SF")
+                            array_radial[ii][jj][kk][ll](tmp) = int2e_get_radial_SSLL_SF(l_i, k_i, shell_list(ishell).exp_a(ii), l_j, k_j, shell_list(jshell).exp_a(jj), l_k, k_k, shell_list(kshell).exp_a(kk), l_l, k_l, shell_list(lshell).exp_a(ll), tmp) / norm;
+                        else if(integralTYPE == "LLSS_SF")
+                            array_radial[ii][jj][kk][ll](tmp) = int2e_get_radial_SSLL_SF(l_k, k_k, shell_list(kshell).exp_a(kk), l_l, k_l, shell_list(lshell).exp_a(ll), l_i, k_i, shell_list(ishell).exp_a(ii), l_j, k_j, shell_list(jshell).exp_a(jj), tmp) / norm;
+                        else if(integralTYPE == "SSSS_SF")
+                            array_radial[ii][jj][kk][ll](tmp) = int2e_get_radial_SSSS_SF(l_i, k_i, shell_list(ishell).exp_a(ii), l_j, k_j, shell_list(jshell).exp_a(jj), l_k, k_k, shell_list(kshell).exp_a(kk), l_l, k_l, shell_list(lshell).exp_a(ll), tmp) / norm;
+                        else
+                        {
+                            cout << "ERROR: integralTYPE of get_h2e must be one of these:\n";
+                            cout << "       LLLL,  SSLL,  LLSS, SSSS, LLSS_SF, SSSS_SF\n";
+                            exit(99);
+                        }
+                    }
+                }
+
                 for(int ii = 0; ii < size_gtos_i; ii++)
                 for(int jj = 0; jj < size_gtos_j; jj++)
                 for(int kk = 0; kk < size_gtos_k; kk++)
                 for(int ll = 0; ll < size_gtos_l; ll++)
                 {
                     radial_tilde = VectorXd::Zero(Lmax+1);
-                    double norm = shell_list(ishell).norm(ii) * shell_list(jshell).norm(jj) * shell_list(kshell).norm(kk) * shell_list(lshell).norm(ll);
                     /*
                         radial_tilde in uncontracted case is the radial tensor
                     */
-                    for(int tmp = Lmax; tmp >= 0; tmp = tmp - 2)
-                    {
-                        if(integralTYPE == "LLLL")
-                            radial_tilde(tmp) = int2e_get_radial_LLLL(l_i, k_i, shell_list(ishell).exp_a(ii), l_j, k_j, shell_list(jshell).exp_a(jj), l_k, k_k, shell_list(kshell).exp_a(kk), l_l, k_l, shell_list(lshell).exp_a(ll), tmp) / norm;
-                        else if(integralTYPE == "SSLL")
-                            radial_tilde(tmp) = int2e_get_radial_SSLL(l_i, k_i, shell_list(ishell).exp_a(ii), l_j, k_j, shell_list(jshell).exp_a(jj), l_k, k_k, shell_list(kshell).exp_a(kk), l_l, k_l, shell_list(lshell).exp_a(ll), tmp) / norm;
-                        else if(integralTYPE == "LLSS")
-                            radial_tilde(tmp) = int2e_get_radial_SSLL(l_k, k_k, shell_list(kshell).exp_a(kk), l_l, k_l, shell_list(lshell).exp_a(ll), l_i, k_i, shell_list(ishell).exp_a(ii), l_j, k_j, shell_list(jshell).exp_a(jj), tmp) / norm;
-                        else if(integralTYPE == "SSSS")
-                            radial_tilde(tmp) = int2e_get_radial_SSSS(l_i, k_i, shell_list(ishell).exp_a(ii), l_j, k_j, shell_list(jshell).exp_a(jj), l_k, k_k, shell_list(kshell).exp_a(kk), l_l, k_l, shell_list(lshell).exp_a(ll), tmp) / norm;
-                        else if(integralTYPE == "SSLL_SF")
-                            radial_tilde(tmp) = int2e_get_radial_SSLL_SF(l_i, k_i, shell_list(ishell).exp_a(ii), l_j, k_j, shell_list(jshell).exp_a(jj), l_k, k_k, shell_list(kshell).exp_a(kk), l_l, k_l, shell_list(lshell).exp_a(ll), tmp) / norm;
-                        else if(integralTYPE == "LLSS_SF")
-                            radial_tilde(tmp) = int2e_get_radial_SSLL_SF(l_k, k_k, shell_list(kshell).exp_a(kk), l_l, k_l, shell_list(lshell).exp_a(ll), l_i, k_i, shell_list(ishell).exp_a(ii), l_j, k_j, shell_list(jshell).exp_a(jj), tmp) / norm;
-                        else if(integralTYPE == "SSSS_SF")
-                            radial_tilde(tmp) = int2e_get_radial_SSSS_SF(l_i, k_i, shell_list(ishell).exp_a(ii), l_j, k_j, shell_list(jshell).exp_a(jj), l_k, k_k, shell_list(kshell).exp_a(kk), l_l, k_l, shell_list(lshell).exp_a(ll), tmp) / norm;
-                        else
-                        {
-                            cout << "ERROR: integralTYPE of get_h2e must be one of these:\n";
-                            cout << "       LLLL,  SSLL,  LLSS, SSSS\n";
-                            exit(99);
-                        }
-                    }
+                    radial_tilde = array_radial[ii][jj][kk][ll];
                     
                     for(int mi = 0; mi < twojj_i + 1; mi++)
                     for(int mj = 0; mj < twojj_j + 1; mj++)

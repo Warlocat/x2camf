@@ -17,6 +17,7 @@ using namespace std;
 int charge, spin;
 string atomName, basisSet, flags, jobs, rel;
 bool unc;
+double conv;
 
 /* Read input file and set global variables */
 void readInput(const string filename);
@@ -46,14 +47,17 @@ int main()
     MatrixXd h2eSSSS = gto_spinor_test.get_h2e("SSSS",unc);
     MatrixXd h2eSSLL_SD = h2eSSLL - gto_spinor_test.get_h2e("SSLL_SF",unc);
     MatrixXd h2eSSSS_SD = h2eSSSS - gto_spinor_test.get_h2e("SSSS_SF",unc);
-    gto_spinor_test.writeIntegrals_spinor(h2eLLLL, "h2etestLLLL");    
-    gto_spinor_test.writeIntegrals_spinor(h2eSSLL, "h2etestSSLL"); 
-    gto_spinor_test.writeIntegrals_spinor(h2eSSSS, "h2etestSSSS");
-    DHF dhf_test(gto_spinor_test, "h2etest", unc);
-    // DHF dhf_test(gto_spinor_test, h2eLLLL, h2eSSLL, h2eSSSS, unc);
+// exit(99);    
+    // gto_spinor_test.writeIntegrals_spinor(h2eLLLL, "h2etestLLLL");    
+    // gto_spinor_test.writeIntegrals_spinor(h2eSSLL, "h2etestSSLL"); 
+    // gto_spinor_test.writeIntegrals_spinor(h2eSSSS, "h2etestSSSS");
+// exit(99);
+    // DHF dhf_test(gto_spinor_test, "h2etest", unc);
+    DHF dhf_test(gto_spinor_test, h2eLLLL, h2eSSLL, h2eSSSS, unc);
     
     // DHF dhf_test("h1epyscf", "h2epyscf");
     
+    dhf_test.convControl = conv;
     dhf_test.runSCF();
     MatrixXd amfi = dhf_test.get_amfi(h2eSSLL_SD, h2eSSLL_SD);
     writeOneE("amfi_" + atomName + ".txt", amfi);
@@ -75,7 +79,8 @@ void readInput(const string filename)
         ifs >> jobs >> flags;
         ifs >> rel >> flags;
         ifs >> unc >> flags;
-        cout << atomName << endl << basisSet <<endl << charge<< endl << spin << endl << jobs << endl << rel << endl << unc << endl;
+        ifs >> conv >> flags;
+        cout << atomName << endl << basisSet <<endl << charge<< endl << spin << endl << jobs << endl << rel << endl << unc << endl << conv << endl;
     ifs.close();
 
     return;

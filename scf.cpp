@@ -513,7 +513,8 @@ DHF::DHF(const GTO_SPINOR& gto_, const MatrixXd& h2eLLLL_, const MatrixXd& h2eSS
     norm_s = VectorXd::Zero(size_basis);
     for(int ii = 0; ii < size_basis; ii++)
     {
-        norm_s(ii) = sqrt(kinetic(ii,ii) / 2.0 / speedOfLight / speedOfLight);
+        // norm_s(ii) = sqrt(kinetic(ii,ii) / 2.0 / speedOfLight / speedOfLight);
+        norm_s(ii) = 1.0;
     }
     h2e = h2eLLLL_;
     h2eSSLL.resize(size_basis*size_basis,size_basis*size_basis);
@@ -733,6 +734,10 @@ MatrixXd DHF::get_amfi(const MatrixXd& coeff_4c, const MatrixXd& h2eSSLL_SD, con
     int size = round(sqrt(h2eSSLL_SD.cols()));
     MatrixXd SO_LL(size,size), SO_LS(size,size), SO_SL(size,size), SO_SS(size,size);
 
+    /* 
+        Evaluate SO integrals in 4c basis
+        The structure is the same as 2e Coulomb integrals in fock matrix 
+    */
     for(int mm = 0; mm < size; mm++)
     for(int nn = 0; nn < size; nn++)
     {
@@ -748,6 +753,7 @@ MatrixXd DHF::get_amfi(const MatrixXd& coeff_4c, const MatrixXd& h2eSSLL_SD, con
         }
     }
 
+    /* Transform SO_4c to SO_2c_eff and then SO_2c using X2C techniques */
     MatrixXd XXX = X2C::get_X(coeff_4c);
     MatrixXd RRR = X2C::get_R(overlap_4c_, XXX);
     MatrixXd SO_2c_eff = SO_LL + SO_LS * XXX + XXX.transpose() * SO_SL + XXX.transpose() * SO_SS * XXX;
