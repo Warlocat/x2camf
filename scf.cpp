@@ -716,3 +716,40 @@ MatrixXd DHF::evaluateDensity_spinor(const MatrixXd& coeff_, const int& nocc, co
     }    
     return den;
 }
+
+
+MatrixXd DHF::get_amfi(const MatrixXd& h2eSSLL_SD, const MatrixXd& h2eSSSS_SD, const bool& spherical)
+{
+    if(!converged)
+    {
+        cout << "Warning: SCF did NOT converge when get_amfi is called!" << endl;
+    }
+    return get_amfi(coeff, h2eSSLL_SD, h2eSSSS_SD, overlap_4c, nelec_a+nelec_b, spherical);
+}
+
+MatrixXd DHF::get_amfi(const MatrixXd& coeff_4c, const MatrixXd& h2eSSLL_SD, const MatrixXd& h2eSSSS_SD, const MatrixXd& overlap_4c_, const int& nocc, const bool& spherical)
+{
+    MatrixXd density = evaluateDensity_spinor(coeff_4c, nocc, spherical);
+    int size = round(sqrt(h2eSSLL_SD.cols()));
+    MatrixXd SO_LL(size,size), SO_LS(size,size), SO_SL(size,size), SO_SS(size,size);
+
+    for(int mm = 0; mm < size; mm++)
+    for(int nn = 0; nn < size; nn++)
+    {
+        SO_LL(mm,nn) = SO_LS(mm,nn) = SO_SL(mm,nn) = SO_SS(mm,nn) = 0.0;
+        for(int ss = 0; ss < size; ss++)
+        for(int rr = 0; rr < size; rr++)
+        {
+            int emn = mm*size+nn, esr = ss*size+rr, emr = mm*size+rr, esn = ss*size+nn;
+            SO_LL(mm,nn) += density(size+ss,size+rr) * h2eSSLL_SD(esr,emn)/ 4.0 / pow(speedOfLight,2);
+            SO_LS(mm,nn) -= density(size+ss,rr) * h2eSSLL_SD(esn,emr)/ 4.0 / pow(speedOfLight,2);
+            SO_SL(mm,nn) -= density(ss,size+rr) * h2eSSLL_SD(emr,esn)/ 4.0 / pow(speedOfLight,2);
+            SO_SS(mm,nn) += density(size+ss,size+rr) * (h2eSSSS_SD(emn,esr) - h2eSSSS_SD(emr,esn))/ 16.0 / pow(speedOfLight,4) + density(ss,rr) * h2eSSLL_SD(emn,esr)/ 4.0 / pow(speedOfLight,2);
+        }
+    }
+
+    MatrixXd XXX = X2C::get_X(coeff_4c);
+    MatrixXd RRR = X2C::get_R(overlap_4c_, XXX);
+    MatrixXd SO_2c_eff = SO_LL + SO_LS * XXX + XXX.transpose() * SO_SL + XXX.transpose() * SO_SS * XXX;
+    return RRR.transpose() * SO_2c_eff * RRR;
+}

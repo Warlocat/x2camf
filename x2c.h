@@ -21,7 +21,9 @@ public:
     X2C(const GTO& gto_);
     ~X2C();
     static MatrixXd get_X(const MatrixXd& S_, const MatrixXd& T_, const MatrixXd& W_, const MatrixXd& V_);
+    static MatrixXd get_X(const MatrixXd& coeff);
     static MatrixXd get_R(const MatrixXd& S_, const MatrixXd& T_, const MatrixXd& X_);
+    static MatrixXd get_R(const MatrixXd& S_4c, const MatrixXd& X_);
     static MatrixXd evaluate_h1e_x2c(const MatrixXd& S_, const MatrixXd& T_, const MatrixXd& W_, const MatrixXd& V_, const MatrixXd coeff_contraction_);
 };
 
