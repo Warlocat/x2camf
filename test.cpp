@@ -45,8 +45,6 @@ int main()
     MatrixXd h2eLLLL = gto_spinor_test.get_h2e("LLLL",unc);
     MatrixXd h2eSSLL = gto_spinor_test.get_h2e("SSLL",unc);
     MatrixXd h2eSSSS = gto_spinor_test.get_h2e("SSSS",unc);
-    MatrixXd h2eSSLL_SD = h2eSSLL - gto_spinor_test.get_h2e("SSLL_SF",unc);
-    MatrixXd h2eSSSS_SD = h2eSSSS - gto_spinor_test.get_h2e("SSSS_SF",unc);
 // exit(99);    
     // gto_spinor_test.writeIntegrals_spinor(h2eLLLL, "h2etestLLLL");    
     // gto_spinor_test.writeIntegrals_spinor(h2eSSLL, "h2etestSSLL"); 
@@ -59,6 +57,16 @@ int main()
     
     dhf_test.convControl = conv;
     dhf_test.runSCF();
+
+
+    h2eLLLL.resize(0,0);
+    h2eSSLL.resize(0,0);
+    h2eSSSS.resize(0,0);
+
+    MatrixXd h2eSSLL_SD = gto_spinor_test.get_h2e("SSLL_SD",unc);
+    MatrixXd h2eSSSS_SD = gto_spinor_test.get_h2e("SSSS_SD",unc);
+    // gto_spinor_test.writeIntegrals_spinor(h2eSSLL_SD, "h2etestSSLL_SD_1");
+    // gto_spinor_test.writeIntegrals_spinor(h2eSSSS_SD, "h2etestSSSS_SD_1");
     MatrixXd amfi = dhf_test.get_amfi(h2eSSLL_SD, h2eSSLL_SD);
     writeOneE("amfi_" + atomName + ".txt", amfi);
     

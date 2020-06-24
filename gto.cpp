@@ -502,155 +502,114 @@ MatrixXd GTO::get_h2e(const bool& uncontracted_) const
         int_2e.resize(size_gtou*(size_gtou+1)/2, size_gtou*(size_gtou+1)/2);
         int_2e = MatrixXd::Zero(size_gtou*(size_gtou+1)/2, size_gtou*(size_gtou+1)/2);
     }
+    int loop_i, loop_j, loop_k, loop_l;
     
     VectorXd radial_tilde;
-    if(!uncontracted_)
+
+    int int_tmp_i = 0;
+    for(int ishell = 0; ishell < size_shell; ishell++)
     {
-        int int_tmp_i = 0;
-        for(int ishell = 0; ishell < size_shell; ishell++)
+    int int_tmp_j = 0;
+    for(int jshell = 0; jshell <= ishell; jshell++)
+    {
+    int int_tmp_k = 0;
+    for(int kshell = 0; kshell < size_shell; kshell++)
+    {
+    int int_tmp_l = 0; 
+    for(int lshell = 0; lshell <= kshell; lshell++)
+    {
+        int l_i = shell_list(ishell).l, l_j = shell_list(jshell).l, l_k = shell_list(kshell).l, l_l = shell_list(lshell).l, Lmax = min(l_i + l_j, l_k +l_l);
+        int size_gtos_i = shell_list(ishell).coeff.rows(), size_gtos_j = shell_list(jshell).coeff.rows(), size_gtos_k = shell_list(kshell).coeff.rows(), size_gtos_l = shell_list(lshell).coeff.rows();
+        int size_subshell_i = shell_list(ishell).coeff.cols(), size_subshell_j = shell_list(jshell).coeff.cols(), size_subshell_k = shell_list(kshell).coeff.cols(), size_subshell_l = shell_list(lshell).coeff.cols();
+        if(!uncontracted_)
         {
-        int int_tmp_j = 0;
-        for(int jshell = 0; jshell <= ishell; jshell++)
+            loop_i = size_subshell_i;
+            loop_j = size_subshell_j;
+            loop_k = size_subshell_k;
+            loop_l = size_subshell_l;
+        }
+        else
         {
-        int int_tmp_k = 0;
-        for(int kshell = 0; kshell < size_shell; kshell++)
+            loop_i = size_gtos_i;
+            loop_j = size_gtos_j;
+            loop_k = size_gtos_k;
+            loop_l = size_gtos_l;
+        }
+        if((l_i+l_j+l_k+l_l)%2) 
         {
-        int int_tmp_l = 0; 
-        for(int lshell = 0; lshell <= kshell; lshell++)
-        {
-            int l_i = shell_list(ishell).l, l_j = shell_list(jshell).l, l_k = shell_list(kshell).l, l_l = shell_list(lshell).l, Lmax = min(l_i + l_j, l_k +l_l);
-            if((l_i+l_j+l_k+l_l)%2) 
-            {
-                int_tmp_l += shell_list(lshell).coeff.cols() * (2*shell_list(lshell).l+1);
-                continue;
-            }
-            int size_gtos_i = shell_list(ishell).coeff.rows(), size_gtos_j = shell_list(jshell).coeff.rows(), size_gtos_k = shell_list(kshell).coeff.rows(), size_gtos_l = shell_list(lshell).coeff.rows();
-            int size_subshell_i = shell_list(ishell).coeff.cols(), size_subshell_j = shell_list(jshell).coeff.cols(), size_subshell_k = shell_list(kshell).coeff.cols(), size_subshell_l = shell_list(lshell).coeff.cols();
+            int_tmp_l += loop_l * (2*shell_list(lshell).l+1);
+            continue;
+        }
 
-            radial_tilde.resize(Lmax+1);
-            VectorXd array_angular[2*l_i + 1][2*l_j + 1][2*l_k + 1][2*l_l + 1];
-            for(int mi = 0; mi < 2*l_i + 1; mi++)
-            for(int mj = 0; mj < 2*l_j + 1; mj++)
-            for(int mk = 0; mk < 2*l_k + 1; mk++)
-            for(int ml = 0; ml < 2*l_l + 1; ml++)
-            {
-                array_angular[mi][mj][mk][ml].resize(Lmax+1);
-                array_angular[mi][mj][mk][ml] = VectorXd::Zero(Lmax+1);
-                for(int tmp = Lmax; tmp >= 0; tmp = tmp - 2)
-                    array_angular[mi][mj][mk][ml](tmp) = int2e_get_angular(l_i, mi - l_i, l_j, mj - l_j, l_k, mk - l_k, l_l, ml - l_l, tmp);
-            }
+        radial_tilde.resize(Lmax+1);
+            
+        VectorXd array_angular[2*l_i + 1][2*l_j + 1][2*l_k + 1][2*l_l + 1];
+        for(int mi = 0; mi < 2*l_i + 1; mi++)
+        for(int mj = 0; mj < 2*l_j + 1; mj++)
+        for(int mk = 0; mk < 2*l_k + 1; mk++)
+        for(int ml = 0; ml < 2*l_l + 1; ml++)
+        {
+            array_angular[mi][mj][mk][ml].resize(Lmax+1);
+            array_angular[mi][mj][mk][ml] = VectorXd::Zero(Lmax+1);
+            for(int tmp = Lmax; tmp >= 0; tmp = tmp - 2)
+                array_angular[mi][mj][mk][ml](tmp) = int2e_get_angular(l_i, mi - l_i, l_j, mj - l_j, l_k, mk - l_k, l_l, ml - l_l, tmp);
+        }
 
-            for(int ii = 0; ii < size_subshell_i; ii++)
-            for(int jj = 0; jj < size_subshell_j; jj++)
-            for(int kk = 0; kk < size_subshell_k; kk++)
-            for(int ll = 0; ll < size_subshell_l; ll++)
-            {
-                for(int iii = 0; iii < Lmax+1; iii++)
-                {
-                    radial_tilde(iii) = 0.0;
-                }
+        VectorXd array_radial[size_gtos_i][size_gtos_j][size_gtos_k][size_gtos_l];
+        for(int ii = 0; ii < size_gtos_i; ii++)
+        for(int jj = 0; jj < size_gtos_j; jj++)
+        for(int kk = 0; kk < size_gtos_k; kk++)
+        for(int ll = 0; ll < size_gtos_l; ll++)
+        {
+            array_radial[ii][jj][kk][ll].resize(Lmax + 1);
+            array_radial[ii][jj][kk][ll] = VectorXd::Zero(Lmax+1);
+            double norm = shell_list(ishell).norm(ii) * shell_list(jshell).norm(jj) * shell_list(kshell).norm(kk) * shell_list(lshell).norm(ll);
+            for(int tmp = Lmax; tmp >= 0; tmp = tmp - 2)
+                array_radial[ii][jj][kk][ll](tmp) = int2e_get_radial(l_i, shell_list(ishell).exp_a(ii), l_j, shell_list(jshell).exp_a(jj), l_k, shell_list(kshell).exp_a(kk), l_l, shell_list(lshell).exp_a(ll), tmp) / norm;
+        }
 
+        for(int ii = 0; ii < loop_i; ii++)
+        for(int jj = 0; jj < loop_j; jj++)
+        for(int kk = 0; kk < loop_k; kk++)
+        for(int ll = 0; ll < loop_l; ll++)
+        {
+            radial_tilde = VectorXd::Zero(Lmax + 1);
+            if(!uncontracted_)
+            {
                 for(int iii = 0; iii < size_gtos_i; iii++)
                 for(int jjj = 0; jjj < size_gtos_j; jjj++)
                 for(int kkk = 0; kkk < size_gtos_k; kkk++)
                 for(int lll = 0; lll < size_gtos_l; lll++)
                 {
-                    double norm = shell_list(ishell).norm(iii) * shell_list(jshell).norm(jjj) * shell_list(kshell).norm(kkk) * shell_list(lshell).norm(lll);
                     for(int tmp = Lmax; tmp >= 0; tmp = tmp - 2)
-                        radial_tilde(tmp) += shell_list(ishell).coeff(iii,ii) * shell_list(jshell).coeff(jjj,jj) * shell_list(kshell).coeff(kkk,kk) * shell_list(lshell).coeff(lll,ll) * int2e_get_radial(l_i, shell_list(ishell).exp_a(iii), l_j, shell_list(jshell).exp_a(jjj), l_k, shell_list(kshell).exp_a(kkk), l_l, shell_list(lshell).exp_a(lll), tmp) / norm;
+                        radial_tilde(tmp) += shell_list(ishell).coeff(iii,ii) * shell_list(jshell).coeff(jjj,jj) * shell_list(kshell).coeff(kkk,kk) * shell_list(lshell).coeff(lll,ll) * array_radial[iii][jjj][kkk][lll](tmp);
                 }
-
-                for(int mi = 0; mi < 2*l_i + 1; mi++)
-                for(int mj = 0; mj < 2*l_j + 1; mj++)
-                for(int mk = 0; mk < 2*l_k + 1; mk++)
-                for(int ml = 0; ml < 2*l_l + 1; ml++)
-                {
-                    int ei = int_tmp_i + mi + ii * (2*l_i + 1), ej = int_tmp_j + mj + jj * (2*l_j + 1), ek = int_tmp_k + mk + kk * (2*l_k + 1), el = int_tmp_l + ml + ll * (2*l_l + 1);
-                    if(ei < ej || ek < el) continue;
-                    int eij = ei*(ei+1)/2+ej, ekl = ek*(ek+1)/2+el;
-                    int_2e(eij,ekl) = radial_tilde.transpose() * array_angular[mi][mj][mk][ml];
-                }    
             }
-            int_tmp_l += shell_list(lshell).coeff.cols() * (2*shell_list(lshell).l+1);
-        }
-            int_tmp_k += shell_list(kshell).coeff.cols() * (2*shell_list(kshell).l+1);
-        }
-            int_tmp_j += shell_list(jshell).coeff.cols() * (2*shell_list(jshell).l+1);
-        }
-            int_tmp_i += shell_list(ishell).coeff.cols() * (2*shell_list(ishell).l+1);
-        }
-    }
-    else
-    {
-        int int_tmp_i = 0;
-        for(int ishell = 0; ishell < size_shell; ishell++)
-        {
-        int int_tmp_j = 0;
-        for(int jshell = 0; jshell <= ishell; jshell++)
-        {
-        int int_tmp_k = 0;
-        for(int kshell = 0; kshell < size_shell; kshell++)
-        {
-        int int_tmp_l = 0; 
-        for(int lshell = 0; lshell <= kshell; lshell++)
-        {
-            int l_i = shell_list(ishell).l, l_j = shell_list(jshell).l, l_k = shell_list(kshell).l, l_l = shell_list(lshell).l, Lmax = min(l_i + l_j, l_k +l_l);
-            if((l_i+l_j+l_k+l_l)%2) 
+            else
             {
-                int_tmp_l += shell_list(lshell).coeff.cols() * (2*shell_list(lshell).l+1);
-                continue;
+                radial_tilde = array_radial[ii][jj][kk][ll];
             }
-            int size_gtos_i = shell_list(ishell).coeff.rows(), size_gtos_j = shell_list(jshell).coeff.rows(), size_gtos_k = shell_list(kshell).coeff.rows(), size_gtos_l = shell_list(lshell).coeff.rows();
-
-            radial_tilde.resize(Lmax+1);
-            VectorXd array_angular[2*l_i + 1][2*l_j + 1][2*l_k + 1][2*l_l + 1];
+            
             for(int mi = 0; mi < 2*l_i + 1; mi++)
             for(int mj = 0; mj < 2*l_j + 1; mj++)
             for(int mk = 0; mk < 2*l_k + 1; mk++)
             for(int ml = 0; ml < 2*l_l + 1; ml++)
             {
-                array_angular[mi][mj][mk][ml].resize(Lmax+1);
-                array_angular[mi][mj][mk][ml] = VectorXd::Zero(Lmax+1);
-                for(int tmp = Lmax; tmp >= 0; tmp = tmp - 2)
-                    array_angular[mi][mj][mk][ml](tmp) = int2e_get_angular(l_i, mi - l_i, l_j, mj - l_j, l_k, mk - l_k, l_l, ml - l_l, tmp);
-            }
-            for(int ii = 0; ii < size_gtos_i; ii++)
-            for(int jj = 0; jj < size_gtos_j; jj++)
-            for(int kk = 0; kk < size_gtos_k; kk++)
-            for(int ll = 0; ll < size_gtos_l; ll++)
-            {
-                double norm = shell_list(ishell).norm(ii) * shell_list(jshell).norm(jj) * shell_list(kshell).norm(kk) * shell_list(lshell).norm(ll);
-                
-                /*
-                    radial_tilde in uncontracted case is the radial tensor
-                */
-                for(int iii = 0; iii < Lmax+1; iii++)
-                {
-                    radial_tilde(iii) = 0.0;
-                }
-                for(int tmp = Lmax; tmp >= 0; tmp = tmp - 2)
-                        radial_tilde(tmp) = int2e_get_radial(l_i, shell_list(ishell).exp_a(ii), l_j, shell_list(jshell).exp_a(jj), l_k, shell_list(kshell).exp_a(kk), l_l, shell_list(lshell).exp_a(ll), tmp) / norm;
-
-                for(int mi = 0; mi < 2*l_i + 1; mi++)
-                for(int mj = 0; mj < 2*l_j + 1; mj++)
-                for(int mk = 0; mk < 2*l_k + 1; mk++)
-                for(int ml = 0; ml < 2*l_l + 1; ml++)
-                {
-                    int ei = int_tmp_i + mi + ii * (2*l_i + 1), ej = int_tmp_j + mj + jj * (2*l_j + 1), ek = int_tmp_k + mk + kk * (2*l_k + 1), el = int_tmp_l + ml + ll * (2*l_l + 1);
-                    if(ei < ej || ek < el) continue;                  
-                    int eij = ei*(ei+1)/2+ej, ekl = ek*(ek+1)/2+el;
-                    int_2e(eij,ekl) = radial_tilde.transpose() * array_angular[mi][mj][mk][ml];
-                }    
-            }
-            int_tmp_l += shell_list(lshell).coeff.rows() * (2*shell_list(lshell).l+1);
+                int ei = int_tmp_i + mi + ii * (2*l_i + 1), ej = int_tmp_j + mj + jj * (2*l_j + 1), ek = int_tmp_k + mk + kk * (2*l_k + 1), el = int_tmp_l + ml + ll * (2*l_l + 1);
+                if(ei < ej || ek < el) continue;
+                int eij = ei*(ei+1)/2+ej, ekl = ek*(ek+1)/2+el;
+                int_2e(eij,ekl) = radial_tilde.transpose() * array_angular[mi][mj][mk][ml];
+            }    
         }
-            int_tmp_k += shell_list(kshell).coeff.rows() * (2*shell_list(kshell).l+1);
-        }
-            int_tmp_j += shell_list(jshell).coeff.rows() * (2*shell_list(jshell).l+1);
-        }
-            int_tmp_i += shell_list(ishell).coeff.rows() * (2*shell_list(ishell).l+1);
-        }
+        int_tmp_l += loop_l * (2*shell_list(lshell).l+1);
     }
+        int_tmp_k += loop_k * (2*shell_list(kshell).l+1);
+    }
+        int_tmp_j += loop_j * (2*shell_list(jshell).l+1);
+    }
+        int_tmp_i += loop_i * (2*shell_list(ishell).l+1);
+    }
+    
     
     return int_2e;
 }

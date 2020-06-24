@@ -725,10 +725,10 @@ MatrixXd DHF::get_amfi(const MatrixXd& h2eSSLL_SD, const MatrixXd& h2eSSSS_SD, c
     {
         cout << "Warning: SCF did NOT converge when get_amfi is called!" << endl;
     }
-    return get_amfi(coeff, h2eSSLL_SD, h2eSSSS_SD, overlap_4c, nelec_a+nelec_b, spherical);
+    return get_amfi(coeff, h2eSSLL_SD, h2eSSSS_SD, h1e_4c, overlap_4c, nelec_a+nelec_b, spherical);
 }
 
-MatrixXd DHF::get_amfi(const MatrixXd& coeff_4c, const MatrixXd& h2eSSLL_SD, const MatrixXd& h2eSSSS_SD, const MatrixXd& overlap_4c_, const int& nocc, const bool& spherical)
+MatrixXd DHF::get_amfi(const MatrixXd& coeff_4c, const MatrixXd& h2eSSLL_SD, const MatrixXd& h2eSSSS_SD, const MatrixXd& h1e_4c_, const MatrixXd& overlap_4c_, const int& nocc, const bool& spherical)
 {
     MatrixXd density = evaluateDensity_spinor(coeff_4c, nocc, spherical);
     int size = round(sqrt(h2eSSLL_SD.cols()));
@@ -754,7 +754,9 @@ MatrixXd DHF::get_amfi(const MatrixXd& coeff_4c, const MatrixXd& h2eSSLL_SD, con
     }
 
     /* Transform SO_4c to SO_2c_eff and then SO_2c using X2C techniques */
-    MatrixXd XXX = X2C::get_X(coeff_4c);
+GeneralizedSelfAdjointEigenSolver<MatrixXd> solver(h1e_4c_, overlap_4c_);
+MatrixXd XXX = X2C::get_X(solver.eigenvectors());
+    // MatrixXd XXX = X2C::get_X(coeff_4c);
     MatrixXd RRR = X2C::get_R(overlap_4c_, XXX);
     MatrixXd SO_2c_eff = SO_LL + SO_LS * XXX + XXX.transpose() * SO_SL + XXX.transpose() * SO_SS * XXX;
     return RRR.transpose() * SO_2c_eff * RRR;
