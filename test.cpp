@@ -45,11 +45,24 @@ int main()
     MatrixXd h2eLLLL = gto_spinor_test.get_h2e("LLLL",unc);
     MatrixXd h2eSSLL = gto_spinor_test.get_h2e("SSLL",unc);
     MatrixXd h2eSSSS = gto_spinor_test.get_h2e("SSSS",unc);
-// exit(99);    
     // gto_spinor_test.writeIntegrals_spinor(h2eLLLL, "h2etestLLLL");    
     // gto_spinor_test.writeIntegrals_spinor(h2eSSLL, "h2etestSSLL"); 
     // gto_spinor_test.writeIntegrals_spinor(h2eSSSS, "h2etestSSSS");
-// exit(99);
+
+
+    MatrixXd gauntLSLS = gto_spinor_test.get_h2e_gaunt("LSLS",unc);
+    MatrixXd gauntLSSL = gto_spinor_test.get_h2e_gaunt("LSSL",unc);
+    MatrixXd gauntSLSL = gto_spinor_test.get_h2e_gaunt("SLSL",unc);
+    MatrixXd gauntSLLS = gto_spinor_test.get_h2e_gaunt("SLLS",unc);
+    gto_spinor_test.writeIntegrals_spinor(gauntLSLS, "gauntLSLS");
+    gto_spinor_test.writeIntegrals_spinor(gauntSLLS, "gauntSLLS");
+    gto_spinor_test.writeIntegrals_spinor(gauntSLSL, "gauntSLSL");
+    gto_spinor_test.writeIntegrals_spinor(gauntLSSL, "gauntLSSL");
+    exit(99);
+
+
+
+
     // DHF dhf_test(gto_spinor_test, "h2etest", unc);
     DHF dhf_test(gto_spinor_test, h2eLLLL, h2eSSLL, h2eSSSS, unc);
     

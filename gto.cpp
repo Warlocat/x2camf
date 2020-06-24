@@ -81,6 +81,10 @@ double wigner_3j(const int& l1, const int& l2, const int& l3, const int& m1, con
     {
         return 0.0;
     }
+    else if(m1 == 0 && m2 == 0 && m3 == 0)
+    {
+        return wigner_3j_zeroM(l1,l2,l3);
+    }
     else
     {
         Vector3i L(l1,l2,l3), M(m1,m2,m3);
@@ -622,7 +626,8 @@ MatrixXd GTO::get_h2e(const bool& uncontracted_) const
 inline double GTO::auxiliary_1e(const int& l, const double& a) const
 {
     int n = l / 2;
-    if(n*2 == l)    return double_factorial(2*n-1)/pow(a,n)/pow(2.0,n+1)*sqrt(M_PI/a);
+    if(l == 0)  return 0.5*sqrt(M_PI/a);
+    else if(n*2 == l)    return double_factorial(2*n-1)/pow(a,n)/pow(2.0,n+1)*sqrt(M_PI/a);
     else    return factorial(n)/2.0/pow(a,n+1);
 }
 
