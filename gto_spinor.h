@@ -45,6 +45,9 @@ public:
 
     double int2e_get_angular(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& l3, const int& two_m3, const int& s3, const int& l4, const int& two_m4, const int& s4, const int& LL) const;
     double int2e_get_angular_gaunt(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& l3, const int& two_m3, const int& s3, const int& l4, const int& two_m4, const int& s4, const int& LL) const;
+
+    /* get contraction coefficients for uncontracted calculations */
+    MatrixXd get_coeff_contraction_spinor();
     
     /* write n_a, n_b, n_basis, and h2e for scf */
     void writeIntegrals_spinor(const MatrixXd& h2e, const string& filename);

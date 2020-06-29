@@ -5,6 +5,8 @@ GSL = ~/apps/gsl-2.6
 MAIN = main.o gto.o scf.o x2c.o gto_spinor.o  
 TEST = test.o gto.o scf.o x2c.o gto_spinor.o
 
+all: main.exe test.exe
+
 main.exe: ${MAIN}
 	${CPP} ${CPPFLAG} -I ${EIGEN} -I ${GSL} -L ${GSL}/.libs ${MAIN} -l gsl -o main.exe
 

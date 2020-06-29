@@ -457,6 +457,8 @@ DHF::DHF(const GTO_SPINOR& gto_, const string& h2e_file, const bool& unc)
     nelec_b = gto_.nelec_b;
     if(unc)    size_basis = gto_.size_gtou_spinor;
     else    size_basis = gto_.size_gtoc_spinor;
+    uncontracted = unc;
+
     /* In DHF, h1e is V and h2e is h2eLLLL */
     overlap = gto_.get_h1e("overlap",unc);
     kinetic = gto_.get_h1e("s_p_s_p",unc) / 2.0;
@@ -511,11 +513,14 @@ DHF::DHF(const GTO_SPINOR& gto_, const MatrixXd& h2eLLLL_, const MatrixXd& h2eSS
 
     norm_s.resize(size_basis);
     norm_s = VectorXd::Zero(size_basis);
+
+    /* Turn on or off the normalization conditions */
     for(int ii = 0; ii < size_basis; ii++)
     {
         // norm_s(ii) = sqrt(kinetic(ii,ii) / 2.0 / speedOfLight / speedOfLight);
         norm_s(ii) = 1.0;
     }
+    
     h2e = h2eLLLL_;
     h2eSSLL.resize(size_basis*size_basis,size_basis*size_basis);
     h2eSSSS.resize(size_basis*size_basis,size_basis*size_basis);
@@ -719,16 +724,21 @@ MatrixXd DHF::evaluateDensity_spinor(const MatrixXd& coeff_, const int& nocc, co
 }
 
 
-MatrixXd DHF::get_amfi(const MatrixXd& h2eSSLL_SD, const MatrixXd& h2eSSSS_SD, const bool& spherical)
+MatrixXd DHF::get_amfi(const MatrixXd& h2eSSLL_SD, const MatrixXd& h2eSSSS_SD, const MatrixXd& coeff_con, const bool& spherical)
 {
-    if(!converged)
+    if(!uncontracted)
+    {
+        cout << "ERROR: get_amfi is called with contracted basis!" << endl;
+        exit(99);
+    }
+    else if(!converged)
     {
         cout << "Warning: SCF did NOT converge when get_amfi is called!" << endl;
     }
-    return get_amfi(coeff, h2eSSLL_SD, h2eSSSS_SD, h1e_4c, overlap_4c, nelec_a+nelec_b, spherical);
+    return get_amfi(coeff, h2eSSLL_SD, h2eSSSS_SD, h1e_4c, overlap_4c, nelec_a+nelec_b, coeff_con, spherical);
 }
 
-MatrixXd DHF::get_amfi(const MatrixXd& coeff_4c, const MatrixXd& h2eSSLL_SD, const MatrixXd& h2eSSSS_SD, const MatrixXd& h1e_4c_, const MatrixXd& overlap_4c_, const int& nocc, const bool& spherical)
+MatrixXd DHF::get_amfi(const MatrixXd& coeff_4c, const MatrixXd& h2eSSLL_SD, const MatrixXd& h2eSSSS_SD, const MatrixXd& h1e_4c_, const MatrixXd& overlap_4c_, const int& nocc, const MatrixXd& coeff_con, const bool& spherical)
 {
     MatrixXd density = evaluateDensity_spinor(coeff_4c, nocc, spherical);
     int size = round(sqrt(h2eSSLL_SD.cols()));
@@ -756,8 +766,8 @@ MatrixXd DHF::get_amfi(const MatrixXd& coeff_4c, const MatrixXd& h2eSSLL_SD, con
     /* Transform SO_4c to SO_2c_eff and then SO_2c using X2C techniques */
 GeneralizedSelfAdjointEigenSolver<MatrixXd> solver(h1e_4c_, overlap_4c_);
 MatrixXd XXX = X2C::get_X(solver.eigenvectors());
-    // MatrixXd XXX = X2C::get_X(coeff_4c);
+// MatrixXd XXX = X2C::get_X(coeff_4c);
     MatrixXd RRR = X2C::get_R(overlap_4c_, XXX);
     MatrixXd SO_2c_eff = SO_LL + SO_LS * XXX + XXX.transpose() * SO_SL + XXX.transpose() * SO_SS * XXX;
-    return RRR.transpose() * SO_2c_eff * RRR;
+    return coeff_con.transpose() * (RRR.transpose() * SO_2c_eff * RRR) * coeff_con;
 }

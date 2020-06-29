@@ -819,9 +819,7 @@ double GTO::int2e_get_angular(const int& l1, const int& m1, const int& l2, const
 MatrixXd GTO::get_coeff_contraction() const
 {
     MatrixXd coeff(size_gtou, size_gtoc);
-    for(int ii = 0; ii < size_gtou; ii++)
-    for(int jj = 0; jj < size_gtoc; jj++)
-        coeff(ii,jj) = 0.0;
+    coeff = MatrixXd::Zero(size_gtou, size_gtoc);
 
     int int_tmp1 = 0, int_tmp2 = 0;
     for(int ishell = 0; ishell < size_shell; ishell++)

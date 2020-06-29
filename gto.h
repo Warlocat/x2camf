@@ -75,9 +75,9 @@ public:
     MatrixXd get_h2e(const bool& uncontracted_ = false) const;
 
     /* auxiliary functions used to evaluate 1e and 2e intergals */
-    inline double auxiliary_1e(const int& l, const double& a) const;
-    inline double auxiliary_2e_0_r(const int& l1, const int& l2, const double& a1, const double& a2) const;
-    inline double auxiliary_2e_r_inf(const int& l1, const int& l2, const double& a1, const double& a2) const;
+    double auxiliary_1e(const int& l, const double& a) const;
+    double auxiliary_2e_0_r(const int& l1, const int& l2, const double& a1, const double& a2) const;
+    double auxiliary_2e_r_inf(const int& l1, const int& l2, const double& a1, const double& a2) const;
 
     /* evaluate 1e and 2e integrals in single gto basis, not used in current version */
     double int1e_single_gto(const int& l1, const int& m1, const double& a1, const int& l2, const int& m2, const double& a2, const string& integralTYPE);

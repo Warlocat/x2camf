@@ -139,6 +139,7 @@ MatrixXd GTO_SPINOR::get_h1e(const string& intType, const bool& uncontracted_) c
 /*
     Evaluate different one-electron integrals in spin orbital basis,
     i.e. A_so = A_nr \otimes I_2
+    NOT used in the current version
 */
 MatrixXd GTO_SPINOR::get_h1e_spin_orbitals(const string& intType, const bool& uncontracted_) const
 {
@@ -805,6 +806,43 @@ double GTO_SPINOR::int2e_get_angular_gaunt(const int& l1, const int& two_m1, con
 
 
 /* 
+    get contraction coefficients for uncontracted calculations 
+*/
+MatrixXd GTO_SPINOR::get_coeff_contraction_spinor()
+{
+    MatrixXd coeff(size_gtou_spinor, size_gtoc_spinor);
+    coeff = MatrixXd::Zero(size_gtou_spinor, size_gtoc_spinor);
+
+    int int_tmp1 = 0, int_tmp2 = 0, int_tmp3 = 0;
+    for(int ishell = 0; ishell < size_shell; ishell++)
+    {
+        int ll = shell_list(ishell).l;
+        int size_con = shell_list(ishell).coeff.cols(), size_unc = shell_list(ishell).coeff.rows();
+        int_tmp3 = 0;
+        for(int twojj = abs(2*ll-1); twojj <= 2*ll+1; twojj = twojj + 2)
+        {
+            for(int ii = 0; ii < size_con; ii++)    
+            {   
+                for(int mm = 0; mm < twojj+1; mm++)
+                {
+                    for(int jj = 0; jj < size_unc; jj++)
+                    {    
+                        coeff(int_tmp2 + int_tmp3 + jj*(twojj+1) + mm, int_tmp1) = shell_list(ishell).coeff(jj,ii);
+                    }
+                    int_tmp1 += 1;
+                }
+            }
+            int_tmp3 += size_unc * (twojj + 1);   
+        }        
+        int_tmp2 += size_unc * (2*ll+1) * 2;
+    }
+
+    return coeff;
+}
+
+
+
+/* 
     write overlap, h1e and h2e for scf 
 */
 void GTO_SPINOR::writeIntegrals_spinor(const MatrixXd& h2e, const string& filename)
@@ -824,3 +862,8 @@ void GTO_SPINOR::writeIntegrals_spinor(const MatrixXd& h2e, const string& filena
         ofs << 0.0 << "\t" << 0 << "\t" << 0 << "\t" << 0 << "\t" << 0 << "\n";
     ofs.close();
 }
+
+
+
+
+

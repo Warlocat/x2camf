@@ -76,9 +76,10 @@ class DHF: public SCF
 private:
     /* In DHF, h1e is V and h2e is h2eLLLL */
     MatrixXd overlap_4c, overlap_half_i_4c, kinetic, WWW, h2eSSLL, h2eSSSS;
-    MatrixXd density, fock_4c, h1e_4c;
+    MatrixXd density, fock_4c, h1e_4c, coeff_contract;
     VectorXd norm_s;
     double d_density;
+    bool uncontracted = true;
 
     static void readIntegrals(MatrixXd& h2e_, const string& filename);
     static MatrixXd evaluateDensity_spinor(const MatrixXd& coeff_, const int& nocc, const bool& spherical = false);
@@ -91,8 +92,8 @@ public:
     DHF(const string& h1e_file, const string& h2e_file);
     virtual ~DHF();
     virtual void runSCF();
-    MatrixXd get_amfi(const MatrixXd& h2eSSLL_SD, const MatrixXd& h2eSSSS_SD, const bool& spherical = false);
-    static MatrixXd get_amfi(const MatrixXd& coeff_4c, const MatrixXd& h2eSSLL_SD, const MatrixXd& h2eSSSS_SD, const MatrixXd& h1e_4c_, const MatrixXd& overlap_4c_, const int& nocc, const bool& spherical = false);
+    MatrixXd get_amfi(const MatrixXd& h2eSSLL_SD, const MatrixXd& h2eSSSS_SD, const MatrixXd& coeff_con, const bool& spherical = false);
+    static MatrixXd get_amfi(const MatrixXd& coeff_4c, const MatrixXd& h2eSSLL_SD, const MatrixXd& h2eSSSS_SD, const MatrixXd& h1e_4c_, const MatrixXd& overlap_4c_, const int& nocc, const MatrixXd& coeff_con, const bool& spherical = false);
 };
 
 SCF* scf_init(const GTO& gto_, const string& h2e_file, const string& relativistic = "off");

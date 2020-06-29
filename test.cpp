@@ -34,56 +34,39 @@ int main()
     cout << "size_c_spinor: " << gto_spinor_test.size_gtoc_spinor << endl;
     cout << "size_u_spinor: " << gto_spinor_test.size_gtou_spinor << endl;
 
-    // MatrixXd spnucsp = gto_spinor_test.get_h1e("s_p_nuc_s_p", unc);
-    // for(int ii = 0; ii < spnucsp.rows(); ii++)
-    // for(int jj = 0; jj < spnucsp.cols(); jj++)
-        // cout << ii+1 << "\t" << jj+1 << "\t" << spnucsp(ii,jj) <<"\n";
-    // exit(99);
-    // MatrixXd w_sf = gto_spinor_test.get_h1e("p.Vp", unc), w_sd = gto_spinor_test.get_h1e("i_s_pV_x_p", unc);
-    // cout << (w_sf + w_sd - spnucsp).maxCoeff() << endl << endl;
-
-    MatrixXd h2eLLLL = gto_spinor_test.get_h2e("LLLL",unc);
-    MatrixXd h2eSSLL = gto_spinor_test.get_h2e("SSLL",unc);
-    MatrixXd h2eSSSS = gto_spinor_test.get_h2e("SSSS",unc);
-    // gto_spinor_test.writeIntegrals_spinor(h2eLLLL, "h2etestLLLL");    
-    // gto_spinor_test.writeIntegrals_spinor(h2eSSLL, "h2etestSSLL"); 
-    // gto_spinor_test.writeIntegrals_spinor(h2eSSSS, "h2etestSSSS");
-
-
-    MatrixXd gauntLSLS = gto_spinor_test.get_h2e_gaunt("LSLS",unc);
-    MatrixXd gauntLSSL = gto_spinor_test.get_h2e_gaunt("LSSL",unc);
-    MatrixXd gauntSLSL = gto_spinor_test.get_h2e_gaunt("SLSL",unc);
-    MatrixXd gauntSLLS = gto_spinor_test.get_h2e_gaunt("SLLS",unc);
-    gto_spinor_test.writeIntegrals_spinor(gauntLSLS, "gauntLSLS");
-    gto_spinor_test.writeIntegrals_spinor(gauntSLLS, "gauntSLLS");
-    gto_spinor_test.writeIntegrals_spinor(gauntSLSL, "gauntSLSL");
-    gto_spinor_test.writeIntegrals_spinor(gauntLSSL, "gauntLSSL");
-    exit(99);
-
-
-
-
-    // DHF dhf_test(gto_spinor_test, "h2etest", unc);
-    DHF dhf_test(gto_spinor_test, h2eLLLL, h2eSSLL, h2eSSSS, unc);
-    
-    // DHF dhf_test("h1epyscf", "h2epyscf");
-    
-    dhf_test.convControl = conv;
+    MatrixXd h2eLLLL = gto_spinor_test.get_h2e("LLLL", true);
+    MatrixXd h2eSSLL = gto_spinor_test.get_h2e("SSLL", true);
+    MatrixXd h2eSSSS = gto_spinor_test.get_h2e("SSSS", true);
+    gto_spinor_test.writeIntegrals_spinor(h2eLLLL, "h2e_"+atomName+"_LLLL");
+    gto_spinor_test.writeIntegrals_spinor(h2eSSLL, "h2e_"+atomName+"_SSLL");
+    gto_spinor_test.writeIntegrals_spinor(h2eSSSS, "h2e_"+atomName+"_SSSS");
+    DHF dhf_test(gto_spinor_test, "h2e_"+atomName+"_", true);
     dhf_test.runSCF();
 
 
     h2eLLLL.resize(0,0);
     h2eSSLL.resize(0,0);
     h2eSSSS.resize(0,0);
-
-    MatrixXd h2eSSLL_SD = gto_spinor_test.get_h2e("SSLL_SD",unc);
-    MatrixXd h2eSSSS_SD = gto_spinor_test.get_h2e("SSSS_SD",unc);
-    // gto_spinor_test.writeIntegrals_spinor(h2eSSLL_SD, "h2etestSSLL_SD_1");
-    // gto_spinor_test.writeIntegrals_spinor(h2eSSSS_SD, "h2etestSSSS_SD_1");
-    MatrixXd amfi = dhf_test.get_amfi(h2eSSLL_SD, h2eSSLL_SD);
-    writeOneE("amfi_" + atomName + ".txt", amfi);
+    MatrixXd h2eSSLL_SD = gto_spinor_test.get_h2e("SSLL_SD", true);
+    MatrixXd h2eSSSS_SD = gto_spinor_test.get_h2e("SSSS_SD", true);
+    MatrixXd amfi;
+    if(unc)
+    {
+        amfi = dhf_test.get_amfi(h2eSSLL_SD, h2eSSSS_SD, MatrixXd::Identity(gto_spinor_test.size_gtou_spinor,gto_spinor_test.size_gtou_spinor));
+    }
+    else
+    {
+        amfi = dhf_test.get_amfi(h2eSSLL_SD, h2eSSSS_SD, gto_spinor_test.get_coeff_contraction_spinor());
+    }
+    for(int ii = 0; ii < amfi.rows(); ii++)
+    for(int jj = 0; jj < amfi.cols(); jj++)
+    {
+        if(abs(amfi(ii,jj)) > 1e-8)
+        {
+            cout << ii << "\t" << jj << "\t" << amfi(ii,jj) << "\n";
+        }
+    }
     
-
     return 0;
 }
 
