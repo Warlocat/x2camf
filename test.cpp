@@ -9,6 +9,7 @@
 #include"gto.h"
 #include"scf.h"
 #include"x2c.h"
+#include"dhf.h"
 #include"gto_spinor.h"
 using namespace Eigen;
 using namespace std;
@@ -34,19 +35,10 @@ int main()
     cout << "size_c_spinor: " << gto_spinor_test.size_gtoc_spinor << endl;
     cout << "size_u_spinor: " << gto_spinor_test.size_gtou_spinor << endl;
 
-    MatrixXd h2eLLLL = gto_spinor_test.get_h2e("LLLL", true);
-    MatrixXd h2eSSLL = gto_spinor_test.get_h2e("SSLL", true);
-    MatrixXd h2eSSSS = gto_spinor_test.get_h2e("SSSS", true);
-    gto_spinor_test.writeIntegrals_spinor(h2eLLLL, "h2e_"+atomName+"_LLLL");
-    gto_spinor_test.writeIntegrals_spinor(h2eSSLL, "h2e_"+atomName+"_SSLL");
-    gto_spinor_test.writeIntegrals_spinor(h2eSSSS, "h2e_"+atomName+"_SSSS");
-    DHF dhf_test(gto_spinor_test, "h2e_"+atomName+"_", true);
+    DHF dhf_test(gto_spinor_test, true);
     dhf_test.runSCF();
+    exit(99);
 
-
-    h2eLLLL.resize(0,0);
-    h2eSSLL.resize(0,0);
-    h2eSSSS.resize(0,0);
     MatrixXd h2eSSLL_SD = gto_spinor_test.get_h2e("SSLL_SD", true);
     MatrixXd h2eSSSS_SD = gto_spinor_test.get_h2e("SSSS_SD", true);
     MatrixXd amfi;

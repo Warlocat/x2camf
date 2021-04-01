@@ -2,6 +2,7 @@
 #include<iostream>
 #include<omp.h>
 #include<vector>
+#include<ctime>
 #include<iostream>
 #include<iomanip>
 #include<fstream>
@@ -9,9 +10,67 @@
 using namespace std;
 using namespace Eigen;
 
+clock_t StartTime, EndTime; 
+
 /*********************************************************/
 /**********    Member functions of class DHF    **********/
 /*********************************************************/
+
+DHF::DHF(GTO_SPINOR& gto_, const bool& unc)
+{
+    nelec_a = gto_.nelec_a;
+    nelec_b = gto_.nelec_b;
+    if(unc)    size_basis = gto_.size_gtou_spinor;
+    else    size_basis = gto_.size_gtoc_spinor;
+    /* In DHF, h1e is V and h2e is h2eLLLL */
+    StartTime = clock();
+    gto_.get_h1e_fast(overlap,kinetic,h1e,WWW,unc);
+    EndTime = clock();
+    cout << "1e-integral finished in " << (EndTime - StartTime) / (double)CLOCKS_PER_SEC << " seconds." << endl;
+
+    norm_s.resize(size_basis);
+    norm_s = VectorXd::Zero(size_basis);
+
+    /* Turn on or off the normalization conditions */
+    for(int ii = 0; ii < size_basis; ii++)
+    {
+        // norm_s(ii) = sqrt(kinetic(ii,ii) / 2.0 / speedOfLight / speedOfLight);
+        norm_s(ii) = 1.0;
+    }
+    
+    StartTime = clock();
+    gto_.get_h2e_fast(h2e,h2eSSLL,h2eSSSS,unc);
+    EndTime = clock();
+    cout << "1e-integral finished in " << (EndTime - StartTime) / (double)CLOCKS_PER_SEC << " seconds." << endl;
+
+    for(int ii = 0; ii < size_basis*size_basis; ii++)
+    for(int jj = 0; jj < size_basis*size_basis; jj++)
+    {
+        int a = ii / size_basis, b = ii - a * size_basis, c = jj / size_basis, d = jj - c * size_basis;
+        h2eSSLL(ii,jj) = h2eSSLL(ii,jj) / 4.0 / pow(speedOfLight,2) / norm_s(a) / norm_s(b);
+        h2eSSSS(ii,jj) = h2eSSSS(ii,jj) / 16.0 / pow(speedOfLight,4) / norm_s(a)/norm_s(b)/norm_s(c)/norm_s(d);
+    } 
+
+    /*
+        overlap_4c = [[S, 0], [0, T/2c^2]]
+        h1e_4c = [[V, T], [T, W/4c^2 - T]]
+    */
+    h1e_4c.resize(size_basis*2,size_basis*2);
+    overlap_4c.resize(size_basis*2,size_basis*2);
+    h1e_4c = MatrixXd::Zero(size_basis*2,size_basis*2);
+    overlap_4c = MatrixXd::Zero(size_basis*2,size_basis*2);
+    for(int ii = 0; ii < size_basis; ii++)
+    for(int jj = 0; jj < size_basis; jj++)
+    {
+        overlap_4c(ii,jj) = overlap(ii,jj);
+        overlap_4c(size_basis+ii, size_basis+jj) = kinetic(ii,jj) / 2.0 / speedOfLight / speedOfLight/ norm_s(ii)/norm_s(jj);
+        h1e_4c(ii,jj) = h1e(ii,jj);
+        h1e_4c(size_basis+ii,jj) = kinetic(ii,jj) / norm_s(ii);
+        h1e_4c(ii,size_basis+jj) = kinetic(ii,jj) / norm_s(jj);
+        h1e_4c(size_basis+ii,size_basis+jj) = (WWW(ii,jj)/4.0/speedOfLight/speedOfLight - kinetic(ii,jj))/ norm_s(ii)/norm_s(jj);
+    }
+    overlap_half_i_4c = matrix_half_inverse(overlap_4c);
+}
 
 DHF::DHF(const GTO_SPINOR& gto_, const string& h2e_file, const bool& unc)
 {

@@ -1,5 +1,5 @@
 CPP = icpc
-CPPFLAG = -O3 -ipo -std=c++11 -qopenmp -mkl -DEIGEN_USE_MKL_ALL
+CPPFLAG = -O3 -std=c++11 -qopenmp -mkl -DEIGEN_USE_MKL_ALL
 EIGEN = ~/apps/Eigen3
 GSL = ~/apps/gsl-2.6
 MAIN = main.o gto.o scf.o x2c.o gto_spinor.o dhf.o

@@ -26,6 +26,7 @@ public:
     MatrixXd coeff;
     VectorXd ene_orb;
 
+    DHF(GTO_SPINOR& gto_, const bool& unc);
     DHF(const GTO_SPINOR& gto_, const string& h2e_file, const bool& unc);
     DHF(const GTO_SPINOR& gto_, const MatrixXd& h2eLLLL_, const MatrixXd& h2eSSLL_, const MatrixXd& h2eSSSS_, const bool& unc);
     DHF(const string& h1e_file, const string& h2e_file);
