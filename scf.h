@@ -21,6 +21,7 @@ protected:
 
     void readIntegrals(const string& filename);
     static double evaluateChange(const MatrixXd& M1, const MatrixXd& M2);
+    static MatrixXd evaluateErrorDIIS(const MatrixXd& fock_, const MatrixXd& overlap_, const MatrixXd& density_);
     static MatrixXd matrix_half_inverse(const MatrixXd& inputM);
     static MatrixXd matrix_half(const MatrixXd& inputM);
     static MatrixXd evaluateDensity(const MatrixXd& coeff_, const int& nocc, const bool& spherical = false);
@@ -28,7 +29,7 @@ protected:
     friend X2C;
 public:
     bool converged = false;
-    int maxIter = 200;
+    int maxIter = 200, size_DIIS = 8;
     double ene_scf, convControl = 1e-10;
 
     SCF(const GTO& gto_, const string& h2e_file, const string& relativistic = "off");
@@ -68,32 +69,6 @@ public:
     UHF(const GTO& gto_, const MatrixXd& h2e_, const string& relativistic);
     virtual ~UHF();
     virtual void runSCF();
-};
-
-
-class DHF: public SCF
-{
-private:
-    /* In DHF, h1e is V and h2e is h2eLLLL */
-    MatrixXd overlap_4c, overlap_half_i_4c, kinetic, WWW, h2eSSLL, h2eSSSS;
-    MatrixXd density, fock_4c, h1e_4c, coeff_contract;
-    VectorXd norm_s;
-    double d_density;
-    bool uncontracted = true;
-
-    static void readIntegrals(MatrixXd& h2e_, const string& filename);
-    static MatrixXd evaluateDensity_spinor(const MatrixXd& coeff_, const int& nocc, const bool& spherical = false);
-public:
-    MatrixXd coeff;
-    VectorXd ene_orb;
-
-    DHF(const GTO_SPINOR& gto_, const string& h2e_file, const bool& unc);
-    DHF(const GTO_SPINOR& gto_, const MatrixXd& h2eLLLL_, const MatrixXd& h2eSSLL_, const MatrixXd& h2eSSSS_, const bool& unc);
-    DHF(const string& h1e_file, const string& h2e_file);
-    virtual ~DHF();
-    virtual void runSCF();
-    MatrixXd get_amfi(const MatrixXd& h2eSSLL_SD, const MatrixXd& h2eSSSS_SD, const MatrixXd& coeff_con, const bool& spherical = false);
-    static MatrixXd get_amfi(const MatrixXd& coeff_4c, const MatrixXd& h2eSSLL_SD, const MatrixXd& h2eSSSS_SD, const MatrixXd& h1e_4c_, const MatrixXd& overlap_4c_, const int& nocc, const MatrixXd& coeff_con, const bool& spherical = false);
 };
 
 SCF* scf_init(const GTO& gto_, const string& h2e_file, const string& relativistic = "off");

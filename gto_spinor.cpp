@@ -5,11 +5,14 @@
 #include<fstream>
 #include<cmath>
 #include<complex>
+#include<ctime>
 #include<omp.h>
 #include<gsl/gsl_sf_coupling.h>
 #include"gto_spinor.h"
 using namespace std;
 using namespace Eigen;
+
+double t1_tmp = 0, t2_tmp = 0, t3_tmp = 0;
 
 GTO_SPINOR::GTO_SPINOR(const string& atomName_, const string& basisSet_, const int& charge_, const int& spin_, const bool& uncontracted_):
 GTO(atomName_, basisSet_, charge_, spin_, uncontracted_)
@@ -164,6 +167,7 @@ MatrixXd GTO_SPINOR::get_h1e_spin_orbitals(const string& intType, const bool& un
 */
 MatrixXd GTO_SPINOR::get_h2e(const string& integralTYPE, const bool& uncontracted_) const
 {
+    clock_t t_start, t_end;
     int size_2e, size_2e_2;
     MatrixXd int_2e;
     if(!uncontracted_)
@@ -218,7 +222,6 @@ MatrixXd GTO_SPINOR::get_h2e(const string& integralTYPE, const bool& uncontracte
             continue;
         }
         
-        
         radial_tilde.resize(Lmax+1);       
         
         int int_tmp2_i = 0;
@@ -236,6 +239,7 @@ MatrixXd GTO_SPINOR::get_h2e(const string& integralTYPE, const bool& uncontracte
             int sym_ai = twojj_i - 2*l_i, sym_aj = twojj_j - 2*l_j, sym_ak = twojj_k - 2*l_k, sym_al = twojj_l - 2*l_l;
             double k_i = -(twojj_i+1.0)*sym_ai/2.0, k_j = -(twojj_j+1.0)*sym_aj/2.0, k_k = -(twojj_k+1.0)*sym_ak/2.0, k_l = -(twojj_l+1.0)*sym_al/2.0;
                 
+            t_start = clock();
             VectorXd array_angular[twojj_i + 1][twojj_j + 1][twojj_k + 1][twojj_l + 1];
             for(int mi = 0; mi < twojj_i + 1; mi++)
             for(int mj = 0; mj < twojj_j + 1; mj++)
@@ -247,7 +251,10 @@ MatrixXd GTO_SPINOR::get_h2e(const string& integralTYPE, const bool& uncontracte
                 for(int tmp = Lmax; tmp >= 0; tmp = tmp - 2)
                     array_angular[mi][mj][mk][ml](tmp) = int2e_get_angular(l_i, 2*mi-twojj_i, sym_ai, l_j, 2*mj-twojj_j, sym_aj, l_k, 2*mk-twojj_k, sym_ak, l_l, 2*ml-twojj_l, sym_al, tmp);
             }
+            t_end = clock();
+            t1_tmp += (t_end - t_start) / (double)CLOCKS_PER_SEC;
                 
+            t_start = clock();
             VectorXd array_radial[size_gtos_i][size_gtos_j][size_gtos_k][size_gtos_l];
             for(int ii = 0; ii < size_gtos_i; ii++)
             for(int jj = 0; jj < size_gtos_j; jj++)
@@ -287,8 +294,10 @@ MatrixXd GTO_SPINOR::get_h2e(const string& integralTYPE, const bool& uncontracte
                     }
                 }
             }
+            t_end = clock();
+            t2_tmp += (t_end - t_start) / (double)CLOCKS_PER_SEC;
 
-
+            t_start = clock();
             for(int ii = 0; ii < loop_i; ii++)
             for(int jj = 0; jj < loop_j; jj++)
             for(int kk = 0; kk < loop_k; kk++)
@@ -329,6 +338,8 @@ MatrixXd GTO_SPINOR::get_h2e(const string& integralTYPE, const bool& uncontracte
                     int_2e(eij,ekl) = radial_tilde.transpose() * array_angular[mi][mj][mk][ml];
                 }
             }
+            t_end = clock();
+            t3_tmp += (t_end - t_start) / (double)CLOCKS_PER_SEC;
             int_tmp2_l += loop_l * (twojj_l+1);
         }
             int_tmp2_k += loop_k * (twojj_k+1);
@@ -346,7 +357,7 @@ MatrixXd GTO_SPINOR::get_h2e(const string& integralTYPE, const bool& uncontracte
         int_tmp_i += loop_i * (2*shell_list(ishell).l+1) * 2;
     }
 
-
+    cout << t1_tmp << "\t" << t2_tmp << "\t" << t3_tmp << endl;
     return int_2e;
 }
 
@@ -770,7 +781,9 @@ double GTO_SPINOR::int2e_get_angular(const int& l1, const int& two_m1, const int
     double angular = 0.0;
     for(int mm = -LL; mm <= LL; mm++)
     {
-        angular += pow(-1, mm) 
+        if(two_m2 - two_m1 - 2*mm != 0 || two_m4 - two_m3 + 2*mm != 0) continue;
+        else
+            angular += pow(-1, mm) 
             * (pow(-1,(two_m1-1)/2)*s1*s2*sqrt((l1+0.5+s1*two_m1/2.0)*(l2+0.5+s2*two_m2/2.0))*wigner_3j(l1,l2,LL,(1-two_m1)/2,(two_m2-1)/2,-mm)
             + pow(-1,(two_m1+1)/2)*sqrt((l1+0.5-s1*two_m1/2.0)*(l2+0.5-s2*two_m2/2.0))*wigner_3j(l1,l2,LL,(-1-two_m1)/2,(two_m2+1)/2,-mm)) 
             * (pow(-1,(two_m3-1)/2)*s3*s4*sqrt((l3+0.5+s3*two_m3/2.0)*(l4+0.5+s4*two_m4/2.0))*wigner_3j(l3,l4,LL,(1-two_m3)/2,(two_m4-1)/2,mm)
