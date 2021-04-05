@@ -41,7 +41,7 @@ DHF::DHF(GTO_SPINOR& gto_, const bool& unc)
     StartTime = clock();
     gto_.get_h2e_fast(h2e,h2eSSLL,h2eSSSS,unc);
     EndTime = clock();
-    cout << "1e-integral finished in " << (EndTime - StartTime) / (double)CLOCKS_PER_SEC << " seconds." << endl;
+    cout << "2e-integral finished in " << (EndTime - StartTime) / (double)CLOCKS_PER_SEC << " seconds." << endl;
 
     for(int ii = 0; ii < size_basis*size_basis; ii++)
     for(int jj = 0; jj < size_basis*size_basis; jj++)

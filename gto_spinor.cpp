@@ -289,7 +289,7 @@ MatrixXd GTO_SPINOR::get_h2e(const string& integralTYPE, const bool& uncontracte
     int_tmp_l = 0;
     for(int lshell = 0; lshell < size_shell; lshell++)
     {
-        int l_i = shell_list(ishell).l, l_j = shell_list(jshell).l, l_k = shell_list(kshell).l, l_l = shell_list(lshell).l, Lmax = min(l_i + l_j, l_k +l_l);
+        int l_i = shell_list(ishell).l, l_j = shell_list(jshell).l, l_k = shell_list(kshell).l, l_l = shell_list(lshell).l, l_max = max(max(l_i,l_j),max(l_k,l_l)), Lmax = min(l_i + l_j, l_k +l_l);
         int size_gtos_i = shell_list(ishell).coeff.rows(), size_gtos_j = shell_list(jshell).coeff.rows(), size_gtos_k = shell_list(kshell).coeff.rows(), size_gtos_l = shell_list(lshell).coeff.rows();
         int size_subshell_i = shell_list(ishell).coeff.cols(), size_subshell_j = shell_list(jshell).coeff.cols(), size_subshell_k = shell_list(kshell).coeff.cols(), size_subshell_l = shell_list(lshell).coeff.cols();
         if(!uncontracted_)
@@ -307,7 +307,7 @@ MatrixXd GTO_SPINOR::get_h2e(const string& integralTYPE, const bool& uncontracte
             loop_l = size_gtos_l;
         }
         
-        if((l_i+l_j+l_k+l_l)%2) 
+        if((l_i+l_j+l_k+l_l)%2 || l_max > (l_i+l_j+l_k+l_l-l_max)) 
         {
             int_tmp_l += loop_l * (2*shell_list(lshell).l+1) * 2;
             continue;
@@ -452,7 +452,7 @@ void GTO_SPINOR::get_h2e_fast(MatrixXd& LLLL, MatrixXd& SSLL, MatrixXd& SSSS, co
     int_tmp_l = 0;
     for(int lshell = 0; lshell < size_shell; lshell++)
     {
-        int l_i = shell_list(ishell).l, l_j = shell_list(jshell).l, l_k = shell_list(kshell).l, l_l = shell_list(lshell).l, Lmax = min(l_i + l_j, l_k +l_l);
+        int l_i = shell_list(ishell).l, l_j = shell_list(jshell).l, l_k = shell_list(kshell).l, l_l = shell_list(lshell).l, l_max = max(max(l_i,l_j),max(l_k,l_l)), Lmax = min(l_i + l_j, l_k +l_l);
         int size_gtos_i = shell_list(ishell).coeff.rows(), size_gtos_j = shell_list(jshell).coeff.rows(), size_gtos_k = shell_list(kshell).coeff.rows(), size_gtos_l = shell_list(lshell).coeff.rows();
         int size_subshell_i = shell_list(ishell).coeff.cols(), size_subshell_j = shell_list(jshell).coeff.cols(), size_subshell_k = shell_list(kshell).coeff.cols(), size_subshell_l = shell_list(lshell).coeff.cols();
         if(!uncontracted_)
@@ -470,7 +470,7 @@ void GTO_SPINOR::get_h2e_fast(MatrixXd& LLLL, MatrixXd& SSLL, MatrixXd& SSSS, co
             loop_l = size_gtos_l;
         }
         
-        if((l_i+l_j+l_k+l_l)%2) 
+        if((l_i+l_j+l_k+l_l)%2 || l_max > (l_i+l_j+l_k+l_l-l_max)) 
         {
             int_tmp_l += loop_l * (2*shell_list(lshell).l+1) * 2;
             continue;

@@ -35,29 +35,40 @@ int main()
     cout << "size_c_spinor: " << gto_spinor_test.size_gtoc_spinor << endl;
     cout << "size_u_spinor: " << gto_spinor_test.size_gtou_spinor << endl;
 
+    startTime = clock();
+    gto_spinor_test.get_h2e("LLLL");
+    endTime = clock();
+    cout << (endTime - startTime) / (double)CLOCKS_PER_SEC << " seconds." << endl;
+    startTime = clock();
+    gto_spinor_test.get_h2e("SSLL");
+    endTime = clock();
+    cout << (endTime - startTime) / (double)CLOCKS_PER_SEC << " seconds." << endl;
+    startTime = clock();
+    gto_spinor_test.get_h2e("SSSS");
+    endTime = clock();
+    cout << (endTime - startTime) / (double)CLOCKS_PER_SEC << " seconds." << endl;
     DHF dhf_test(gto_spinor_test, true);
     dhf_test.runSCF();
-    exit(99);
 
-    MatrixXd h2eSSLL_SD = gto_spinor_test.get_h2e("SSLL_SD", true);
-    MatrixXd h2eSSSS_SD = gto_spinor_test.get_h2e("SSSS_SD", true);
-    MatrixXd amfi;
-    if(unc)
-    {
-        amfi = dhf_test.get_amfi(h2eSSLL_SD, h2eSSSS_SD, MatrixXd::Identity(gto_spinor_test.size_gtou_spinor,gto_spinor_test.size_gtou_spinor));
-    }
-    else
-    {
-        amfi = dhf_test.get_amfi(h2eSSLL_SD, h2eSSSS_SD, gto_spinor_test.get_coeff_contraction_spinor());
-    }
-    for(int ii = 0; ii < amfi.rows(); ii++)
-    for(int jj = 0; jj < amfi.cols(); jj++)
-    {
-        if(abs(amfi(ii,jj)) > 1e-8)
-        {
-            cout << ii << "\t" << jj << "\t" << amfi(ii,jj) << "\n";
-        }
-    }
+    // MatrixXd h2eSSLL_SD = gto_spinor_test.get_h2e("SSLL_SD", true);
+    // MatrixXd h2eSSSS_SD = gto_spinor_test.get_h2e("SSSS_SD", true);
+    // MatrixXd amfi;
+    // if(unc)
+    // {
+    //     amfi = dhf_test.get_amfi(h2eSSLL_SD, h2eSSSS_SD, MatrixXd::Identity(gto_spinor_test.size_gtou_spinor,gto_spinor_test.size_gtou_spinor));
+    // }
+    // else
+    // {
+    //     amfi = dhf_test.get_amfi(h2eSSLL_SD, h2eSSSS_SD, gto_spinor_test.get_coeff_contraction_spinor());
+    // }
+    // for(int ii = 0; ii < amfi.rows(); ii++)
+    // for(int jj = 0; jj < amfi.cols(); jj++)
+    // {
+    //     if(abs(amfi(ii,jj)) > 1e-8)
+    //     {
+    //         cout << ii << "\t" << jj << "\t" << amfi(ii,jj) << "\n";
+    //     }
+    // }
     
     return 0;
 }
