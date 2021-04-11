@@ -1,8 +1,45 @@
-NE          atomName
-PVDZ        basisSet
-0           charge
-1           spin_2S+1
-SCF         jobs
-XSFX2C1E     rel
-0           unc
-1e-10        conv
+XE          atomName
+ANO-RCC        basisSet
+
+%occAMFI_ne
+3
+4
+2
+4
+
+%occAMFI_kr
+5
+8
+6
+12
+4
+6
+
+
+%occAMFI_ar
+3
+6
+4
+8
+
+
+
+
+%occAMFI
+5
+10
+8
+16
+8
+12
+
+
+
+
+%occAMFI_ne
+3
+4
+2
+4
+
+

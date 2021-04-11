@@ -1,0 +1,55 @@
+#ifndef INT_SPH_H_
+#define INT_SPH_H_
+
+#include<Eigen/Dense>
+#include<complex>
+#include<string>
+#include"general.h"
+using namespace std;
+using namespace Eigen;
+
+/*
+    Class for spherical atom integrals in 2-spinor basis.
+
+    Variables:
+        
+*/
+class INT_SPH
+{
+protected:
+    /* read basis set and normalization, used in construction functions*/
+    void readBasis();
+    void normalization();
+    /* auxiliary functions used to evaluate 1e and 2e intergals */
+    double auxiliary_1e(const int& l, const double& a) const;
+    double auxiliary_2e_0_r(const int& l1, const int& l2, const double& a1, const double& a2) const;
+    double auxiliary_2e_r_inf(const int& l1, const int& l2, const double& a1, const double& a2) const;
+    /* evaluate radial part and angular part in 2e integrals */
+    double int2e_get_radial(const int& l1, const double& a1, const int& l2, const double& a2, const int& l3, const double& a3, const int& l4, const double& a4, const int& LL) const;
+    double int2e_get_angular(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& l3, const int& two_m3, const int& s3, const int& l4, const int& two_m4, const int& s4, const int& LL) const;
+
+public:
+    Matrix<intShell, Dynamic, 1> shell_list;
+    Matrix<irrep_jm, Dynamic, 1> irrep_list;
+    int atomNumber, charge, nelec, nelec_a, nelec_b, spin, Nirrep = 0;
+    int size_gtoc, size_gtou, size_shell;
+    string atomName, basisSet;
+    int size_gtoc_spinor, size_gtou_spinor;
+
+    INT_SPH(const string& atomName_, const string& basisSet_, const int& charge_ = 0, const int& spin_ = 1);
+    ~INT_SPH();
+
+    /* Evaluate one-electron integral */
+    vMatrixXd get_h1e(const string& intType) const;
+    void get_h1e_direct(vMatrixXd& overlap, vMatrixXd& kinetic, vMatrixXd& Vnuc, vMatrixXd& WWW);
+    /* Evaluate two-electron integral in J-K form */
+    int2eJK get_h2e_JK(const string& intType, const int& occMaxL = -1) const;
+    void get_h2e_JK_direct(int2eJK& LLLL, int2eJK& SSLL, int2eJK& SSSS, const int& occMaxL = -1);
+    
+    /* get contraction coefficients for uncontracted calculations */
+    MatrixXd get_coeff_contraction_spinor();
+    /* write n_a, n_b, n_basis, and h2e for scf */
+    void writeIntegrals_spinor(const MatrixXd& h2e, const string& filename);
+};
+
+#endif
