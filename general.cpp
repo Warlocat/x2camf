@@ -217,3 +217,82 @@ void eigensolverG(const MatrixXd& inputM, const MatrixXd& s_h_i, VectorXd& value
 
     return;
 }
+
+
+
+
+
+/*
+    Functions used in X2C
+*/
+MatrixXd X2C::get_X(const MatrixXd& S_, const MatrixXd& T_, const MatrixXd& W_, const MatrixXd& V_)
+{
+    int size = S_.rows();
+    MatrixXd h_4C(2*size, 2*size), overlap(2*size, 2*size), overlap_h_i(2*size, 2*size);
+    MatrixXd coeff_tmp(2*size, 2*size), coeff_large(size,size), coeff_small(size,size);
+    VectorXd ene_tmp(2*size);
+    
+    for(int ii = 0; ii < size; ii++)
+    for(int jj = 0; jj < size; jj++)
+    {
+        h_4C(ii,jj) = V_(ii,jj);
+        h_4C(ii,size+jj) = T_(ii,jj);
+        h_4C(size+ii,jj) = T_(ii,jj);
+        h_4C(size+ii,size+jj) = W_(ii,jj)/4.0/pow(speedOfLight,2) - T_(ii,jj);
+        overlap(ii,jj) = S_(ii,jj);
+        overlap(size+ii,size+jj) = T_(ii,jj)/2.0/pow(speedOfLight,2); 
+        overlap(size+ii,jj) = 0.0;
+        overlap(ii,size+jj) = 0.0;
+    }
+    
+    overlap_h_i = matrix_half_inverse(overlap);
+    eigensolverG(h_4C, overlap_h_i, ene_tmp, coeff_tmp);
+
+    for(int ii = 0; ii < size; ii++)
+    for(int jj = 0; jj < size; jj++)
+    {
+        coeff_large(ii,jj) = coeff_tmp(ii,size+jj);
+        coeff_small(ii,jj) = coeff_tmp(ii+size,jj+size);
+    }
+
+    return coeff_small * coeff_large.inverse();
+}
+
+MatrixXd X2C::get_X(const MatrixXd& coeff)
+{
+    int size = coeff.cols()/2;
+    MatrixXd coeff_large(size,size), coeff_small(size,size);
+    for(int ii = 0; ii < size; ii++)
+    for(int jj = 0; jj < size; jj++)
+    {
+        coeff_large(ii,jj) = coeff(ii,size+jj);
+        coeff_small(ii,jj) = coeff(ii+size,jj+size);
+    }
+
+    return coeff_small * coeff_large.inverse();
+}
+
+
+
+MatrixXd X2C::get_R(const MatrixXd& S_, const MatrixXd& T_, const MatrixXd& X_)
+{
+    int size = S_.rows();
+    MatrixXd S_tilde(size,size), S_h_i(size,size), S_h(size,size);
+    S_tilde = S_ + 0.5/pow(speedOfLight,2) * X_.transpose() * T_ * X_;
+    S_h_i = matrix_half_inverse(S_);
+    S_h = S_h_i.inverse();
+    MatrixXd tmp = matrix_half_inverse(S_h_i * S_tilde * S_h_i);
+    return S_h_i * tmp * S_h;
+}
+
+MatrixXd X2C::get_R(const MatrixXd& S_4c, const MatrixXd& X_)
+{
+    int size = S_4c.cols()/2;
+    MatrixXd S_tilde(size,size), S_h_i(size,size), S_h(size,size);
+    S_tilde = S_4c.block(0,0,size,size) + X_.transpose() * S_4c.block(size,size,size,size) * X_;
+    S_h_i = matrix_half_inverse(S_4c.block(0,0,size,size));
+    S_h = S_h_i.inverse();
+    MatrixXd tmp = matrix_half_inverse(S_h_i * S_tilde * S_h_i);
+    return S_h_i * tmp * S_h;
+}
+

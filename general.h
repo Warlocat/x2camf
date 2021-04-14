@@ -55,4 +55,15 @@ MatrixXd matrix_half(const MatrixXd& inputM);
 void eigensolverG(const MatrixXd& inputM, const MatrixXd& s_h_i, VectorXd& values, MatrixXd& vectors);
 
 
+/* Static functions used in X2C */
+namespace X2C
+{
+    MatrixXd get_X(const MatrixXd& S_, const MatrixXd& T_, const MatrixXd& W_, const MatrixXd& V_);
+    MatrixXd get_X(const MatrixXd& coeff);
+    MatrixXd get_R(const MatrixXd& S_, const MatrixXd& T_, const MatrixXd& X_);
+    MatrixXd get_R(const MatrixXd& S_4c, const MatrixXd& X_);
+}
+
+
+
 #endif

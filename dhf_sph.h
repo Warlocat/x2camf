@@ -19,7 +19,7 @@ private:
     MatrixXd coeff_contract;
     vVectorXd occNumber;
     double d_density;
-    bool converged;
+    bool converged = false, renormalizedSmall = false;
 
     void readIntegrals(MatrixXd& h2e_, const string& filename);
     MatrixXd evaluateDensity_spinor(const MatrixXd& coeff_, const VectorXd& occNumber_);
@@ -40,7 +40,11 @@ public:
     ~DHF_SPH();
     void runSCF();
     void renormalize_small();
+    /* Read occupation numbers */
     void readOCC(const string& filename);
+    /* Evaluate amfi SOC integrals */
+    vMatrixXd get_amfi_unc(INT_SPH& int_sph_, const string& Xmethod = "partialFock");
+    vMatrixXd get_amfi_unc(const int2eJK& h2eSSLL_SD, const int2eJK& h2eSSSS_SD, const string& Xmethod = "partialFock");
 };
 
 

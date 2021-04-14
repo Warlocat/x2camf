@@ -45,11 +45,10 @@ public:
     /* Evaluate two-electron integral in J-K form */
     int2eJK get_h2e_JK(const string& intType, const int& occMaxL = -1) const;
     void get_h2e_JK_direct(int2eJK& LLLL, int2eJK& SSLL, int2eJK& SSSS, const int& occMaxL = -1);
+    void get_h2eSD_JK_direct(int2eJK& SSLL, int2eJK& SSSS, const int& occMaxL = -1);
     
     /* get contraction coefficients for uncontracted calculations */
     MatrixXd get_coeff_contraction_spinor();
-    /* write n_a, n_b, n_basis, and h2e for scf */
-    void writeIntegrals_spinor(const MatrixXd& h2e, const string& filename);
 };
 
 #endif

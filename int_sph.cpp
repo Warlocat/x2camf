@@ -127,7 +127,7 @@ atomName(atomName_), basisSet(basisSet_), charge(charge_), spin(spin_)
     if((nelec%2 && (spin == 1 || spin == 3)) || (nelec%2 - 1) && spin == 2)
     {
         cout << "ERROR: Spin state is NOT consistent with charge!" << endl;
-        exit(99);
+        // exit(99);
     }
     else
     {
@@ -700,7 +700,7 @@ int2eJK INT_SPH::get_h2e_JK(const string& intType, const int& occMaxL) const
             double a_i_J = shell_list(pshell).exp_a(ii), a_j_J = shell_list(pshell).exp_a(jj), a_k_J = shell_list(qshell).exp_a(kk), a_l_J = shell_list(qshell).exp_a(ll);
             double a_i_K = shell_list(pshell).exp_a(ii), a_j_K = shell_list(qshell).exp_a(ll), a_k_K = shell_list(qshell).exp_a(kk), a_l_K = shell_list(pshell).exp_a(jj);
         
-            if(intType == "LLLL")
+            if(intType.substr(0,4) == "LLLL")
             {
                 for(int LL = LmaxJ; LL >= 0; LL -= 2)
                 {
@@ -713,7 +713,7 @@ int2eJK INT_SPH::get_h2e_JK(const string& intType, const int& occMaxL) const
                     radial_2e_list_K[LL](0,0) = int2e_get_radial(l_p,a_i_K,l_q,a_j_K,l_q,a_k_K,l_p,a_l_K,LL);
                 }
             }
-            else if(intType == "SSLL")
+            else if(intType.substr(0,4) == "SSLL")
             {
                 for(int LL = LmaxJ; LL >= 0; LL -= 2)
                 {
@@ -732,7 +732,7 @@ int2eJK INT_SPH::get_h2e_JK(const string& intType, const int& occMaxL) const
                         radial_2e_list_K[LL](2,0) = int2e_get_radial(l_p-1,a_i_K,l_q-1,a_j_K,l_q,a_k_K,l_p,a_l_K,LL);
                 }
             }
-            else if(intType == "SSSS")
+            else if(intType.substr(0,4) == "SSSS")
             {
                 for(int LL = LmaxJ; LL >= 0; LL -= 2)
                 {
@@ -810,6 +810,56 @@ int2eJK INT_SPH::get_h2e_JK(const string& intType, const int& occMaxL) const
                         }
                         array_radial_J[tmp][ii][jj][kk][ll] /= norm_J * 16.0 * pow(speedOfLight,4);
                     }
+                    else if(intType == "SSLL_SF")
+                    {
+                        array_radial_J[tmp][ii][jj][kk][ll] = 4.0*a1*a2 * radial_2e_list_J[tmp](1,0);
+                        if(l_p != 0)
+                            array_radial_J[tmp][ii][jj][kk][ll] += (l_p*l_p + l_p*(l_p+1)/2 + l_p*(l_p+1)/2 - tmp*(tmp+1)/2) * radial_2e_list_J[tmp](2,0) - (2.0*a1*l_p+2.0*a2*l_p) * radial_2e_list_J[tmp](0,0);
+                        array_radial_J[tmp][ii][jj][kk][ll] /= norm_J * 4.0 * pow(speedOfLight,2);
+                    }
+                    else if(intType == "SSSS_SF")
+                    {
+                        double l12 = l_p*l_p + l_p*(l_p+1)/2 + l_p*(l_p+1)/2 - tmp*(tmp+1)/2, l34 = l_q*l_q + l_q*(l_q+1)/2 + l_q*(l_q+1)/2 - tmp*(tmp+1)/2;
+                        array_radial_J[tmp][ii][jj][kk][ll] = 4*a1*a2*4*a3*a4 * radial_2e_list_J[tmp](1,1);
+                        if(l_p != 0)
+                        {
+                            if(l_q != 0)
+                                array_radial_J[tmp][ii][jj][kk][ll] += l12*l34 * radial_2e_list_J[tmp](2,2) - (2*a1*l_p+2*a2*l_p)*l34 * radial_2e_list_J[tmp](0,2) + 4*a1*a2*l34 * radial_2e_list_J[tmp](1,2) - l12*(2*a3*l_q+2*a4*l_q) * radial_2e_list_J[tmp](2,0) + (2*a1*l_p+2*a2*l_p)*(2*a3*l_q+2*a4*l_q) * radial_2e_list_J[tmp](0,0) - 4*a1*a2*(2*a3*l_q+2*a4*l_q) * radial_2e_list_J[tmp](1,0) + l12*4*a3*a4 * radial_2e_list_J[tmp](2,1) - (2*a1*l_p+2*a2*l_p)*4*a3*a4 * radial_2e_list_J[tmp](0,1);
+                            else
+                                array_radial_J[tmp][ii][jj][kk][ll] += l12*4*a3*a4 * radial_2e_list_J[tmp](2,1) - (2*a1*l_p+2*a2*l_p)*4*a3*a4 * radial_2e_list_J[tmp](0,1);
+                        }
+                        else
+                        {
+                            if(l_q != 0)
+                                array_radial_J[tmp][ii][jj][kk][ll] += 4*a1*a2*l34 * radial_2e_list_J[tmp](1,2) - 4*a1*a2*(2*a3*l_q+2*a4*l_q) * radial_2e_list_J[tmp](1,0);
+                        }
+                        array_radial_J[tmp][ii][jj][kk][ll] /= norm_J * 16.0 * pow(speedOfLight,4);
+                    }
+                    else if(intType == "SSLL_SD")
+                    {
+                        array_radial_J[tmp][ii][jj][kk][ll] = 0.0;
+                        if(l_p != 0)
+                            array_radial_J[tmp][ii][jj][kk][ll] += (lk1*lk2 - (l_p*l_p + l_p*(l_p+1)/2 + l_p*(l_p+1)/2 - tmp*(tmp+1)/2)) * radial_2e_list_J[tmp](2,0) - (2.0*a1*lk2+2.0*a2*lk1 - 2.0*a1*l_p-2.0*a2*l_p) * radial_2e_list_J[tmp](0,0);
+                        array_radial_J[tmp][ii][jj][kk][ll] /= norm_J * 4.0 * pow(speedOfLight,2);
+                    }
+                    else if(intType == "SSSS_SD")
+                    {
+                        double l12 = l_p*l_p + l_p*(l_p+1)/2 + l_p*(l_p+1)/2 - tmp*(tmp+1)/2, l34 = l_q*l_q + l_q*(l_q+1)/2 + l_q*(l_q+1)/2 - tmp*(tmp+1)/2;
+                        array_radial_J[tmp][ii][jj][kk][ll] = 0.0;
+                        if(l_p != 0)
+                        {
+                            if(l_q != 0)
+                                array_radial_J[tmp][ii][jj][kk][ll] += (lk1*lk2*lk3*lk4 - l12*l34) * radial_2e_list_J[tmp](2,2) - ((2*a1*lk2+2*a2*lk1)*lk3*lk4 - (2*a1*l_p+2*a2*l_p)*l34) * radial_2e_list_J[tmp](0,2) + (4*a1*a2*lk3*lk4 - 4*a1*a2*l34) * radial_2e_list_J[tmp](1,2) - (lk1*lk2*(2*a3*lk4+2*a4*lk3) - l12*(2*a3*l_q+2*a4*l_q)) * radial_2e_list_J[tmp](2,0) + ((2*a1*lk2+2*a2*lk1)*(2*a3*lk4+2*a4*lk3) - (2*a1*l_p+2*a2*l_p)*(2*a3*l_q+2*a4*l_q)) * radial_2e_list_J[tmp](0,0) - (4*a1*a2*(2*a3*lk4+2*a4*lk3) - 4*a1*a2*(2*a3*l_q+2*a4*l_q)) * radial_2e_list_J[tmp](1,0) + (lk1*lk2*4*a3*a4 - l12*4*a3*a4) * radial_2e_list_J[tmp](2,1) - ((2*a1*lk2+2*a2*lk1)*4*a3*a4 - (2*a1*l_p+2*a2*l_p)*4*a3*a4) * radial_2e_list_J[tmp](0,1);
+                            else
+                                array_radial_J[tmp][ii][jj][kk][ll] += (lk1*lk2*4*a3*a4 - l12*4*a3*a4) * radial_2e_list_J[tmp](2,1) - ((2*a1*lk2+2*a2*lk1)*4*a3*a4 - (2*a1*l_p+2*a2*l_p)*4*a3*a4) * radial_2e_list_J[tmp](0,1);
+                        }
+                        else
+                        {
+                            if(l_q != 0)
+                                array_radial_J[tmp][ii][jj][kk][ll] += (4*a1*a2*lk3*lk4 - 4*a1*a2*l34) * radial_2e_list_J[tmp](1,2) - (4*a1*a2*(2*a3*lk4+2*a4*lk3) - 4*a1*a2*(2*a3*l_q+2*a4*l_q)) * radial_2e_list_J[tmp](1,0);
+                        }
+                        array_radial_J[tmp][ii][jj][kk][ll] /= norm_J * 16.0 * pow(speedOfLight,4);
+                    }
                     else
                     {
                         cout << "ERROR: Unknown integralTYPE in get_h2e:\n";
@@ -843,6 +893,52 @@ int2eJK INT_SPH::get_h2e_JK(const string& intType, const int& occMaxL) const
                         else if(l_p != 0 || l_q != 0)
                         {
                             array_radial_K[tmp][ii][ll][kk][jj] += (2*a1*lk2+2*a2*lk1)*(2*a3*lk4+2*a4*lk3) * radial_2e_list_K[tmp](0,0) - 4*a1*a2*(2*a3*lk4+2*a4*lk3) * radial_2e_list_K[tmp](1,0) - (2*a1*lk2+2*a2*lk1)*4*a3*a4 * radial_2e_list_K[tmp](0,1);
+                        }
+                        array_radial_K[tmp][ii][ll][kk][jj] /= norm_K * 16.0 * pow(speedOfLight,4);
+                    }
+                    else if(intType == "SSLL_SF")
+                    {
+                        array_radial_K[tmp][ii][ll][kk][jj] = 4.0*a1*a2 * radial_2e_list_K[tmp](1,0);
+                        if(l_p != 0 && l_q != 0)
+                            array_radial_K[tmp][ii][ll][kk][jj] += (l_p*l_q + l_p*(l_p+1)/2 + l_q*(l_q+1)/2 - tmp*(tmp+1)/2) * radial_2e_list_K[tmp](2,0) - (2.0*a1*l_q+2.0*a2*l_p)* radial_2e_list_K[tmp](0,0);
+                        else if(l_p != 0 || l_q != 0)
+                            array_radial_K[tmp][ii][ll][kk][jj] += - (2.0*a1*l_q+2.0*a2*l_p) * radial_2e_list_K[tmp](0,0);
+                        array_radial_K[tmp][ii][ll][kk][jj] /= norm_K * 4.0 * pow(speedOfLight,2);
+                    }
+                    else if(intType == "SSSS_SF")
+                    {
+                        double l12 = l_p*l_q + l_p*(l_p+1)/2 + l_q*(l_q+1)/2 - tmp*(tmp+1)/2, l34 = l_q*l_p + l_q*(l_q+1)/2 + l_p*(l_p+1)/2 - tmp*(tmp+1)/2;
+                        array_radial_K[tmp][ii][ll][kk][jj] = 4*a1*a2*4*a3*a4 * radial_2e_list_K[tmp](1,1);
+                        if(l_p != 0 && l_q != 0)
+                        {
+                            array_radial_K[tmp][ii][ll][kk][jj] += l12*l34 * radial_2e_list_K[tmp](2,2) - (2*a1*l_q+2*a2*l_p)*l34 * radial_2e_list_K[tmp](0,2) + 4*a1*a2*l34 * radial_2e_list_K[tmp](1,2) - l12*(2*a3*l_p+2*a4*l_q) * radial_2e_list_K[tmp](2,0) + (2*a1*l_q+2*a2*l_p)*(2*a3*l_p+2*a4*l_q) * radial_2e_list_K[tmp](0,0) - 4*a1*a2*(2*a3*l_p+2*a4*l_q) * radial_2e_list_K[tmp](1,0) + l12*4*a3*a4 * radial_2e_list_K[tmp](2,1) - (2*a1*l_q+2*a2*l_p)*4*a3*a4 * radial_2e_list_K[tmp](0,1);
+                        }
+                        else if(l_p != 0 || l_q != 0)
+                        {
+                            array_radial_K[tmp][ii][ll][kk][jj] += (2*a1*l_q+2*a2*l_p)*(2*a3*l_p+2*a4*l_q) * radial_2e_list_K[tmp](0,0) - 4*a1*a2*(2*a3*l_p+2*a4*l_q) * radial_2e_list_K[tmp](1,0) - (2*a1*l_q+2*a2*l_p)*4*a3*a4 * radial_2e_list_K[tmp](0,1);
+                        }
+                        array_radial_K[tmp][ii][ll][kk][jj] /= norm_K * 16.0 * pow(speedOfLight,4);
+                    }
+                    else if(intType == "SSLL_SD")
+                    {
+                        array_radial_K[tmp][ii][ll][kk][jj] = 0.0;
+                        if(l_p != 0 && l_q != 0)
+                            array_radial_K[tmp][ii][ll][kk][jj] += (lk1*lk2-(l_p*l_q + l_p*(l_p+1)/2 + l_q*(l_q+1)/2 - tmp*(tmp+1)/2)) * radial_2e_list_K[tmp](2,0) - (2.0*a1*lk2+2.0*a2*lk1 - 2.0*a1*l_q - 2.0*a2*l_p)* radial_2e_list_K[tmp](0,0);
+                        else if(l_p != 0 || l_q != 0)
+                            array_radial_K[tmp][ii][ll][kk][jj] += - (2.0*a1*lk2+2.0*a2*lk1 - 2.0*a1*l_q-2.0*a2*l_p) * radial_2e_list_K[tmp](0,0);
+                        array_radial_K[tmp][ii][ll][kk][jj] /= norm_K * 4.0 * pow(speedOfLight,2);
+                    }
+                    else if(intType == "SSSS_SD")
+                    {
+                        double l12 = l_p*l_q + l_p*(l_p+1)/2 + l_q*(l_q+1)/2 - tmp*(tmp+1)/2, l34 = l_q*l_p + l_q*(l_q+1)/2 + l_p*(l_p+1)/2 - tmp*(tmp+1)/2;
+                        array_radial_K[tmp][ii][ll][kk][jj] = 0.0;
+                        if(l_p != 0 && l_q != 0)
+                        {
+                            array_radial_K[tmp][ii][ll][kk][jj] += (lk1*lk2*lk3*lk4 - l12*l34) * radial_2e_list_K[tmp](2,2) - ((2*a1*lk2+2*a2*lk1)*lk3*lk4 - (2*a1*l_q+2*a2*l_p)*l34) * radial_2e_list_K[tmp](0,2) + (4*a1*a2*lk3*lk4 - 4*a1*a2*l34) * radial_2e_list_K[tmp](1,2) - (lk1*lk2*(2*a3*lk4+2*a4*lk3) - l12*(2*a3*l_p+2*a4*l_q)) * radial_2e_list_K[tmp](2,0) + ((2*a1*lk2+2*a2*lk1)*(2*a3*lk4+2*a4*lk3) - (2*a1*l_q+2*a2*l_p)*(2*a3*l_p+2*a4*l_q)) * radial_2e_list_K[tmp](0,0) - (4*a1*a2*(2*a3*lk4+2*a4*lk3) -  4*a1*a2*(2*a3*l_p+2*a4*l_q)) * radial_2e_list_K[tmp](1,0) + (lk1*lk2*4*a3*a4 - l12*4*a3*a4) * radial_2e_list_K[tmp](2,1) - ((2*a1*lk2+2*a2*lk1)*4*a3*a4 - (2*a1*l_q+2*a2*l_p)*4*a3*a4) * radial_2e_list_K[tmp](0,1);
+                        }
+                        else if(l_p != 0 || l_q != 0)
+                        {
+                            array_radial_K[tmp][ii][ll][kk][jj] += ((2*a1*lk2+2*a2*lk1)*(2*a3*lk4+2*a4*lk3) - (2*a1*l_q+2*a2*l_p)*(2*a3*l_p+2*a4*l_q)) * radial_2e_list_K[tmp](0,0) - (4*a1*a2*(2*a3*lk4+2*a4*lk3) - 4*a1*a2*(2*a3*l_p+2*a4*l_q)) * radial_2e_list_K[tmp](1,0) - ((2*a1*lk2+2*a2*lk1)*4*a3*a4 - (2*a1*l_q+2*a2*l_p)*4*a3*a4) * radial_2e_list_K[tmp](0,1);
                         }
                         array_radial_K[tmp][ii][ll][kk][jj] /= norm_K * 16.0 * pow(speedOfLight,4);
                     }
@@ -1258,16 +1354,331 @@ void INT_SPH::get_h2e_JK_direct(int2eJK& LLLL, int2eJK& SSLL, int2eJK& SSSS, con
     }
 
     return ;
-
-
-
-    // LLLL = get_h2e_JK("LLLL", occMaxL);
-    // SSLL = get_h2e_JK("SSLL", occMaxL);
-    // SSSS = get_h2e_JK("SSSS", occMaxL);
-
-    // return;
 }
 
+void INT_SPH::get_h2eSD_JK_direct(int2eJK& SSLL, int2eJK& SSSS, const int& occMaxL)
+{
+    SSLL = get_h2e_JK("SSLL_SD", occMaxL);
+    SSSS = get_h2e_JK("SSSS_SD", occMaxL);
+    // int occMaxShell = 0;
+    // if(occMaxL == -1)    occMaxShell = size_shell;
+    // else
+    // {
+    //     for(int ii = 0; ii < size_shell; ii++)
+    //     {
+    //         if(shell_list(ii).l <= occMaxL)
+    //             occMaxShell++;
+    //         else
+    //             break;
+    //     }
+    // }
+
+    // LLLL.J.resize(Nirrep, Nirrep);
+    // LLLL.K.resize(Nirrep, Nirrep);
+    // SSLL.J.resize(Nirrep, Nirrep);
+    // SSLL.K.resize(Nirrep, Nirrep);
+    // SSSS.J.resize(Nirrep, Nirrep);
+    // SSSS.K.resize(Nirrep, Nirrep);
+
+    // for(int ii = 0; ii < Nirrep; ii++)
+    // for(int jj = 0; jj < Nirrep; jj++)
+    // {
+    //     LLLL.J(ii,jj).resize(irrep_list(ii).size*irrep_list(ii).size, irrep_list(jj).size*irrep_list(jj).size);
+    //     LLLL.K(ii,jj).resize(irrep_list(ii).size*irrep_list(ii).size, irrep_list(jj).size*irrep_list(jj).size);
+    //     SSLL.J(ii,jj).resize(irrep_list(ii).size*irrep_list(ii).size, irrep_list(jj).size*irrep_list(jj).size);
+    //     SSLL.K(ii,jj).resize(irrep_list(ii).size*irrep_list(ii).size, irrep_list(jj).size*irrep_list(jj).size);
+    //     SSSS.J(ii,jj).resize(irrep_list(ii).size*irrep_list(ii).size, irrep_list(jj).size*irrep_list(jj).size);
+    //     SSSS.K(ii,jj).resize(irrep_list(ii).size*irrep_list(ii).size, irrep_list(jj).size*irrep_list(jj).size);
+    // }
+
+    // int int_tmp1_p = 0;
+    // for(int pshell = 0; pshell < occMaxShell; pshell++)
+    // {
+    // int l_p = shell_list(pshell).l, int_tmp1_q = 0;
+    // for(int qshell = 0; qshell < occMaxShell; qshell++)
+    // {
+    //     int l_q = shell_list(qshell).l, l_max = max(l_p,l_q), LmaxJ = min(l_p+l_p, l_q+l_q), LmaxK = l_p+l_q;
+    //     int size_gtos_p = shell_list(pshell).coeff.rows(), size_gtos_q = shell_list(qshell).coeff.rows();
+    //     MatrixXd radial_2e_list_J[LmaxJ+1], radial_2e_list_K[LmaxK+1];
+    //     double array_radial_J_LLLL[LmaxJ+1][size_gtos_p][size_gtos_p][size_gtos_q][size_gtos_q];
+    //     double array_radial_K_LLLL[LmaxK+1][size_gtos_p][size_gtos_q][size_gtos_q][size_gtos_p];
+    //     double array_radial_J_SSLL[LmaxJ+1][size_gtos_p][size_gtos_p][size_gtos_q][size_gtos_q];
+    //     double array_radial_K_SSLL[LmaxK+1][size_gtos_p][size_gtos_q][size_gtos_q][size_gtos_p];
+    //     double array_radial_J_SSSS[LmaxJ+1][size_gtos_p][size_gtos_p][size_gtos_q][size_gtos_q];
+    //     double array_radial_K_SSSS[LmaxK+1][size_gtos_p][size_gtos_q][size_gtos_q][size_gtos_p];
+
+    //     Matrix<mMatrixXd,-1,-1> h2eJ_LLLL, h2eK_LLLL, h2eJ_SSLL, h2eK_SSLL, h2eJ_SSSS, h2eK_SSSS;
+    //     int size_tmp_p = 0, size_tmp_q = 0;
+    //     if(l_p == 0)
+    //         size_tmp_p = 1;
+    //     else
+    //         size_tmp_p = 2;
+    //     if(l_q == 0)
+    //         size_tmp_q = 1;
+    //     else
+    //         size_tmp_q = 2;
+    //     h2eJ_LLLL.resize(size_tmp_p,size_tmp_q);
+    //     h2eK_LLLL.resize(size_tmp_p,size_tmp_q);
+    //     h2eJ_SSLL.resize(size_tmp_p,size_tmp_q);
+    //     h2eK_SSLL.resize(size_tmp_p,size_tmp_q);
+    //     h2eJ_SSSS.resize(size_tmp_p,size_tmp_q);
+    //     h2eK_SSSS.resize(size_tmp_p,size_tmp_q);
+ 
+    //     MatrixXd array_angular_J[LmaxJ+1][size_tmp_p][size_tmp_q], array_angular_K[LmaxK+1][size_tmp_p][size_tmp_q];
+
+    //     for(int twojj_p = abs(2*l_p-1); twojj_p <= 2*l_p+1; twojj_p = twojj_p + 2)
+    //     for(int twojj_q = abs(2*l_q-1); twojj_q <= 2*l_q+1; twojj_q = twojj_q + 2)
+    //     {
+    //         int sym_ap = twojj_p - 2*l_p, sym_aq = twojj_q - 2*l_q;
+    //         int index_tmp_p = 1 - (2*l_p+1 - twojj_p)/2;
+    //         if(l_p == 0) index_tmp_p = 0;
+    //         int index_tmp_q = 1 - (2*l_q+1 - twojj_q)/2;
+    //         if(l_q == 0) index_tmp_q = 0;
+
+    //         h2eJ_LLLL(index_tmp_p,index_tmp_q).resize(twojj_p+1,twojj_q+1);
+    //         h2eK_LLLL(index_tmp_p,index_tmp_q).resize(twojj_p+1,twojj_q+1);
+    //         h2eJ_SSLL(index_tmp_p,index_tmp_q).resize(twojj_p+1,twojj_q+1);
+    //         h2eK_SSLL(index_tmp_p,index_tmp_q).resize(twojj_p+1,twojj_q+1);
+    //         h2eJ_SSSS(index_tmp_p,index_tmp_q).resize(twojj_p+1,twojj_q+1);
+    //         h2eK_SSSS(index_tmp_p,index_tmp_q).resize(twojj_p+1,twojj_q+1);
+    //         for(int mp = 0; mp < twojj_p + 1; mp++)
+    //         for(int mq = 0; mq < twojj_q + 1; mq++)
+    //         {
+    //             h2eJ_LLLL(index_tmp_p,index_tmp_q)(mp,mq).resize(size_gtos_p*size_gtos_p,size_gtos_q*size_gtos_q);
+    //             h2eK_LLLL(index_tmp_p,index_tmp_q)(mp,mq).resize(size_gtos_p*size_gtos_q,size_gtos_q*size_gtos_p);
+    //             h2eJ_SSLL(index_tmp_p,index_tmp_q)(mp,mq).resize(size_gtos_p*size_gtos_p,size_gtos_q*size_gtos_q);
+    //             h2eK_SSLL(index_tmp_p,index_tmp_q)(mp,mq).resize(size_gtos_p*size_gtos_q,size_gtos_q*size_gtos_p);
+    //             h2eJ_SSSS(index_tmp_p,index_tmp_q)(mp,mq).resize(size_gtos_p*size_gtos_p,size_gtos_q*size_gtos_q);
+    //             h2eK_SSSS(index_tmp_p,index_tmp_q)(mp,mq).resize(size_gtos_p*size_gtos_q,size_gtos_q*size_gtos_p);
+    //         }
+
+    //         for(int tmp = LmaxJ; tmp >= 0; tmp -= 2)
+    //         {
+    //             array_angular_J[tmp][index_tmp_p][index_tmp_q].resize(twojj_p + 1,twojj_q + 1);
+    //             for(int mp = 0; mp < twojj_p + 1; mp++)
+    //             for(int mq = 0; mq < twojj_q + 1; mq++)
+    //                 array_angular_J[tmp][index_tmp_p][index_tmp_q](mp,mq) = int2e_get_angular(l_p, 2*mp-twojj_p, sym_ap, l_p, 2*mp-twojj_p, sym_ap, l_q, 2*mq-twojj_q, sym_aq, l_q, 2*mq-twojj_q, sym_aq, tmp);
+    //         }
+    //         for(int tmp = LmaxK; tmp >= 0; tmp -= 2)
+    //         {
+    //             array_angular_K[tmp][index_tmp_p][index_tmp_q].resize(twojj_p + 1,twojj_q + 1);
+    //             for(int mp = 0; mp < twojj_p + 1; mp++)
+    //             for(int mq = 0; mq < twojj_q + 1; mq++)
+    //                 array_angular_K[tmp][index_tmp_p][index_tmp_q](mp,mq) = int2e_get_angular(l_p, 2*mp-twojj_p, sym_ap, l_q, 2*mq-twojj_q, sym_aq, l_q, 2*mq-twojj_q, sym_aq, l_p, 2*mp-twojj_p, sym_ap, tmp);
+    //         }
+    //     }
+
+    //     for(int ii = 0; ii < size_gtos_p; ii++)
+    //     for(int jj = 0; jj < size_gtos_p; jj++)
+    //     for(int kk = 0; kk < size_gtos_q; kk++)
+    //     for(int ll = 0; ll < size_gtos_q; ll++)
+    //     {
+    //         double a_i_J = shell_list(pshell).exp_a(ii), a_j_J = shell_list(pshell).exp_a(jj), a_k_J = shell_list(qshell).exp_a(kk), a_l_J = shell_list(qshell).exp_a(ll);
+    //         double a_i_K = shell_list(pshell).exp_a(ii), a_j_K = shell_list(qshell).exp_a(ll), a_k_K = shell_list(qshell).exp_a(kk), a_l_K = shell_list(pshell).exp_a(jj);
+
+    //         for(int LL = LmaxJ; LL >= 0; LL -= 2)
+    //         {
+    //             radial_2e_list_J[LL].resize(3,3);
+    //             radial_2e_list_J[LL](0,0) = int2e_get_radial(l_p,a_i_J,l_p,a_j_J,l_q,a_k_J,l_q,a_l_J,LL);
+    //             radial_2e_list_J[LL](1,0) = int2e_get_radial(l_p+1,a_i_J,l_p+1,a_j_J,l_q,a_k_J,l_q,a_l_J,LL);
+    //             radial_2e_list_J[LL](0,1) = int2e_get_radial(l_p,a_i_J,l_p,a_j_J,l_q+1,a_k_J,l_q+1,a_l_J,LL);
+    //             radial_2e_list_J[LL](1,1) = int2e_get_radial(l_p+1,a_i_J,l_p+1,a_j_J,l_q+1,a_k_J,l_q+1,a_l_J,LL);
+    //             if(l_p != 0)
+    //             {
+    //                 radial_2e_list_J[LL](2,0) = int2e_get_radial(l_p-1,a_i_J,l_p-1,a_j_J,l_q,a_k_J,l_q,a_l_J,LL);
+    //                 radial_2e_list_J[LL](2,1) = int2e_get_radial(l_p-1,a_i_J,l_p-1,a_j_J,l_q+1,a_k_J,l_q+1,a_l_J,LL);
+    //             }
+    //             if(l_q != 0)
+    //             {
+    //                 radial_2e_list_J[LL](0,2) = int2e_get_radial(l_p,a_i_J,l_p,a_j_J,l_q-1,a_k_J,l_q-1,a_l_J,LL);
+    //                 radial_2e_list_J[LL](1,2) = int2e_get_radial(l_p+1,a_i_J,l_p+1,a_j_J,l_q-1,a_k_J,l_q-1,a_l_J,LL);
+    //             }
+    //             if(l_p!=0 && l_q!=0)
+    //                 radial_2e_list_J[LL](2,2) = int2e_get_radial(l_p-1,a_i_J,l_p-1,a_j_J,l_q-1,a_k_J,l_q-1,a_l_J,LL);
+    //         }
+    //         for(int LL = LmaxK; LL >= 0; LL -= 2)
+    //         {
+    //             radial_2e_list_K[LL].resize(3,3);
+    //             radial_2e_list_K[LL](0,0) = int2e_get_radial(l_p,a_i_K,l_q,a_j_K,l_q,a_k_K,l_p,a_l_K,LL);
+    //             radial_2e_list_K[LL](1,0) = int2e_get_radial(l_p+1,a_i_K,l_q+1,a_j_K,l_q,a_k_K,l_p,a_l_K,LL);
+    //             radial_2e_list_K[LL](0,1) = int2e_get_radial(l_p,a_i_K,l_q,a_j_K,l_q+1,a_k_K,l_p+1,a_l_K,LL);
+    //             radial_2e_list_K[LL](1,1) = int2e_get_radial(l_p+1,a_i_K,l_q+1,a_j_K,l_q+1,a_k_K,l_p+1,a_l_K,LL);
+    //             if(l_p != 0 && l_q != 0)
+    //             {
+    //                 radial_2e_list_K[LL](2,0) = int2e_get_radial(l_p-1,a_i_K,l_q-1,a_j_K,l_q,a_k_K,l_p,a_l_K,LL);
+    //                 radial_2e_list_K[LL](2,1) = int2e_get_radial(l_p-1,a_i_K,l_q-1,a_j_K,l_q+1,a_k_K,l_p+1,a_l_K,LL);
+    //                 radial_2e_list_K[LL](0,2) = int2e_get_radial(l_p,a_i_K,l_q,a_j_K,l_q-1,a_k_K,l_p-1,a_l_K,LL);
+    //                 radial_2e_list_K[LL](1,2) = int2e_get_radial(l_p+1,a_i_K,l_q+1,a_j_K,l_q-1,a_k_K,l_p-1,a_l_K,LL);
+    //                 radial_2e_list_K[LL](2,2) = int2e_get_radial(l_p-1,a_i_K,l_q-1,a_j_K,l_q-1,a_k_K,l_p-1,a_l_K,LL);
+    //             }
+    //         }
+
+    //         for(int twojj_p = abs(2*l_p-1); twojj_p <= 2*l_p+1; twojj_p = twojj_p + 2)
+    //         for(int twojj_q = abs(2*l_q-1); twojj_q <= 2*l_q+1; twojj_q = twojj_q + 2)
+    //         {
+    //             int sym_ap = twojj_p - 2*l_p, sym_aq = twojj_q - 2*l_q;
+    //             double k_p = -(twojj_p+1.0)*sym_ap/2.0, k_q = -(twojj_q+1.0)*sym_aq/2.0;
+    //             double norm_J = shell_list(pshell).norm(ii) * shell_list(pshell).norm(jj) * shell_list(qshell).norm(kk) * shell_list(qshell).norm(ll), norm_K = shell_list(pshell).norm(ii) * shell_list(qshell).norm(ll) * shell_list(qshell).norm(kk) * shell_list(pshell).norm(jj);
+    //             double lk1 = 1+l_p+k_p, lk2 = 1+l_p+k_p, lk3 = 1+l_q+k_q, lk4 = 1+l_q+k_q, a1 = shell_list(pshell).exp_a(ii), a2 = shell_list(pshell).exp_a(jj), a3 = shell_list(qshell).exp_a(kk), a4 = shell_list(qshell).exp_a(ll);
+
+    //             for(int tmp = LmaxJ; tmp >= 0; tmp -= 2)
+    //             {
+    //                 array_radial_J_LLLL[tmp][ii][jj][kk][ll] = radial_2e_list_J[tmp](0,0) / norm_J;
+    //                 array_radial_J_SSLL[tmp][ii][jj][kk][ll] = 4.0*a1*a2 * radial_2e_list_J[tmp](1,0);
+    //                 array_radial_J_SSSS[tmp][ii][jj][kk][ll] = 4*a1*a2*4*a3*a4 * radial_2e_list_J[tmp](1,1);
+    //                 if(l_p != 0)
+    //                 {
+    //                     array_radial_J_SSLL[tmp][ii][jj][kk][ll] += lk1*lk2 * radial_2e_list_J[tmp](2,0) - (2.0*a1*lk2+2.0*a2*lk1) * radial_2e_list_J[tmp](0,0);
+    //                     if(l_q != 0)
+    //                         array_radial_J_SSSS[tmp][ii][jj][kk][ll] += lk1*lk2*lk3*lk4 * radial_2e_list_J[tmp](2,2) - (2*a1*lk2+2*a2*lk1)*lk3*lk4 * radial_2e_list_J[tmp](0,2) + 4*a1*a2*lk3*lk4 * radial_2e_list_J[tmp](1,2) - lk1*lk2*(2*a3*lk4+2*a4*lk3) * radial_2e_list_J[tmp](2,0) + (2*a1*lk2+2*a2*lk1)*(2*a3*lk4+2*a4*lk3) * radial_2e_list_J[tmp](0,0) - 4*a1*a2*(2*a3*lk4+2*a4*lk3) * radial_2e_list_J[tmp](1,0) + lk1*lk2*4*a3*a4 * radial_2e_list_J[tmp](2,1) - (2*a1*lk2+2*a2*lk1)*4*a3*a4 * radial_2e_list_J[tmp](0,1);
+    //                     else
+    //                         array_radial_J_SSSS[tmp][ii][jj][kk][ll] += lk1*lk2*4*a3*a4 * radial_2e_list_J[tmp](2,1) - (2*a1*lk2+2*a2*lk1)*4*a3*a4 * radial_2e_list_J[tmp](0,1);
+    //                 }
+    //                 else
+    //                 {
+    //                     if(l_q != 0)
+    //                         array_radial_J_SSSS[tmp][ii][jj][kk][ll] += 4*a1*a2*lk3*lk4 * radial_2e_list_J[tmp](1,2) - 4*a1*a2*(2*a3*lk4+2*a4*lk3) * radial_2e_list_J[tmp](1,0);
+    //                 }
+    //                 array_radial_J_SSLL[tmp][ii][jj][kk][ll] /= norm_J*4.0*pow(speedOfLight,2);
+    //                 array_radial_J_SSSS[tmp][ii][jj][kk][ll] /= norm_J*16.0*pow(speedOfLight,4);
+    //             }
+    //             lk2 = 1+l_q+k_q; lk4 = 1+l_p+k_p; 
+    //             a2 = shell_list(qshell).exp_a(ll); a4 = shell_list(pshell).exp_a(jj);
+    //             for(int tmp = LmaxK; tmp >= 0; tmp -= 2)
+    //             {
+    //                 array_radial_K_LLLL[tmp][ii][ll][kk][jj] = radial_2e_list_K[tmp](0,0) / norm_K;
+    //                 array_radial_K_SSLL[tmp][ii][ll][kk][jj] = 4.0*a1*a2 * radial_2e_list_K[tmp](1,0);
+    //                 array_radial_K_SSSS[tmp][ii][ll][kk][jj] = 4*a1*a2*4*a3*a4 * radial_2e_list_K[tmp](1,1);
+    //                 if(l_p != 0 && l_q != 0)
+    //                 {
+    //                     array_radial_K_SSLL[tmp][ii][ll][kk][jj] += lk1*lk2 * radial_2e_list_K[tmp](2,0) - (2.0*a1*lk2+2.0*a2*lk1) * radial_2e_list_K[tmp](0,0);
+    //                     array_radial_K_SSSS[tmp][ii][ll][kk][jj] += lk1*lk2*lk3*lk4 * radial_2e_list_K[tmp](2,2) - (2*a1*lk2+2*a2*lk1)*lk3*lk4 * radial_2e_list_K[tmp](0,2) + 4*a1*a2*lk3*lk4 * radial_2e_list_K[tmp](1,2) - lk1*lk2*(2*a3*lk4+2*a4*lk3) * radial_2e_list_K[tmp](2,0) + (2*a1*lk2+2*a2*lk1)*(2*a3*lk4+2*a4*lk3) * radial_2e_list_K[tmp](0,0) - 4*a1*a2*(2*a3*lk4+2*a4*lk3) * radial_2e_list_K[tmp](1,0) + lk1*lk2*4*a3*a4 * radial_2e_list_K[tmp](2,1) - (2*a1*lk2+2*a2*lk1)*4*a3*a4 * radial_2e_list_K[tmp](0,1);
+    //                 }
+    //                 else if(l_p != 0 || l_q != 0)
+    //                 {
+    //                     array_radial_K_SSLL[tmp][ii][ll][kk][jj] += - (2.0*a1*lk2+2.0*a2*lk1) * radial_2e_list_K[tmp](0,0);
+    //                     array_radial_K_SSSS[tmp][ii][ll][kk][jj] += (2*a1*lk2+2*a2*lk1)*(2*a3*lk4+2*a4*lk3) * radial_2e_list_K[tmp](0,0) - 4*a1*a2*(2*a3*lk4+2*a4*lk3) * radial_2e_list_K[tmp](1,0) - (2*a1*lk2+2*a2*lk1)*4*a3*a4 * radial_2e_list_K[tmp](0,1);
+    //                 }
+    //                 array_radial_K_SSLL[tmp][ii][ll][kk][jj] /= norm_K*4.0*pow(speedOfLight,2);
+    //                 array_radial_K_SSSS[tmp][ii][ll][kk][jj] /= norm_K*16.0*pow(speedOfLight,4);
+    //             }
+
+    //             int index_tmp_p = 1 - (2*l_p+1 - twojj_p)/2;
+    //             if(l_p == 0) index_tmp_p = 0;
+    //             int index_tmp_q = 1 - (2*l_q+1 - twojj_q)/2;
+    //             if(l_q == 0) index_tmp_q = 0;
+    //             for(int mp = 0; mp < twojj_p + 1; mp++)
+    //             for(int mq = 0; mq < twojj_q + 1; mq++)
+    //             {
+    //                 int e1J = ii*size_gtos_p+jj, e2J = kk*size_gtos_q+ll;
+    //                 int e1K = ii*size_gtos_q+ll, e2K = kk*size_gtos_p+jj;
+    //                 h2eJ_LLLL(index_tmp_p,index_tmp_q)(mp,mq)(e1J,e2J) = 0.0;
+    //                 h2eK_LLLL(index_tmp_p,index_tmp_q)(mp,mq)(e1K,e2K) = 0.0;
+    //                 h2eJ_SSLL(index_tmp_p,index_tmp_q)(mp,mq)(e1J,e2J) = 0.0;
+    //                 h2eK_SSLL(index_tmp_p,index_tmp_q)(mp,mq)(e1K,e2K) = 0.0;
+    //                 h2eJ_SSSS(index_tmp_p,index_tmp_q)(mp,mq)(e1J,e2J) = 0.0;
+    //                 h2eK_SSSS(index_tmp_p,index_tmp_q)(mp,mq)(e1K,e2K) = 0.0;
+    //                 for(int tmp = LmaxJ; tmp >= 0; tmp = tmp - 2)
+    //                 {
+    //                     h2eJ_LLLL(index_tmp_p,index_tmp_q)(mp,mq)(e1J,e2J) += array_radial_J_LLLL[tmp][ii][jj][kk][ll] * array_angular_J[tmp][index_tmp_p][index_tmp_q](mp,mq);
+    //                     h2eJ_SSLL(index_tmp_p,index_tmp_q)(mp,mq)(e1J,e2J) += array_radial_J_SSLL[tmp][ii][jj][kk][ll] * array_angular_J[tmp][index_tmp_p][index_tmp_q](mp,mq);
+    //                     h2eJ_SSSS(index_tmp_p,index_tmp_q)(mp,mq)(e1J,e2J) += array_radial_J_SSSS[tmp][ii][jj][kk][ll] * array_angular_J[tmp][index_tmp_p][index_tmp_q](mp,mq);
+    //                 }
+    //                 for(int tmp = LmaxK; tmp >= 0; tmp = tmp - 2)
+    //                 {
+    //                     h2eK_LLLL(index_tmp_p,index_tmp_q)(mp,mq)(e1K,e2K) += array_radial_K_LLLL[tmp][ii][ll][kk][jj] * array_angular_K[tmp][index_tmp_p][index_tmp_q](mp,mq);
+    //                     h2eK_SSLL(index_tmp_p,index_tmp_q)(mp,mq)(e1K,e2K) += array_radial_K_SSLL[tmp][ii][ll][kk][jj] * array_angular_K[tmp][index_tmp_p][index_tmp_q](mp,mq);
+    //                     h2eK_SSSS(index_tmp_p,index_tmp_q)(mp,mq)(e1K,e2K) += array_radial_K_SSSS[tmp][ii][ll][kk][jj] * array_angular_K[tmp][index_tmp_p][index_tmp_q](mp,mq);
+    //                 }
+    //             }
+    //         }
+    //     }
+    //     int int_tmp2_p = 0, int_tmp2_q = 0;
+    //     for(int ii = 0; ii < irrep_list(int_tmp1_p+int_tmp2_p).two_j + 1; ii++)
+    //     for(int jj = 0; jj < irrep_list(int_tmp1_q+int_tmp2_q).two_j + 1; jj++)
+    //     {
+    //         LLLL.J(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eJ_LLLL(0,0)(ii,jj);
+    //         LLLL.K(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eK_LLLL(0,0)(ii,jj);
+    //         SSLL.J(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eJ_SSLL(0,0)(ii,jj);
+    //         SSLL.K(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eK_SSLL(0,0)(ii,jj);
+    //         SSSS.J(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eJ_SSSS(0,0)(ii,jj);
+    //         SSSS.K(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eK_SSSS(0,0)(ii,jj);
+    //     }
+    //     if(l_p != 0 && l_q == 0)
+    //     {
+    //         int_tmp2_p += irrep_list(int_tmp1_p+int_tmp2_p).two_j + 1;
+    //         for(int ii = 0; ii < irrep_list(int_tmp1_p+int_tmp2_p).two_j + 1; ii++)
+    //         for(int jj = 0; jj < irrep_list(int_tmp1_q+int_tmp2_q).two_j + 1; jj++)
+    //         {
+    //             LLLL.J(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eJ_LLLL(1,0)(ii,jj);
+    //             LLLL.K(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eK_LLLL(1,0)(ii,jj);
+    //             SSLL.J(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eJ_SSLL(1,0)(ii,jj);
+    //             SSLL.K(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eK_SSLL(1,0)(ii,jj);
+    //             SSSS.J(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eJ_SSSS(1,0)(ii,jj);
+    //             SSSS.K(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eK_SSSS(1,0)(ii,jj);
+    //         }
+    //     }
+    //     else if(l_q != 0 && l_p == 0)
+    //     {
+    //         int_tmp2_q += irrep_list(int_tmp1_q+int_tmp2_q).two_j + 1;
+    //         for(int ii = 0; ii < irrep_list(int_tmp1_p+int_tmp2_p).two_j + 1; ii++)
+    //         for(int jj = 0; jj < irrep_list(int_tmp1_q+int_tmp2_q).two_j + 1; jj++)
+    //         {
+    //             LLLL.J(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eJ_LLLL(0,1)(ii,jj);
+    //             LLLL.K(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eK_LLLL(0,1)(ii,jj);
+    //             SSLL.J(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eJ_SSLL(0,1)(ii,jj);
+    //             SSLL.K(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eK_SSLL(0,1)(ii,jj);
+    //             SSSS.J(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eJ_SSSS(0,1)(ii,jj);
+    //             SSSS.K(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eK_SSSS(0,1)(ii,jj);
+    //         }
+            
+    //     }
+    //     else if(l_p != 0 && l_q != 0)
+    //     {
+    //         int int_tmp3_p = irrep_list(int_tmp1_p+int_tmp2_p).two_j + 1;
+    //         int int_tmp3_q = irrep_list(int_tmp1_q+int_tmp2_q).two_j + 1;
+    //         int_tmp2_p += int_tmp3_p;
+    //         for(int ii = 0; ii < irrep_list(int_tmp1_p+int_tmp2_p).two_j + 1; ii++)
+    //         for(int jj = 0; jj < irrep_list(int_tmp1_q+int_tmp2_q).two_j + 1; jj++)
+    //         {
+    //             LLLL.J(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eJ_LLLL(1,0)(ii,jj);
+    //             LLLL.K(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eK_LLLL(1,0)(ii,jj);
+    //             SSLL.J(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eJ_SSLL(1,0)(ii,jj);
+    //             SSLL.K(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eK_SSLL(1,0)(ii,jj);
+    //             SSSS.J(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eJ_SSSS(1,0)(ii,jj);
+    //             SSSS.K(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eK_SSSS(1,0)(ii,jj);
+    //         }
+    //         int_tmp2_p -= int_tmp3_p;
+    //         int_tmp2_q += int_tmp3_q;
+    //         for(int ii = 0; ii < irrep_list(int_tmp1_p+int_tmp2_p).two_j + 1; ii++)
+    //         for(int jj = 0; jj < irrep_list(int_tmp1_q+int_tmp2_q).two_j + 1; jj++)
+    //         {
+    //             LLLL.J(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eJ_LLLL(0,1)(ii,jj);
+    //             LLLL.K(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eK_LLLL(0,1)(ii,jj);
+    //             SSLL.J(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eJ_SSLL(0,1)(ii,jj);
+    //             SSLL.K(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eK_SSLL(0,1)(ii,jj);
+    //             SSSS.J(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eJ_SSSS(0,1)(ii,jj);
+    //             SSSS.K(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eK_SSSS(0,1)(ii,jj);
+    //         }
+    //         int_tmp2_p += int_tmp3_p;
+    //         for(int ii = 0; ii < irrep_list(int_tmp1_p+int_tmp2_p).two_j + 1; ii++)
+    //         for(int jj = 0; jj < irrep_list(int_tmp1_q+int_tmp2_q).two_j + 1; jj++)
+    //         {
+    //             LLLL.J(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eJ_LLLL(1,1)(ii,jj);
+    //             LLLL.K(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eK_LLLL(1,1)(ii,jj);
+    //             SSLL.J(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eJ_SSLL(1,1)(ii,jj);
+    //             SSLL.K(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eK_SSLL(1,1)(ii,jj);
+    //             SSSS.J(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eJ_SSSS(1,1)(ii,jj);
+    //             SSSS.K(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eK_SSSS(1,1)(ii,jj);
+    //         }
+    //     }
+    //     int_tmp1_q += 4*l_q+2;
+    // }
+    // int_tmp1_p += 4*l_p+2;
+    // }
+
+    // return ;
+}
 
 /* 
     get contraction coefficients for uncontracted calculations 
@@ -1303,31 +1714,5 @@ MatrixXd INT_SPH::get_coeff_contraction_spinor()
 
     return coeff;
 }
-
-
-
-/* 
-    write overlap, h1e and h2e for scf 
-*/
-void INT_SPH::writeIntegrals_spinor(const MatrixXd& h2e, const string& filename)
-{
-    int size = round(sqrt(h2e.cols()));
-    ofstream ofs;
-    ofs.open(filename);        
-        for(int ii = 0; ii < size; ii++)
-        for(int jj = 0; jj < size; jj++)
-        for(int kk = 0; kk < size; kk++)
-        for(int ll = 0; ll < size; ll++)
-        {
-            int ij = ii * size + jj, kl = kk * size + ll;
-            if(abs(h2e(ij,kl)) > 1e-15)  ofs << setprecision(16) << h2e(ij,kl) << "\t" << ii+1 << "\t" << jj+1 << "\t" << kk+1 << "\t" << ll+1 << "\n";
-        }
-        
-        ofs << 0.0 << "\t" << 0 << "\t" << 0 << "\t" << 0 << "\t" << 0 << "\n";
-    ofs.close();
-}
-
-
-
 
 
