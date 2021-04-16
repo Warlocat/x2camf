@@ -10,7 +10,7 @@ using namespace Eigen;
 class DHF_SPH
 {
 private:
-    int size_basis_spinor, Nirrep, nelec, occMax_irrep;
+    int size_basis_spinor, Nirrep, occMax_irrep;
     Matrix<irrep_jm, Dynamic, 1> irrep_list;
     vMatrixXd overlap, kinetic, WWW, Vnuc;
     int2eJK h2eLLLL_JK, h2eSSLL_JK, h2eSSSS_JK;
@@ -18,7 +18,7 @@ private:
     vVectorXd norm_s;
     MatrixXd coeff_contract;
     vVectorXd occNumber;
-    double d_density;
+    double d_density, nelec;
     bool converged = false, renormalizedSmall = false;
 
     MatrixXd evaluateDensity_spinor(const MatrixXd& coeff_, const VectorXd& occNumber_, const bool& twoC = false);
@@ -47,6 +47,8 @@ public:
     vMatrixXd get_amfi_unc(const int2eJK& h2eSSLL_SD, const int2eJK& h2eSSSS_SD, const string& Xmethod = "partialFock");
     vMatrixXd get_amfi_unc_2c(INT_SPH& int_sph_);
     vMatrixXd get_amfi_unc_2c(const int2eJK& h2eSSLL_SD, const int2eJK& h2eSSSS_SD);
+    /* Put one-electron integrals in a single matrix and reorder them */
+    static MatrixXd unite_irrep(const vMatrixXd& inputM, const Matrix<irrep_jm, Dynamic, 1>& irrep_list);
 };
 
 

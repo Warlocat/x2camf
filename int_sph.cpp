@@ -11,8 +11,8 @@
 using namespace std;
 using namespace Eigen;
 
-INT_SPH::INT_SPH(const string& atomName_, const string& basisSet_, const int& charge_, const int& spin_):
-atomName(atomName_), basisSet(basisSet_), charge(charge_), spin(spin_)
+INT_SPH::INT_SPH(const string& atomName_, const string& basisSet_):
+atomName(atomName_), basisSet(basisSet_)
 {
     if(atomName == "H") atomNumber = 1;
     else if(atomName == "HE") atomNumber = 2;
@@ -121,31 +121,6 @@ atomName(atomName_), basisSet(basisSet_), charge(charge_), spin(spin_)
     {
         cout << "ERROR: Atom name is not supported." << endl;
         exit(99);
-    }
-
-    nelec = atomNumber - charge;
-    if((nelec%2 && (spin == 1 || spin == 3)) || (nelec%2 - 1) && spin == 2)
-    {
-        cout << "ERROR: Spin state is NOT consistent with charge!" << endl;
-        // exit(99);
-    }
-    else
-    {
-        switch (spin)
-        {
-        case 1:
-        case 2:
-            nelec_b = nelec / 2;
-            break;
-        case 3:
-            nelec_b = nelec / 2 - 1;
-            break;
-        default:
-            cout << "ERROR: Spin state " << spin << " is NOT supported!" << endl;
-            exit(99);
-            break;
-        }
-        nelec_a = nelec - nelec_b;
     }
     
     readBasis();

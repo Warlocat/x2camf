@@ -50,6 +50,11 @@ int main()
     }
     for(int ir = 0; ir < amfi.rows(); ir++)
         cout << amfi(ir) << endl;
+    MatrixXd amfi2 = dhf_test->unite_irrep(amfi,intor.irrep_list);
+    for(int ii = 0; ii < amfi2.rows(); ii++)
+    for(int jj = 0; jj < amfi2.cols(); jj++)
+        if(abs(amfi2(ii,jj)) > 1e-8)
+            cout << ii << "\t" << jj << "\t" << amfi2(ii,jj) << endl;
 
     return 0;
 }

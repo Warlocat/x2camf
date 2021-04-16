@@ -31,12 +31,12 @@ protected:
 public:
     Matrix<intShell, Dynamic, 1> shell_list;
     Matrix<irrep_jm, Dynamic, 1> irrep_list;
-    int atomNumber, charge, nelec, nelec_a, nelec_b, spin, Nirrep = 0;
+    int atomNumber, Nirrep = 0;
     int size_gtoc, size_gtou, size_shell;
     string atomName, basisSet;
     int size_gtoc_spinor, size_gtou_spinor;
 
-    INT_SPH(const string& atomName_, const string& basisSet_, const int& charge_ = 0, const int& spin_ = 1);
+    INT_SPH(const string& atomName_, const string& basisSet_);
     ~INT_SPH();
 
     /* Evaluate one-electron integral */

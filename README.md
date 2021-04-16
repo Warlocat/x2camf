@@ -1,9 +1,12 @@
 # amfso
 Spin-orbit coupling (SOC) integrals generator with atomic-mean-field (AMF) approximation 
-for both perturbative and non-perturbative treatment of SOC.
+for both perturbative and non-perturbative treatment of SOC. This program aims to make 
+full use of spherical symmetry (take |J,mj> as an irrep) of atoms.
 
 
 It supports:
+
+    Various one-electron and two-electron (J,K) integrals in j-adapted spinor basis set for single atom;
 
     Spin-free exact-two-component in one-electron variant Hartree-Fock (SFX2C1E-HF) for single atom;
 

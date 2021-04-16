@@ -22,7 +22,7 @@ irrep_list(int_sph_.irrep_list)
     occNumber.resize(Nirrep);
     occMax_irrep = 0;
     readOCC(filename);
-    nelec = 0;
+    nelec = 0.0;
     cout << "Occupation number vector:" << endl;
     cout << "l\t2j\t2mj\tOcc" << endl;
     for(int ii = 0; ii < Nirrep; ii++)
@@ -114,12 +114,20 @@ DHF_SPH::~DHF_SPH()
 {
 }
 
+
+/*
+    The generalized eigen solver
+*/
 void DHF_SPH::eigensolverG_irrep(const vMatrixXd& inputM, const vMatrixXd& s_h_i, vVectorXd& values, vMatrixXd& vectors)
 {
     for(int ii = 0; ii < occMax_irrep; ii++)
         eigensolverG(inputM(ii),s_h_i(ii),values(ii),vectors(ii));
     return;
 }
+
+/*
+    Evaluate the difference between two vMatrixXd
+*/
 double DHF_SPH::evaluateChange_irrep(const vMatrixXd& M1, const vMatrixXd& M2)
 {
     VectorXd vecd_tmp(occMax_irrep);
@@ -129,6 +137,10 @@ double DHF_SPH::evaluateChange_irrep(const vMatrixXd& M1, const vMatrixXd& M2)
     }
     return vecd_tmp.maxCoeff();
 }
+
+/*
+    Evaluate error matrix in DIIS
+*/
 MatrixXd DHF_SPH::evaluateErrorDIIS(const MatrixXd& fock_, const MatrixXd& overlap_, const MatrixXd& density_)
 {
     MatrixXd tmp = fock_*density_*overlap_ - overlap_*density_*fock_;
@@ -142,6 +154,9 @@ MatrixXd DHF_SPH::evaluateErrorDIIS(const MatrixXd& fock_, const MatrixXd& overl
     return err;
 }
 
+/*
+    SCF procedure for 4-c and 2-c calculation
+*/
 void DHF_SPH::runSCF()
 {
     vector<MatrixXd> error4DIIS[occMax_irrep], fock4DIIS[occMax_irrep];
@@ -308,7 +323,6 @@ void DHF_SPH::runSCF()
     cout << "DHF iterations finished in " << (EndTime - StartTime) / (double)CLOCKS_PER_SEC << " seconds." << endl << endl;
 }
 
-
 void DHF_SPH::runSCF_2c()
 {
     vector<MatrixXd> error4DIIS[occMax_irrep], fock4DIIS[occMax_irrep];
@@ -447,7 +461,9 @@ void DHF_SPH::runSCF_2c()
     cout << "DHF iterations finished in " << (EndTime - StartTime) / (double)CLOCKS_PER_SEC << " seconds." << endl << endl;
 }
 
-
+/*
+    Renormalize small component to enhance the stability
+*/
 void DHF_SPH::renormalize_small()
 {
     norm_s.resize(occMax_irrep);
@@ -495,6 +511,10 @@ void DHF_SPH::renormalize_small()
     renormalizedSmall = true;
 }
 
+
+/*
+    Evaluate density matrix
+*/
 MatrixXd DHF_SPH::evaluateDensity_spinor(const MatrixXd& coeff_, const VectorXd& occNumber_, const bool& twoC)
 {
     if(!twoC)
@@ -541,6 +561,9 @@ vMatrixXd DHF_SPH::evaluateDensity_spinor_irrep(const bool& twoC)
 }
 
 
+/* 
+    Read occupation numbers 
+*/
 void DHF_SPH::readOCC(const string& filename)
 {
     string flags;
@@ -587,6 +610,15 @@ void DHF_SPH::readOCC(const string& filename)
 }
 
 
+/* 
+    Evaluate amfi SOC integrals in j-adapted spinor basis
+    Xmethod defines the algorithm to calculate X matrix in x2c transformation
+                        Occupied shells     Virtual shells
+        h1e:            h1e                 h1e
+        partialFock:    fock                h1e
+        fullFock:       Fock                Fock
+    When necessary, the program will recalculate two-electron integrals.
+*/
 vMatrixXd DHF_SPH::get_amfi_unc(INT_SPH& int_sph_, const string& Xmethod)
 {
     int2eJK SSLL_SD, SSSS_SD;
@@ -753,7 +785,10 @@ vMatrixXd DHF_SPH::get_amfi_unc(const int2eJK& h2eSSLL_SD, const int2eJK& h2eSSS
     return amfi_unc;
 }
 
-
+/* 
+    Evaluate amfi SOC integrals in j-adapted spinor basis for two-component calculation
+    X will always be calculated based on spin-free h1e.
+*/
 vMatrixXd DHF_SPH::get_amfi_unc_2c(INT_SPH& int_sph_)
 {
     int2eJK SSLL_SD, SSSS_SD;
@@ -854,3 +889,39 @@ vMatrixXd DHF_SPH::get_amfi_unc_2c(const int2eJK& h2eSSLL_SD, const int2eJK& h2e
 
     return amfi_unc;
 }
+
+
+/*
+    Put one-electron integrals in a single matrix and reorder them.
+    The new ordering is to put the single uncontracted spinors with same l together.
+*/
+MatrixXd DHF_SPH::unite_irrep(const vMatrixXd& inputM, const Matrix<irrep_jm, Dynamic, 1>& irrep_list)
+{
+    int size_spinor = 0, size_irrep = irrep_list.rows(), Lmax = irrep_list(size_irrep - 1).l;
+    if(inputM.rows() != size_irrep)
+    {
+        cout << "ERROR: the size of inputM is not equal to Nirrep." << endl;
+        exit(99);
+    }
+    for(int ir = 0; ir < size_irrep; ir++)
+    {
+        size_spinor += irrep_list(ir).size;
+    }
+    MatrixXd outputM(size_spinor,size_spinor);
+    outputM = MatrixXd::Zero(size_spinor,size_spinor);
+    int i_output = 0;
+    for(int ir = 0; ir < size_irrep; ir += 4*irrep_list(ir).l+2)
+    {
+        for(int ii = 0; ii < irrep_list(ir).size; ii++)
+        for(int jj = 0; jj < irrep_list(ir).size; jj++)
+        for(int mi = 0; mi < 4*irrep_list(ir).l+2; mi++)
+        {
+            outputM(i_output + ii*(4*irrep_list(ir).l+2) + mi, i_output + jj*(4*irrep_list(ir).l+2) + mi) = inputM(ir+mi)(ii,jj);
+        }
+        i_output += (4*irrep_list(ir).l+2) * irrep_list(ir).size;
+    }
+
+    return outputM;
+}
+
+

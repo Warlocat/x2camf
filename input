@@ -1,17 +1,9 @@
-N          atomName
+AR          atomName
 PVQZ        basisSet
-SFX2C1E     jobs
-
-%occAMFI
-3
-4
-2
-1
+DHF     jobs
 
 
-%occAMFI_he
-1
-2
+
 
 %occAMFI_ne
 3
@@ -28,7 +20,7 @@ SFX2C1E     jobs
 6
 
 
-%occAMFI_ar
+%occAMFI
 3
 6
 4
