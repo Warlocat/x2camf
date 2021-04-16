@@ -296,3 +296,16 @@ MatrixXd X2C::get_R(const MatrixXd& S_4c, const MatrixXd& X_)
     return S_h_i * tmp * S_h;
 }
 
+MatrixXd X2C::evaluate_h1e_x2c(const MatrixXd& S_, const MatrixXd& T_, const MatrixXd& W_, const MatrixXd& V_)
+{
+    MatrixXd X = get_X(S_, T_, W_, V_);
+    MatrixXd R = get_R(S_, T_, X);
+    MatrixXd h_eff = V_ + T_ * X + X.transpose() * T_ - X.transpose() * T_ * X + 0.25/pow(speedOfLight,2) * X.transpose() * W_ * X;
+    return R.transpose() *  h_eff * R;
+}
+
+MatrixXd X2C::evaluate_h1e_x2c(const MatrixXd& S_, const MatrixXd& T_, const MatrixXd& W_, const MatrixXd& V_, const MatrixXd& X_, const MatrixXd& R_)
+{
+    MatrixXd h_eff = V_ + T_ * X_ + X_.transpose() * T_ - X_.transpose() * T_ * X_ + 0.25/pow(speedOfLight,2) * X_.transpose() * W_ * X_;
+    return R_.transpose() *  h_eff * R_;
+}

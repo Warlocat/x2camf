@@ -1,5 +1,17 @@
-XE          atomName
-ANO-RCC        basisSet
+N          atomName
+PVQZ        basisSet
+SFX2C1E     jobs
+
+%occAMFI
+3
+4
+2
+1
+
+
+%occAMFI_he
+1
+2
 
 %occAMFI_ne
 3
@@ -25,7 +37,7 @@ ANO-RCC        basisSet
 
 
 
-%occAMFI
+%occAMFI_xe
 5
 10
 8

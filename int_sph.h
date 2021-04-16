@@ -41,10 +41,9 @@ public:
 
     /* Evaluate one-electron integral */
     vMatrixXd get_h1e(const string& intType) const;
-    void get_h1e_direct(vMatrixXd& overlap, vMatrixXd& kinetic, vMatrixXd& Vnuc, vMatrixXd& WWW);
     /* Evaluate two-electron integral in J-K form */
     int2eJK get_h2e_JK(const string& intType, const int& occMaxL = -1) const;
-    void get_h2e_JK_direct(int2eJK& LLLL, int2eJK& SSLL, int2eJK& SSSS, const int& occMaxL = -1);
+    void get_h2e_JK_direct(int2eJK& LLLL, int2eJK& SSLL, int2eJK& SSSS, const int& occMaxL = -1, const bool& spinFree = false);
     void get_h2eSD_JK_direct(int2eJK& SSLL, int2eJK& SSSS, const int& occMaxL = -1);
     
     /* get contraction coefficients for uncontracted calculations */

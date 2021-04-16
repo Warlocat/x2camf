@@ -62,6 +62,8 @@ namespace X2C
     MatrixXd get_X(const MatrixXd& coeff);
     MatrixXd get_R(const MatrixXd& S_, const MatrixXd& T_, const MatrixXd& X_);
     MatrixXd get_R(const MatrixXd& S_4c, const MatrixXd& X_);
+    MatrixXd evaluate_h1e_x2c(const MatrixXd& S_, const MatrixXd& T_, const MatrixXd& W_, const MatrixXd& V_);
+    MatrixXd evaluate_h1e_x2c(const MatrixXd& S_, const MatrixXd& T_, const MatrixXd& W_, const MatrixXd& V_, const MatrixXd& X_, const MatrixXd& R_);
 }
 
 

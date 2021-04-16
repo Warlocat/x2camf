@@ -487,117 +487,6 @@ vMatrixXd INT_SPH::get_h1e(const string& intType) const
 }
 
 /*
-    Evaluate S, T, V, and W together for HF calculations
-*/
-void INT_SPH::get_h1e_direct(vMatrixXd& overlap, vMatrixXd& kinetic, vMatrixXd& Vnuc, vMatrixXd& WWW)
-{
-    overlap.resize(Nirrep);
-    kinetic.resize(Nirrep);
-    Vnuc.resize(Nirrep);
-    WWW.resize(Nirrep);
-    int int_tmp = 0;
-    for(int irrep = 0; irrep < Nirrep; irrep++)
-    {
-        overlap(irrep).resize(irrep_list(irrep).size, irrep_list(irrep).size);
-        overlap(irrep) = MatrixXd::Zero(irrep_list(irrep).size,irrep_list(irrep).size);
-        kinetic(irrep).resize(irrep_list(irrep).size, irrep_list(irrep).size);
-        kinetic(irrep) = MatrixXd::Zero(irrep_list(irrep).size,irrep_list(irrep).size);
-        Vnuc(irrep).resize(irrep_list(irrep).size, irrep_list(irrep).size);
-        Vnuc(irrep) = MatrixXd::Zero(irrep_list(irrep).size,irrep_list(irrep).size);
-        WWW(irrep).resize(irrep_list(irrep).size, irrep_list(irrep).size);
-        WWW(irrep) = MatrixXd::Zero(irrep_list(irrep).size,irrep_list(irrep).size);
-    }
-    for(int ishell = 0; ishell < size_shell; ishell++)
-    {
-        int ll = shell_list(ishell).l;
-        int size_gtos = shell_list(ishell).coeff.rows();
-        vMatrixXd h1e_single_shell_s, h1e_single_shell_t, h1e_single_shell_v, h1e_single_shell_w;
-        if(ll == 0) 
-        {
-            h1e_single_shell_s.resize(1);
-            h1e_single_shell_t.resize(1);
-            h1e_single_shell_v.resize(1);
-            h1e_single_shell_w.resize(1);
-        }
-        else
-        {
-            h1e_single_shell_s.resize(2);
-            h1e_single_shell_t.resize(2);
-            h1e_single_shell_v.resize(2);
-            h1e_single_shell_w.resize(2);
-        }   
-        for(int ii = 0; ii < h1e_single_shell_s.rows(); ii++)    
-        {
-            h1e_single_shell_s(ii).resize(size_gtos, size_gtos);
-            h1e_single_shell_t(ii).resize(size_gtos, size_gtos);
-            h1e_single_shell_v(ii).resize(size_gtos, size_gtos);
-            h1e_single_shell_w(ii).resize(size_gtos, size_gtos);
-        }
-        for(int ii = 0; ii < size_gtos; ii++)
-        for(int jj = 0; jj < size_gtos; jj++)
-        {
-            double a1 = shell_list(ishell).exp_a(ii), a2 = shell_list(ishell).exp_a(jj);
-            VectorXd auxiliary_1e_list(6);
-            for(int mm = 0; mm <= 4; mm++)
-                auxiliary_1e_list(mm) = auxiliary_1e(2*ll + mm, a1 + a2);
-            if(ll != 0)
-            {
-                auxiliary_1e_list(5) = auxiliary_1e(2*ll - 1, a1 + a2);
-            }
-            else
-            {
-                auxiliary_1e_list(5) = 0.0;
-            }
-            for(int twojj = abs(2*ll-1); twojj <= 2*ll+1; twojj = twojj + 2)
-            {
-                double kappa = (twojj + 1.0) * (ll - twojj/2.0), norm_tmp = shell_list(ishell).norm(ii) * shell_list(ishell).norm(jj);
-                int index_tmp = 1 - (2*ll+1 - twojj)/2;
-                if(ll == 0) index_tmp = 0;
-                
-                h1e_single_shell_s(index_tmp)(ii,jj) = auxiliary_1e_list(2);
-                h1e_single_shell_v(index_tmp)(ii,jj) = -atomNumber * auxiliary_1e_list(1);
-                h1e_single_shell_t(index_tmp)(ii,jj) = 4*a1*a2 * auxiliary_1e_list(4);
-                h1e_single_shell_w(index_tmp)(ii,jj) = 4*a1*a2 * auxiliary_1e_list(3);
-                if(ll!=0)
-                {
-                    h1e_single_shell_w(index_tmp)(ii,jj) += pow(ll + kappa + 1.0, 2) * auxiliary_1e_list(5) - 2.0*(ll + kappa + 1.0)*(a1 + a2)*auxiliary_1e_list(1);
-                    h1e_single_shell_t(index_tmp)(ii,jj) += pow(ll + kappa + 1.0, 2) * auxiliary_1e_list(0) - 2.0*(ll + kappa + 1.0)*(a1 + a2)*auxiliary_1e_list(2);
-                }
-                h1e_single_shell_w(index_tmp)(ii,jj) *= -atomNumber;                    
-                h1e_single_shell_t(index_tmp)(ii,jj) /= 2.0;
-
-                h1e_single_shell_s(index_tmp)(ii,jj) /= norm_tmp;
-                h1e_single_shell_t(index_tmp)(ii,jj) /= norm_tmp;
-                h1e_single_shell_v(index_tmp)(ii,jj) /= norm_tmp;
-                h1e_single_shell_w(index_tmp)(ii,jj) /= norm_tmp;
-            }
-        }
-        for(int ii = 0; ii < irrep_list(int_tmp).two_j + 1; ii++)
-        {
-            overlap(int_tmp + ii) = h1e_single_shell_s(0);
-            kinetic(int_tmp + ii) = h1e_single_shell_t(0);
-            Vnuc(int_tmp + ii) = h1e_single_shell_v(0);
-            WWW(int_tmp + ii) = h1e_single_shell_w(0);
-        }
-        int_tmp += irrep_list(int_tmp).two_j + 1;
-        if(ll != 0)
-        {
-            for(int ii = 0; ii < irrep_list(int_tmp).two_j + 1; ii++)
-            {
-                overlap(int_tmp + ii) = h1e_single_shell_s(1);
-                kinetic(int_tmp + ii) = h1e_single_shell_t(1);
-                Vnuc(int_tmp + ii) = h1e_single_shell_v(1);
-                WWW(int_tmp + ii) = h1e_single_shell_w(1);
-            }
-            int_tmp += irrep_list(int_tmp).two_j + 1;
-        }
-    }
-
-    return;
-}
-
-
-/*
     Evaluate different two-electron Coulomb and Exchange integral in 2-spinor basis
 */
 int2eJK INT_SPH::get_h2e_JK(const string& intType, const int& occMaxL) const
@@ -1034,7 +923,7 @@ int2eJK INT_SPH::get_h2e_JK(const string& intType, const int& occMaxL) const
 /*
     Evaluate all 2e integral together for HF calculations
 */
-void INT_SPH::get_h2e_JK_direct(int2eJK& LLLL, int2eJK& SSLL, int2eJK& SSSS, const int& occMaxL)
+void INT_SPH::get_h2e_JK_direct(int2eJK& LLLL, int2eJK& SSLL, int2eJK& SSSS, const int& occMaxL, const bool& spinFree)
 {
     int occMaxShell = 0;
     if(occMaxL == -1)    occMaxShell = size_shell;
@@ -1202,18 +1091,38 @@ void INT_SPH::get_h2e_JK_direct(int2eJK& LLLL, int2eJK& SSLL, int2eJK& SSSS, con
                     array_radial_J_LLLL[tmp][ii][jj][kk][ll] = radial_2e_list_J[tmp](0,0) / norm_J;
                     array_radial_J_SSLL[tmp][ii][jj][kk][ll] = 4.0*a1*a2 * radial_2e_list_J[tmp](1,0);
                     array_radial_J_SSSS[tmp][ii][jj][kk][ll] = 4*a1*a2*4*a3*a4 * radial_2e_list_J[tmp](1,1);
-                    if(l_p != 0)
+                    if(spinFree)
                     {
-                        array_radial_J_SSLL[tmp][ii][jj][kk][ll] += lk1*lk2 * radial_2e_list_J[tmp](2,0) - (2.0*a1*lk2+2.0*a2*lk1) * radial_2e_list_J[tmp](0,0);
-                        if(l_q != 0)
-                            array_radial_J_SSSS[tmp][ii][jj][kk][ll] += lk1*lk2*lk3*lk4 * radial_2e_list_J[tmp](2,2) - (2*a1*lk2+2*a2*lk1)*lk3*lk4 * radial_2e_list_J[tmp](0,2) + 4*a1*a2*lk3*lk4 * radial_2e_list_J[tmp](1,2) - lk1*lk2*(2*a3*lk4+2*a4*lk3) * radial_2e_list_J[tmp](2,0) + (2*a1*lk2+2*a2*lk1)*(2*a3*lk4+2*a4*lk3) * radial_2e_list_J[tmp](0,0) - 4*a1*a2*(2*a3*lk4+2*a4*lk3) * radial_2e_list_J[tmp](1,0) + lk1*lk2*4*a3*a4 * radial_2e_list_J[tmp](2,1) - (2*a1*lk2+2*a2*lk1)*4*a3*a4 * radial_2e_list_J[tmp](0,1);
+                        double l12 = l_p*l_p + l_p*(l_p+1)/2 + l_p*(l_p+1)/2 - tmp*(tmp+1)/2, l34 = l_q*l_q + l_q*(l_q+1)/2 + l_q*(l_q+1)/2 - tmp*(tmp+1)/2;
+                        if(l_p != 0)
+                        {
+                            array_radial_J_SSLL[tmp][ii][jj][kk][ll] += l12 * radial_2e_list_J[tmp](2,0) - (2.0*a1*l_p+2.0*a2*l_p) * radial_2e_list_J[tmp](0,0);
+                            if(l_q != 0)
+                                array_radial_J_SSSS[tmp][ii][jj][kk][ll] += l12*l34 * radial_2e_list_J[tmp](2,2) - (2*a1*l_p+2*a2*l_p)*l34 * radial_2e_list_J[tmp](0,2) + 4*a1*a2*l34 * radial_2e_list_J[tmp](1,2) - l12*(2*a3*l_q+2*a4*l_q) * radial_2e_list_J[tmp](2,0) + (2*a1*l_p+2*a2*l_p)*(2*a3*l_q+2*a4*l_q) * radial_2e_list_J[tmp](0,0) - 4*a1*a2*(2*a3*l_q+2*a4*l_q) * radial_2e_list_J[tmp](1,0) + l12*4*a3*a4 * radial_2e_list_J[tmp](2,1) - (2*a1*l_p+2*a2*l_p)*4*a3*a4 * radial_2e_list_J[tmp](0,1);
+                            else
+                                array_radial_J_SSSS[tmp][ii][jj][kk][ll] += l12*4*a3*a4 * radial_2e_list_J[tmp](2,1) - (2*a1*l_p+2*a2*l_p)*4*a3*a4 * radial_2e_list_J[tmp](0,1);
+                        }
                         else
-                            array_radial_J_SSSS[tmp][ii][jj][kk][ll] += lk1*lk2*4*a3*a4 * radial_2e_list_J[tmp](2,1) - (2*a1*lk2+2*a2*lk1)*4*a3*a4 * radial_2e_list_J[tmp](0,1);
+                        {
+                            if(l_q != 0)
+                                array_radial_J_SSSS[tmp][ii][jj][kk][ll] += 4*a1*a2*l34 * radial_2e_list_J[tmp](1,2) - 4*a1*a2*(2*a3*l_q+2*a4*l_q) * radial_2e_list_J[tmp](1,0);
+                        }
                     }
                     else
-                    {
-                        if(l_q != 0)
-                            array_radial_J_SSSS[tmp][ii][jj][kk][ll] += 4*a1*a2*lk3*lk4 * radial_2e_list_J[tmp](1,2) - 4*a1*a2*(2*a3*lk4+2*a4*lk3) * radial_2e_list_J[tmp](1,0);
+                    {    
+                        if(l_p != 0)
+                        {
+                            array_radial_J_SSLL[tmp][ii][jj][kk][ll] += lk1*lk2 * radial_2e_list_J[tmp](2,0) - (2.0*a1*lk2+2.0*a2*lk1) * radial_2e_list_J[tmp](0,0);
+                            if(l_q != 0)
+                                array_radial_J_SSSS[tmp][ii][jj][kk][ll] += lk1*lk2*lk3*lk4 * radial_2e_list_J[tmp](2,2) - (2*a1*lk2+2*a2*lk1)*lk3*lk4 * radial_2e_list_J[tmp](0,2) + 4*a1*a2*lk3*lk4 * radial_2e_list_J[tmp](1,2) - lk1*lk2*(2*a3*lk4+2*a4*lk3) * radial_2e_list_J[tmp](2,0) + (2*a1*lk2+2*a2*lk1)*(2*a3*lk4+2*a4*lk3) * radial_2e_list_J[tmp](0,0) - 4*a1*a2*(2*a3*lk4+2*a4*lk3) * radial_2e_list_J[tmp](1,0) + lk1*lk2*4*a3*a4 * radial_2e_list_J[tmp](2,1) - (2*a1*lk2+2*a2*lk1)*4*a3*a4 * radial_2e_list_J[tmp](0,1);
+                            else
+                                array_radial_J_SSSS[tmp][ii][jj][kk][ll] += lk1*lk2*4*a3*a4 * radial_2e_list_J[tmp](2,1) - (2*a1*lk2+2*a2*lk1)*4*a3*a4 * radial_2e_list_J[tmp](0,1);
+                        }
+                        else
+                        {
+                            if(l_q != 0)
+                                array_radial_J_SSSS[tmp][ii][jj][kk][ll] += 4*a1*a2*lk3*lk4 * radial_2e_list_J[tmp](1,2) - 4*a1*a2*(2*a3*lk4+2*a4*lk3) * radial_2e_list_J[tmp](1,0);
+                        }
                     }
                     array_radial_J_SSLL[tmp][ii][jj][kk][ll] /= norm_J*4.0*pow(speedOfLight,2);
                     array_radial_J_SSSS[tmp][ii][jj][kk][ll] /= norm_J*16.0*pow(speedOfLight,4);
@@ -1225,15 +1134,32 @@ void INT_SPH::get_h2e_JK_direct(int2eJK& LLLL, int2eJK& SSLL, int2eJK& SSSS, con
                     array_radial_K_LLLL[tmp][ii][ll][kk][jj] = radial_2e_list_K[tmp](0,0) / norm_K;
                     array_radial_K_SSLL[tmp][ii][ll][kk][jj] = 4.0*a1*a2 * radial_2e_list_K[tmp](1,0);
                     array_radial_K_SSSS[tmp][ii][ll][kk][jj] = 4*a1*a2*4*a3*a4 * radial_2e_list_K[tmp](1,1);
-                    if(l_p != 0 && l_q != 0)
+                    if(spinFree)
                     {
-                        array_radial_K_SSLL[tmp][ii][ll][kk][jj] += lk1*lk2 * radial_2e_list_K[tmp](2,0) - (2.0*a1*lk2+2.0*a2*lk1) * radial_2e_list_K[tmp](0,0);
-                        array_radial_K_SSSS[tmp][ii][ll][kk][jj] += lk1*lk2*lk3*lk4 * radial_2e_list_K[tmp](2,2) - (2*a1*lk2+2*a2*lk1)*lk3*lk4 * radial_2e_list_K[tmp](0,2) + 4*a1*a2*lk3*lk4 * radial_2e_list_K[tmp](1,2) - lk1*lk2*(2*a3*lk4+2*a4*lk3) * radial_2e_list_K[tmp](2,0) + (2*a1*lk2+2*a2*lk1)*(2*a3*lk4+2*a4*lk3) * radial_2e_list_K[tmp](0,0) - 4*a1*a2*(2*a3*lk4+2*a4*lk3) * radial_2e_list_K[tmp](1,0) + lk1*lk2*4*a3*a4 * radial_2e_list_K[tmp](2,1) - (2*a1*lk2+2*a2*lk1)*4*a3*a4 * radial_2e_list_K[tmp](0,1);
+                        double l12 = l_p*l_q + l_p*(l_p+1)/2 + l_q*(l_q+1)/2 - tmp*(tmp+1)/2, l34 = l_q*l_p + l_q*(l_q+1)/2 + l_p*(l_p+1)/2 - tmp*(tmp+1)/2;
+                        if(l_p != 0 && l_q != 0)
+                        {
+                            array_radial_K_SSLL[tmp][ii][ll][kk][jj] += l12 * radial_2e_list_K[tmp](2,0) - (2.0*a1*l_q+2.0*a2*l_p) * radial_2e_list_K[tmp](0,0);
+                            array_radial_K_SSSS[tmp][ii][ll][kk][jj] += l12*l34 * radial_2e_list_K[tmp](2,2) - (2*a1*l_q+2*a2*l_p)*l34 * radial_2e_list_K[tmp](0,2) + 4*a1*a2*l34 * radial_2e_list_K[tmp](1,2) - l12*(2*a3*l_p+2*a4*l_q) * radial_2e_list_K[tmp](2,0) + (2*a1*l_q+2*a2*l_p)*(2*a3*l_p+2*a4*l_q) * radial_2e_list_K[tmp](0,0) - 4*a1*a2*(2*a3*l_p+2*a4*l_q) * radial_2e_list_K[tmp](1,0) + l12*4*a3*a4 * radial_2e_list_K[tmp](2,1) - (2*a1*l_q+2*a2*l_p)*4*a3*a4 * radial_2e_list_K[tmp](0,1);
+                        }
+                        else if(l_p != 0 || l_q != 0)
+                        {
+                            array_radial_K_SSLL[tmp][ii][ll][kk][jj] += - (2.0*a1*l_q+2.0*a2*l_p) * radial_2e_list_K[tmp](0,0);
+                            array_radial_K_SSSS[tmp][ii][ll][kk][jj] += (2*a1*l_q+2*a2*l_p)*(2*a3*l_p+2*a4*l_q) * radial_2e_list_K[tmp](0,0) - 4*a1*a2*(2*a3*l_p+2*a4*l_q) * radial_2e_list_K[tmp](1,0) - (2*a1*l_q+2*a2*l_p)*4*a3*a4 * radial_2e_list_K[tmp](0,1);
+                        }
                     }
-                    else if(l_p != 0 || l_q != 0)
+                    else
                     {
-                        array_radial_K_SSLL[tmp][ii][ll][kk][jj] += - (2.0*a1*lk2+2.0*a2*lk1) * radial_2e_list_K[tmp](0,0);
-                        array_radial_K_SSSS[tmp][ii][ll][kk][jj] += (2*a1*lk2+2*a2*lk1)*(2*a3*lk4+2*a4*lk3) * radial_2e_list_K[tmp](0,0) - 4*a1*a2*(2*a3*lk4+2*a4*lk3) * radial_2e_list_K[tmp](1,0) - (2*a1*lk2+2*a2*lk1)*4*a3*a4 * radial_2e_list_K[tmp](0,1);
+                        if(l_p != 0 && l_q != 0)
+                        {
+                            array_radial_K_SSLL[tmp][ii][ll][kk][jj] += lk1*lk2 * radial_2e_list_K[tmp](2,0) - (2.0*a1*lk2+2.0*a2*lk1) * radial_2e_list_K[tmp](0,0);
+                            array_radial_K_SSSS[tmp][ii][ll][kk][jj] += lk1*lk2*lk3*lk4 * radial_2e_list_K[tmp](2,2) - (2*a1*lk2+2*a2*lk1)*lk3*lk4 * radial_2e_list_K[tmp](0,2) + 4*a1*a2*lk3*lk4 * radial_2e_list_K[tmp](1,2) - lk1*lk2*(2*a3*lk4+2*a4*lk3) * radial_2e_list_K[tmp](2,0) + (2*a1*lk2+2*a2*lk1)*(2*a3*lk4+2*a4*lk3) * radial_2e_list_K[tmp](0,0) - 4*a1*a2*(2*a3*lk4+2*a4*lk3) * radial_2e_list_K[tmp](1,0) + lk1*lk2*4*a3*a4 * radial_2e_list_K[tmp](2,1) - (2*a1*lk2+2*a2*lk1)*4*a3*a4 * radial_2e_list_K[tmp](0,1);
+                        }
+                        else if(l_p != 0 || l_q != 0)
+                        {
+                            array_radial_K_SSLL[tmp][ii][ll][kk][jj] += - (2.0*a1*lk2+2.0*a2*lk1) * radial_2e_list_K[tmp](0,0);
+                            array_radial_K_SSSS[tmp][ii][ll][kk][jj] += (2*a1*lk2+2*a2*lk1)*(2*a3*lk4+2*a4*lk3) * radial_2e_list_K[tmp](0,0) - 4*a1*a2*(2*a3*lk4+2*a4*lk3) * radial_2e_list_K[tmp](1,0) - (2*a1*lk2+2*a2*lk1)*4*a3*a4 * radial_2e_list_K[tmp](0,1);
+                        }
                     }
                     array_radial_K_SSLL[tmp][ii][ll][kk][jj] /= norm_K*4.0*pow(speedOfLight,2);
                     array_radial_K_SSSS[tmp][ii][ll][kk][jj] /= norm_K*16.0*pow(speedOfLight,4);
