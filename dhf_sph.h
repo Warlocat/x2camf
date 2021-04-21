@@ -49,6 +49,9 @@ public:
     vMatrixXd get_amfi_unc_2c(const int2eJK& h2eSSLL_SD, const int2eJK& h2eSSSS_SD);
     /* Put one-electron integrals in a single matrix and reorder them */
     static MatrixXd unite_irrep(const vMatrixXd& inputM, const Matrix<irrep_jm, Dynamic, 1>& irrep_list);
+    /* Generate basis transformation matrix */
+    static MatrixXd jspinor2sph(const Matrix<irrep_jm, Dynamic, 1>& irrep_list);
+    static MatrixXcd sph2solid(const Matrix<irrep_jm, Dynamic, 1>& irrep_list);
 };
 
 

@@ -41,9 +41,12 @@ struct int2eJK
 double factorial(const int& n);
 double double_factorial(const int& n);
 
-/* functions used to evaluate wigner 3j symbols */
+/* evaluate wigner 3j symbols */
 double wigner_3j(const int& l1, const int& l2, const int& l3, const int& m1, const int& m2, const int& m3);
 double wigner_3j_zeroM(const int& l1, const int& l2, const int& l3);
+
+/* transformation matrix for complex SH to solid SH */
+complex<double> U_SH_trans(const int& mu, const int& mm);
 
 /* evaluate "difference" between two MatrixXd */
 double evaluateChange(const MatrixXd& M1, const MatrixXd& M2);

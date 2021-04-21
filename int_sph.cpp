@@ -141,7 +141,7 @@ INT_SPH::~INT_SPH()
 */
 void INT_SPH::readBasis()
 {
-    string target = atomName + ":" + basisSet + " ", flags;
+    string target = atomName + ":" + basisSet, flags;
     
     ifstream ifs;
     int int_tmp;
@@ -150,11 +150,19 @@ void INT_SPH::readBasis()
         while (!ifs.eof())
         {
             getline(ifs,flags);
-            flags.resize(target.size());
-            if(flags == target) 
+            if(flags.size() == target.size() && flags == target)
             {
                 getline(ifs,flags);
                 break;
+            }
+            else if(flags.size() > target.size())
+            {
+                flags.resize(target.size() + 1);
+                if(flags == target + " ") 
+                {
+                    getline(ifs,flags);
+                    break;
+                }
             }
         }
         if(ifs.eof())

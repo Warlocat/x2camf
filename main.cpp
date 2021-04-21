@@ -36,7 +36,6 @@ int main()
         cout << "Wrong Jobs!" << endl;
         exit(99);
     }
-    
     vMatrixXd amfi;
     if(jobs == "SFX2C1E")
     {
@@ -46,15 +45,19 @@ int main()
     else
     {
         (*dhf_test).runSCF();
-        amfi = (*dhf_test).get_amfi_unc(intor,"h1e");
+        amfi = (*dhf_test).get_amfi_unc(intor,"partialFock");
     }
     for(int ir = 0; ir < amfi.rows(); ir++)
         cout << amfi(ir) << endl;
     MatrixXd amfi2 = dhf_test->unite_irrep(amfi,intor.irrep_list);
-    for(int ii = 0; ii < amfi2.rows(); ii++)
-    for(int jj = 0; jj < amfi2.cols(); jj++)
-        if(abs(amfi2(ii,jj)) > 1e-8)
-            cout << ii << "\t" << jj << "\t" << amfi2(ii,jj) << endl;
+    MatrixXd M1 = dhf_test->jspinor2sph(intor.irrep_list);
+    MatrixXcd M2 = dhf_test->sph2solid(intor.irrep_list);
+    amfi2 = M1.adjoint()*amfi2*M1;
+    MatrixXcd amfi3 = M2.adjoint()*amfi2*M2;
+    for(int ii = 0; ii < amfi3.rows(); ii++)
+    for(int jj = 0; jj < amfi3.cols(); jj++)
+        // if(abs(amfi2(ii,jj)) > 1e-8)
+            cout << ii << "\t" << jj << "\t" << amfi3(ii,jj) << endl;
 
     return 0;
 }

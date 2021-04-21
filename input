@@ -1,5 +1,5 @@
-AR          atomName
-PVQZ        basisSet
+KR          atomName
+AUG-PVTZ        basisSet
 DHF     jobs
 
 
@@ -11,7 +11,7 @@ DHF     jobs
 2
 4
 
-%occAMFI_kr
+%occAMFI
 5
 8
 6
@@ -20,7 +20,7 @@ DHF     jobs
 6
 
 
-%occAMFI
+%occAMFI_ar
 3
 6
 4

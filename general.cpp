@@ -132,6 +132,31 @@ double wigner_3j_zeroM(const int& l1, const int& l2, const int& l3)
 }
 
 
+/* 
+    transformation matrix for complex SH to solid SH
+*/
+complex<double> U_SH_trans(const int& mu, const int& mm)
+{
+    complex<double> result;
+    if(abs(mu) != abs(mm)) result = 0.0;
+    else if (mu == 0)
+    {
+        result = 1.0;
+    }
+    else if (mu > 0)
+    {
+        if(mu == mm) result = pow(-1.0, mu) / sqrt(2.0);
+        else result = 1.0 / sqrt(2.0);
+    }
+    else
+    {
+        if(mu == mm) result = 1.0 / sqrt(2.0) * complex<double>(0.0,1.0);
+        else result = -pow(-1.0, mu) / sqrt(2.0) * complex<double>(0.0,1.0);
+    }
+    
+    return result;
+}
+
 double evaluateChange(const MatrixXd& M1, const MatrixXd& M2)
 {
     int size = M1.rows();

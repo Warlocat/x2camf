@@ -893,7 +893,7 @@ vMatrixXd DHF_SPH::get_amfi_unc_2c(const int2eJK& h2eSSLL_SD, const int2eJK& h2e
 
 /*
     Put one-electron integrals in a single matrix and reorder them.
-    The new ordering is to put the single uncontracted spinors with same l together.
+    The new ordering is to put the single uncontracted spinors together.
 */
 MatrixXd DHF_SPH::unite_irrep(const vMatrixXd& inputM, const Matrix<irrep_jm, Dynamic, 1>& irrep_list)
 {
@@ -924,4 +924,112 @@ MatrixXd DHF_SPH::unite_irrep(const vMatrixXd& inputM, const Matrix<irrep_jm, Dy
     return outputM;
 }
 
+
+/*
+    Generate basis transformation matrix
+    j-adapted spinor to complex spherical harmonics spinor
+    complex spherical harmonics spinor to solid spherical harmonics spinor
+
+    output order is aaa...bbb... for spin, and m_l = -l, -l+1, ..., +l for each l
+*/
+MatrixXd DHF_SPH::jspinor2sph(const Matrix<irrep_jm, Dynamic, 1>& irrep_list)
+{
+    int size_spinor = 0, size_irrep = irrep_list.rows(), Lmax = irrep_list(size_irrep - 1).l;
+    int Lsize[Lmax+1];
+    for(int ir = 0; ir < size_irrep; ir++)
+    {
+        size_spinor += irrep_list(ir).size;
+        Lsize[irrep_list(ir).l] = irrep_list(ir).size;
+    }
+    int size_nr = size_spinor/2, int_tmp = 0;
+    Matrix<Matrix<VectorXi,-1,1>,-1,1>index_tmp(Lmax+1);
+    for(int ll = 0; ll <= Lmax; ll++)
+    {
+        index_tmp(ll).resize(Lsize[ll]);
+        for(int nn = 0; nn < Lsize[ll]; nn++)
+        {
+            index_tmp(ll)(nn).resize(2*ll+1);
+            for(int mm = 0; mm < 2*ll+1; mm++)
+            {
+                index_tmp(ll)(nn)(mm) = int_tmp;
+                int_tmp++;
+            }
+        }   
+    }
+    
+    /*
+        jspinor_i = \sum_j U_{ji} sph_j
+        O^{jspinor} = U^\dagger O^{sph} U
+    */
+    MatrixXd output(size_spinor,size_spinor);
+    output = MatrixXd::Zero(size_spinor,size_spinor);
+    int_tmp = 0;
+    for(int ll = 0; ll <= Lmax; ll++)
+    for(int nn = 0; nn < Lsize[ll]; nn++)
+    {
+        if(ll != 0)
+        {
+            int twojj = 2*ll-1;
+            for(int two_mj = -twojj; two_mj <= twojj; two_mj += 2)
+            {
+                output(index_tmp(ll)(nn)((two_mj-1)/2+ll),int_tmp) = -sqrt((ll+0.5-two_mj/2.0)/(2*ll+1.0));
+                output(size_nr + index_tmp(ll)(nn)((two_mj+1)/2+ll),int_tmp) = sqrt((ll+0.5+two_mj/2.0)/(2*ll+1.0));
+                int_tmp++;
+            }
+        }
+        int twojj = 2*ll+1;
+        for(int two_mj = -twojj; two_mj <= twojj; two_mj += 2)
+        {
+            if((two_mj-1)/2 >= -ll)
+                output(index_tmp(ll)(nn)((two_mj-1)/2+ll),int_tmp) = sqrt((ll+0.5+two_mj/2.0)/(2*ll+1.0));
+            if((two_mj+1)/2 <= ll)
+                output(size_nr + index_tmp(ll)(nn)((two_mj+1)/2+ll),int_tmp) = sqrt((ll+0.5-two_mj/2.0)/(2*ll+1.0));
+            int_tmp++;
+        }
+    }
+
+    /* 
+        return M = U^\dagger 
+        O^{sph} = U O^{jspinor} U^\dagger = M^\dagger O^{jspinor} M
+    */
+    return output.adjoint();
+}
+
+MatrixXcd DHF_SPH::sph2solid(const Matrix<irrep_jm, Dynamic, 1>& irrep_list)
+{
+    int size_spinor = 0, size_irrep = irrep_list.rows(), Lmax = irrep_list(size_irrep - 1).l;
+    int Lsize[Lmax+1];
+    for(int ir = 0; ir < size_irrep; ir++)
+    {
+        size_spinor += irrep_list(ir).size;
+        Lsize[irrep_list(ir).l] = irrep_list(ir).size;
+    }
+    int size_nr = size_spinor/2;
+
+    /*
+        real_i = \sum_j U_{ji} complex_j
+        O^{real} = U^\dagger O^{complex} U
+    */
+    MatrixXcd U_SH(2*Lmax+1,2*Lmax+1);
+    for(int ii = 0; ii < 2*Lmax+1; ii++)
+    for(int jj = 0; jj < 2*Lmax+1; jj++)
+        U_SH(ii,jj) = U_SH_trans(jj - Lmax,ii - Lmax);
+
+    int int_tmp = 0;
+    MatrixXcd output(size_spinor,size_spinor);
+    output = MatrixXcd::Zero(size_spinor,size_spinor);
+    for(int ll = 0; ll <= Lmax; ll++)
+    for(int nn = 0; nn < Lsize[ll]; nn++)
+    {
+        for(int mm = 0; mm < 2*ll+1; mm++)
+        for(int nn = 0; nn < 2*ll+1; nn++)
+        {
+            output(int_tmp+mm,int_tmp+nn) = U_SH(mm-ll+Lmax,nn-ll+Lmax);
+            output(size_nr+int_tmp+mm,size_nr+int_tmp+nn) = U_SH(mm-ll+Lmax,nn-ll+Lmax);
+        }
+        int_tmp += 2*ll+1;
+    }
+
+    return output;
+}
 
