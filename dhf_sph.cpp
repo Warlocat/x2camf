@@ -10,7 +10,6 @@
 using namespace std;
 using namespace Eigen;
 
-clock_t StartTime, EndTime; 
 
 DHF_SPH::DHF_SPH(INT_SPH& int_sph_, const string& filename, const bool& spinFree, const bool& sfx2c):
 irrep_list(int_sph_.irrep_list)
@@ -21,7 +20,7 @@ irrep_list(int_sph_.irrep_list)
 
     occNumber.resize(Nirrep);
     occMax_irrep = 0;
-    readOCC(filename);
+    readOCC(filename, int_sph_.atomName);
     nelec = 0.0;
     cout << "Occupation number vector:" << endl;
     cout << "l\t2j\t2mj\tOcc" << endl;
@@ -153,20 +152,33 @@ MatrixXd DHF_SPH::evaluateErrorDIIS(const MatrixXd& fock_, const MatrixXd& overl
     }
     return err;
 }
+MatrixXd DHF_SPH::evaluateErrorDIIS(const MatrixXd& den_old, const MatrixXd& den_new)
+{
+    MatrixXd tmp = den_old - den_new;
+    int size = den_old.rows();
+    MatrixXd err(size*size,1);
+    for(int ii = 0; ii < size; ii++)
+    for(int jj = 0; jj < size; jj++)
+    {
+        err(ii*size+jj,0) = tmp(ii,jj);
+    }
+    return err;
+}
 
 /*
     SCF procedure for 4-c and 2-c calculation
 */
-void DHF_SPH::runSCF()
+void DHF_SPH::runSCF(const bool& twoC)
 {
     vector<MatrixXd> error4DIIS[occMax_irrep], fock4DIIS[occMax_irrep];
     StartTime = clock();
     cout << endl;
-    cout << "Start Dirac Hartree-Fock iterations..." << endl;
+    if(twoC) cout << "Start SFX2C-1e Hartree-Fock iterations..." << endl;
+    else cout << "Start Dirac Hartree-Fock iterations..." << endl;
     cout << endl;
     vMatrixXd newDen;
     eigensolverG_irrep(h1e_4c, overlap_half_i_4c, ene_orb, coeff);
-    density = evaluateDensity_spinor_irrep();
+    density = evaluateDensity_spinor_irrep(twoC);
 
     for(int iter = 1; iter <= maxIter; iter++)
     {
@@ -175,37 +187,7 @@ void DHF_SPH::runSCF()
             for(int ir = 0; ir < occMax_irrep; ir++)    
             {
                 int size_tmp = irrep_list(ir).size;
-                #pragma omp parallel  for
-                for(int mm = 0; mm < size_tmp; mm++)
-                for(int nn = 0; nn <= mm; nn++)
-                {
-                    fock_4c(ir)(mm,nn) = h1e_4c(ir)(mm,nn);
-                    fock_4c(ir)(mm+size_tmp,nn) = h1e_4c(ir)(mm+size_tmp,nn);
-                    if(mm != nn) fock_4c(ir)(nn+size_tmp,mm) = h1e_4c(ir)(nn+size_tmp,mm);
-                    fock_4c(ir)(mm+size_tmp,nn+size_tmp) = h1e_4c(ir)(mm+size_tmp,nn+size_tmp);
-                    for(int jr = 0; jr < occMax_irrep; jr++)
-                    {
-                        int size_tmp2 = irrep_list(jr).size;
-                        for(int ss = 0; ss < size_tmp2; ss++)
-                        for(int rr = 0; rr < size_tmp2; rr++)
-                        {
-                            int emn = mm*size_tmp+nn, esr = ss*size_tmp2+rr, emr = mm*size_tmp2+rr, esn = ss*size_tmp+nn;
-                            fock_4c(ir)(mm,nn) += density(jr)(ss,rr) * (h2eLLLL_JK.J(ir,jr)(emn,esr) - h2eLLLL_JK.K(ir,jr)(emr,esn)) + density(jr)(size_tmp2+ss,size_tmp2+rr) * h2eSSLL_JK.J(jr,ir)(esr,emn);
-                            fock_4c(ir)(mm+size_tmp,nn) -= density(jr)(ss,size_tmp2+rr) * h2eSSLL_JK.K(ir,jr)(emr,esn);
-                            if(mm != nn) 
-                            {
-                                int enr = nn*size_tmp2+rr, esm = ss*size_tmp+mm;
-                                fock_4c(ir)(nn+size_tmp,mm) -= density(jr)(ss,size_tmp2+rr) * h2eSSLL_JK.K(ir,jr)(enr,esm);
-                            }
-                            fock_4c(ir)(mm+size_tmp,nn+size_tmp) += density(jr)(size_tmp2+ss,size_tmp2+rr) * (h2eSSSS_JK.J(ir,jr)(emn,esr) - h2eSSSS_JK.K(ir,jr)(emr,esn)) + density(jr)(ss,rr) * h2eSSLL_JK.J(ir,jr)(emn,esr);
-                        }
-                    }
-
-                    fock_4c(ir)(nn,mm) = fock_4c(ir)(mm,nn);
-                    fock_4c(ir)(nn+size_tmp,mm+size_tmp) = fock_4c(ir)(mm+size_tmp,nn+size_tmp);
-                    fock_4c(ir)(nn,mm+size_tmp) = fock_4c(ir)(mm+size_tmp,nn);
-                    fock_4c(ir)(mm,nn+size_tmp) = fock_4c(ir)(nn+size_tmp,mm);
-                }
+                evaluateFock(fock_4c(ir),twoC,density,size_tmp,ir);
             }
         }
         else
@@ -239,7 +221,7 @@ void DHF_SPH::runSCF()
             }
         }
         eigensolverG_irrep(fock_4c, overlap_half_i_4c, ene_orb, coeff);
-        newDen = evaluateDensity_spinor_irrep();
+        newDen = evaluateDensity_spinor_irrep(twoC);
         d_density = evaluateChange_irrep(density, newDen);
         
         cout << "Iter #" << iter << " maximum density difference: " << d_density << endl;
@@ -248,201 +230,46 @@ void DHF_SPH::runSCF()
         if(d_density < convControl) 
         {
             converged = true;
-            cout << endl << "DHF converges after " << iter << " iterations." << endl << endl;
+            cout << endl << "SCF converges after " << iter << " iterations." << endl << endl;
 
             cout << "\tOrbital\t\tEnergy(in hartree)\n";
             cout << "\t*******\t\t******************\n";
             for(int ir = 0; ir < occMax_irrep; ir++)
             for(int ii = 1; ii <= irrep_list(ir).size; ii++)
             {
-                cout << "\t" << ii << "\t\t" << setprecision(15) << ene_orb(ir)(irrep_list(ir).size + ii - 1) << endl;
+                if(twoC) cout << "\t" << ii << "\t\t" << setprecision(15) << ene_orb(ir)(ii - 1) << endl;
+                else cout << "\t" << ii << "\t\t" << setprecision(15) << ene_orb(ir)(irrep_list(ir).size + ii - 1) << endl;
             }
 
             ene_scf = 0.0;
             for(int ir = 0; ir < occMax_irrep; ir++)
             {
                 int size_tmp = irrep_list(ir).size;
-                for(int ii = 0; ii < size_tmp * 2; ii++)
-                for(int jj = 0; jj < size_tmp * 2; jj++)
+                if(twoC)
                 {
-                    ene_scf += 0.5 * density(ir)(ii,jj) * (h1e_4c(ir)(jj,ii) + fock_4c(ir)(jj,ii));
+                    for(int ii = 0; ii < size_tmp; ii++)
+                    for(int jj = 0; jj < size_tmp; jj++)
+                    {
+                        ene_scf += 0.5 * density(ir)(ii,jj) * (h1e_4c(ir)(jj,ii) + fock_4c(ir)(jj,ii));
+                    }
+                }
+                else
+                {
+                    for(int ii = 0; ii < size_tmp * 2; ii++)
+                    for(int jj = 0; jj < size_tmp * 2; jj++)
+                    {
+                        ene_scf += 0.5 * density(ir)(ii,jj) * (h1e_4c(ir)(jj,ii) + fock_4c(ir)(jj,ii));
+                    }
                 }
             }
-            cout << "Final DHF energy is " << setprecision(15) << ene_scf << " hartree." << endl;
+            if(twoC) cout << "Final SFX2C-1e HF energy is " << setprecision(15) << ene_scf << " hartree." << endl;
+            else cout << "Final DHF energy is " << setprecision(15) << ene_scf << " hartree." << endl;
             break;            
         }
         for(int ir = 0; ir < occMax_irrep; ir++)    
         {
             int size_tmp = irrep_list(ir).size;
-            #pragma omp parallel  for
-            for(int mm = 0; mm < size_tmp; mm++)
-            for(int nn = 0; nn <= mm; nn++)
-            {
-                fock_4c(ir)(mm,nn) = h1e_4c(ir)(mm,nn);
-                fock_4c(ir)(mm+size_tmp,nn) = h1e_4c(ir)(mm+size_tmp,nn);
-                if(mm != nn) fock_4c(ir)(nn+size_tmp,mm) = h1e_4c(ir)(nn+size_tmp,mm);
-                fock_4c(ir)(mm+size_tmp,nn+size_tmp) = h1e_4c(ir)(mm+size_tmp,nn+size_tmp);
-                for(int jr = 0; jr < occMax_irrep; jr++)
-                {
-                    int size_tmp2 = irrep_list(jr).size;
-                    for(int ss = 0; ss < size_tmp2; ss++)
-                    for(int rr = 0; rr < size_tmp2; rr++)
-                    {
-                        int emn = mm*size_tmp+nn, esr = ss*size_tmp2+rr, emr = mm*size_tmp2+rr, esn = ss*size_tmp+nn;
-                        fock_4c(ir)(mm,nn) += density(jr)(ss,rr) * (h2eLLLL_JK.J(ir,jr)(emn,esr) - h2eLLLL_JK.K(ir,jr)(emr,esn)) + density(jr)(size_tmp2+ss,size_tmp2+rr) * h2eSSLL_JK.J(jr,ir)(esr,emn);
-                        fock_4c(ir)(mm+size_tmp,nn) -= density(jr)(ss,size_tmp2+rr) * h2eSSLL_JK.K(ir,jr)(emr,esn);
-                        if(mm != nn) 
-                        {
-                            int enr = nn*size_tmp2+rr, esm = ss*size_tmp+mm;
-                            fock_4c(ir)(nn+size_tmp,mm) -= density(jr)(ss,size_tmp2+rr) * h2eSSLL_JK.K(ir,jr)(enr,esm);
-                        }
-                        fock_4c(ir)(mm+size_tmp,nn+size_tmp) += density(jr)(size_tmp2+ss,size_tmp2+rr) * (h2eSSSS_JK.J(ir,jr)(emn,esr) - h2eSSSS_JK.K(ir,jr)(emr,esn)) + density(jr)(ss,rr) * h2eSSLL_JK.J(ir,jr)(emn,esr);
-                    }
-                }
-
-                fock_4c(ir)(nn,mm) = fock_4c(ir)(mm,nn);
-                fock_4c(ir)(nn+size_tmp,mm+size_tmp) = fock_4c(ir)(mm+size_tmp,nn+size_tmp);
-                fock_4c(ir)(nn,mm+size_tmp) = fock_4c(ir)(mm+size_tmp,nn);
-                fock_4c(ir)(mm,nn+size_tmp) = fock_4c(ir)(nn+size_tmp,mm);
-            }
-            if(error4DIIS[ir].size() >= size_DIIS)
-            {
-                error4DIIS[ir].erase(error4DIIS[ir].begin());
-                error4DIIS[ir].push_back(evaluateErrorDIIS(fock_4c(ir),overlap_4c(ir),density(ir)));
-                fock4DIIS[ir].erase(fock4DIIS[ir].begin());
-                fock4DIIS[ir].push_back(fock_4c(ir));
-            }
-            else
-            {
-                error4DIIS[ir].push_back(evaluateErrorDIIS(fock_4c(ir),overlap_4c(ir),density(ir)));
-                fock4DIIS[ir].push_back(fock_4c(ir));
-            }
-        }
-    }
-    EndTime = clock();
-    cout << "DHF iterations finished in " << (EndTime - StartTime) / (double)CLOCKS_PER_SEC << " seconds." << endl << endl;
-}
-
-void DHF_SPH::runSCF_2c()
-{
-    vector<MatrixXd> error4DIIS[occMax_irrep], fock4DIIS[occMax_irrep];
-    StartTime = clock();
-    cout << endl;
-    cout << "Start 2-c Hartree-Fock iterations..." << endl;
-    cout << endl;
-    vMatrixXd newDen;
-    eigensolverG_irrep(h1e_4c, overlap_half_i_4c, ene_orb, coeff);
-    density = evaluateDensity_spinor_irrep(true);
-
-    for(int iter = 1; iter <= maxIter; iter++)
-    {
-        if(iter <= 2)
-        {
-            for(int ir = 0; ir < occMax_irrep; ir++)    
-            {
-                int size_tmp = irrep_list(ir).size;
-                #pragma omp parallel  for
-                for(int mm = 0; mm < size_tmp; mm++)
-                for(int nn = 0; nn <= mm; nn++)
-                {
-                    fock_4c(ir)(mm,nn) = h1e_4c(ir)(mm,nn);
-                    for(int jr = 0; jr < occMax_irrep; jr++)
-                    {
-                        int size_tmp2 = irrep_list(jr).size;
-                        for(int ss = 0; ss < size_tmp2; ss++)
-                        for(int rr = 0; rr < size_tmp2; rr++)
-                        {
-                            int emn = mm*size_tmp+nn, esr = ss*size_tmp2+rr, emr = mm*size_tmp2+rr, esn = ss*size_tmp+nn;
-                            fock_4c(ir)(mm,nn) += density(jr)(ss,rr) * (h2eLLLL_JK.J(ir,jr)(emn,esr) - h2eLLLL_JK.K(ir,jr)(emr,esn));
-                        }
-                    }
-                    fock_4c(ir)(nn,mm) = fock_4c(ir)(mm,nn);
-                }
-            }
-        }
-        else
-        {
-            int tmp_size = fock4DIIS[0].size();
-            MatrixXd B4DIIS(tmp_size+1,tmp_size+1);
-            VectorXd vec_b(tmp_size+1);    
-            for(int ii = 0; ii < tmp_size; ii++)
-            {    
-                for(int jj = 0; jj <= ii; jj++)
-                {
-                    B4DIIS(ii,jj) = 0.0;
-                    for(int ir = 0; ir < occMax_irrep; ir++)
-                        B4DIIS(ii,jj) += (error4DIIS[ir][ii].adjoint()*error4DIIS[ir][jj])(0,0);
-                    B4DIIS(jj,ii) = B4DIIS(ii,jj);
-                }
-                B4DIIS(tmp_size, ii) = -1.0;
-                B4DIIS(ii, tmp_size) = -1.0;
-                vec_b(ii) = 0.0;
-            }
-            B4DIIS(tmp_size, tmp_size) = 0.0;
-            vec_b(tmp_size) = -1.0;
-            VectorXd C = B4DIIS.partialPivLu().solve(vec_b);
-            for(int ir = 0; ir < occMax_irrep; ir++)
-            {
-                fock_4c(ir) = MatrixXd::Zero(fock_4c(ir).rows(),fock_4c(ir).cols());
-                for(int ii = 0; ii < tmp_size; ii++)
-                {
-                    fock_4c(ir) += C(ii) * fock4DIIS[ir][ii];
-                }
-            }
-        }
-        eigensolverG_irrep(fock_4c, overlap_half_i_4c, ene_orb, coeff);
-        newDen = evaluateDensity_spinor_irrep(true);
-        d_density = evaluateChange_irrep(density, newDen);
-        
-        cout << "Iter #" << iter << " maximum density difference: " << d_density << endl;
-        
-        density = newDen;
-        if(d_density < convControl) 
-        {
-            converged = true;
-            cout << endl << "DHF converges after " << iter << " iterations." << endl << endl;
-
-            cout << "\tOrbital\t\tEnergy(in hartree)\n";
-            cout << "\t*******\t\t******************\n";
-            for(int ir = 0; ir < occMax_irrep; ir++)
-            for(int ii = 1; ii <= irrep_list(ir).size; ii++)
-            {
-                cout << "\t" << ii << "\t\t" << setprecision(15) << ene_orb(ir)(ii - 1) << endl;
-            }
-
-            ene_scf = 0.0;
-            for(int ir = 0; ir < occMax_irrep; ir++)
-            {
-                int size_tmp = irrep_list(ir).size;
-                for(int ii = 0; ii < size_tmp; ii++)
-                for(int jj = 0; jj < size_tmp; jj++)
-                {
-                    ene_scf += 0.5 * density(ir)(ii,jj) * (h1e_4c(ir)(jj,ii) + fock_4c(ir)(jj,ii));
-                }
-            }
-            cout << "Final sfx2c1e-HF energy is " << setprecision(15) << ene_scf << " hartree." << endl;
-            break;            
-        }
-        for(int ir = 0; ir < occMax_irrep; ir++)    
-        {
-            int size_tmp = irrep_list(ir).size;
-            #pragma omp parallel  for
-            for(int mm = 0; mm < size_tmp; mm++)
-            for(int nn = 0; nn <= mm; nn++)
-            {
-                fock_4c(ir)(mm,nn) = h1e_4c(ir)(mm,nn);
-                for(int jr = 0; jr < occMax_irrep; jr++)
-                {
-                    int size_tmp2 = irrep_list(jr).size;
-                    for(int ss = 0; ss < size_tmp2; ss++)
-                    for(int rr = 0; rr < size_tmp2; rr++)
-                    {
-                        int emn = mm*size_tmp+nn, esr = ss*size_tmp2+rr, emr = mm*size_tmp2+rr, esn = ss*size_tmp+nn;
-                        fock_4c(ir)(mm,nn) += density(jr)(ss,rr) * (h2eLLLL_JK.J(ir,jr)(emn,esr) - h2eLLLL_JK.K(ir,jr)(emr,esn));
-                    }
-                }
-                fock_4c(ir)(nn,mm) = fock_4c(ir)(mm,nn);
-            }
+            evaluateFock(fock_4c(ir),twoC,density,size_tmp,ir);
             if(error4DIIS[ir].size() >= size_DIIS)
             {
                 error4DIIS[ir].erase(error4DIIS[ir].begin());
@@ -560,30 +387,91 @@ vMatrixXd DHF_SPH::evaluateDensity_spinor_irrep(const bool& twoC)
     return den;
 }
 
+/* 
+    evaluate Fock matrix 
+*/
+void DHF_SPH::evaluateFock(MatrixXd& fock, const bool& twoC, const vMatrixXd& den, const int& size, const int& Iirrep)
+{
+    if(!twoC)
+    {
+        fock.resize(size*2,size*2);
+        #pragma omp parallel  for
+        for(int mm = 0; mm < size; mm++)
+        for(int nn = 0; nn <= mm; nn++)
+        {
+            fock(mm,nn) = h1e_4c(Iirrep)(mm,nn);
+            fock(mm+size,nn) = h1e_4c(Iirrep)(mm+size,nn);
+            if(mm != nn) fock(nn+size,mm) = h1e_4c(Iirrep)(nn+size,mm);
+            fock(mm+size,nn+size) = h1e_4c(Iirrep)(mm+size,nn+size);
+            for(int jr = 0; jr < occMax_irrep; jr++)
+            {
+                int size_tmp2 = irrep_list(jr).size;
+                for(int ss = 0; ss < size_tmp2; ss++)
+                for(int rr = 0; rr < size_tmp2; rr++)
+                {
+                    int emn = mm*size+nn, esr = ss*size_tmp2+rr, emr = mm*size_tmp2+rr, esn = ss*size+nn;
+                    fock(mm,nn) += den(jr)(ss,rr) * (h2eLLLL_JK.J(Iirrep,jr)(emn,esr) - h2eLLLL_JK.K(Iirrep,jr)(emr,esn)) + den(jr)(size_tmp2+ss,size_tmp2+rr) * h2eSSLL_JK.J(jr,Iirrep)(esr,emn);
+                    fock(mm+size,nn) -= den(jr)(ss,size_tmp2+rr) * h2eSSLL_JK.K(Iirrep,jr)(emr,esn);
+                    if(mm != nn) 
+                    {
+                        int enr = nn*size_tmp2+rr, esm = ss*size+mm;
+                        fock(nn+size,mm) -= den(jr)(ss,size_tmp2+rr) * h2eSSLL_JK.K(Iirrep,jr)(enr,esm);
+                    }
+                    fock(mm+size,nn+size) += den(jr)(size_tmp2+ss,size_tmp2+rr) * (h2eSSSS_JK.J(Iirrep,jr)(emn,esr) - h2eSSSS_JK.K(Iirrep,jr)(emr,esn)) + den(jr)(ss,rr) * h2eSSLL_JK.J(Iirrep,jr)(emn,esr);
+                }
+            }
+            fock(nn,mm) = fock(mm,nn);
+            fock(nn+size,mm+size) = fock(mm+size,nn+size);
+            fock(nn,mm+size) = fock(mm+size,nn);
+            fock(mm,nn+size) = fock(nn+size,mm);
+        }
+    }
+    else
+    {
+        fock.resize(size,size);
+        #pragma omp parallel  for
+        for(int mm = 0; mm < size; mm++)
+        for(int nn = 0; nn <= mm; nn++)
+        {
+            fock(mm,nn) = h1e_4c(Iirrep)(mm,nn);
+            for(int jr = 0; jr < occMax_irrep; jr++)
+            {
+                int size_tmp2 = irrep_list(jr).size;
+                for(int ss = 0; ss < size_tmp2; ss++)
+                for(int rr = 0; rr < size_tmp2; rr++)
+                {
+                    int emn = mm*size+nn, esr = ss*size_tmp2+rr, emr = mm*size_tmp2+rr, esn = ss*size+nn;
+                    fock(mm,nn) += den(jr)(ss,rr) * (h2eLLLL_JK.J(Iirrep,jr)(emn,esr) - h2eLLLL_JK.K(Iirrep,jr)(emr,esn));
+                }
+            }
+            fock(nn,mm) = fock(mm,nn);
+        }
+    }
+}
 
 /* 
     Read occupation numbers 
 */
-void DHF_SPH::readOCC(const string& filename)
+void DHF_SPH::readOCC(const string& filename, const string& atomName)
 {
     string flags;
-    VectorXi veci_tmp;
+    VectorXd vecd_tmp;
     int int_tmp;
     ifstream ifs;
     ifs.open(filename);
         while(!ifs.eof())
         {
             ifs >> flags;
-            if(flags == "%occAMFI")
+            if(flags == "%occAMFI_" + atomName)
             {
                 ifs >> int_tmp;
-                veci_tmp.resize(int_tmp);
+                vecd_tmp.resize(int_tmp);
                 int int_tmp2 = 0;
                 for(int ii = 0; ii < int_tmp; ii++)
                 {
-                    ifs >> veci_tmp(ii);
-                    int int_tmp3 = veci_tmp(ii) / (irrep_list(int_tmp2).two_j + 1);
-                    double d_tmp = (double)(veci_tmp(ii) - int_tmp3*(irrep_list(int_tmp2).two_j + 1)) / (double)(irrep_list(int_tmp2).two_j + 1);
+                    ifs >> vecd_tmp(ii);
+                    int int_tmp3 = vecd_tmp(ii) / (irrep_list(int_tmp2).two_j + 1);
+                    double d_tmp = (double)(vecd_tmp(ii) - int_tmp3*(irrep_list(int_tmp2).two_j + 1)) / (double)(irrep_list(int_tmp2).two_j + 1);
                     for(int jj = 0; jj < irrep_list(int_tmp2).two_j + 1; jj++)
                     {
                         occNumber(int_tmp2+jj).resize(irrep_list(int_tmp2+jj).size);
@@ -619,23 +507,30 @@ void DHF_SPH::readOCC(const string& filename)
         fullFock:       Fock                Fock
     When necessary, the program will recalculate two-electron integrals.
 */
-vMatrixXd DHF_SPH::get_amfi_unc(INT_SPH& int_sph_, const string& Xmethod)
+vMatrixXd DHF_SPH::get_amfi_unc(INT_SPH& int_sph_, const bool& twoC, const string& Xmethod)
 {
     int2eJK SSLL_SD, SSSS_SD;
     int_sph_.get_h2eSD_JK_direct(SSLL_SD, SSSS_SD);
-    if(occMax_irrep < Nirrep && Xmethod == "fullFock")
+    if(twoC)
     {
-        cout << "fullFock is used in amfi function with incomplete h2e." << endl;
-        cout << "Recalculate h2e..." << endl;
-        StartTime = clock();
-        int_sph_.get_h2e_JK_direct(h2eLLLL_JK,h2eSSLL_JK,h2eSSSS_JK);
-        EndTime = clock();
-        cout << "Complete 2e-integral finished in " << (EndTime - StartTime) / (double)CLOCKS_PER_SEC << " seconds." << endl << endl; 
+        return get_amfi_unc_2c(SSLL_SD, SSSS_SD);
     }
-    return get_amfi_unc(SSLL_SD, SSSS_SD, Xmethod);
+    else 
+    {
+        if(occMax_irrep < Nirrep && Xmethod == "fullFock")
+        {
+            cout << "fullFock is used in amfi function with incomplete h2e." << endl;
+            cout << "Recalculate h2e..." << endl;
+            StartTime = clock();
+            int_sph_.get_h2e_JK_direct(h2eLLLL_JK,h2eSSLL_JK,h2eSSSS_JK);
+            EndTime = clock();
+            cout << "Complete 2e-integral finished in " << (EndTime - StartTime) / (double)CLOCKS_PER_SEC << " seconds." << endl << endl; 
+        }
+        return get_amfi_unc(SSLL_SD, SSSS_SD, density, Xmethod);
+    }
 }
 
-vMatrixXd DHF_SPH::get_amfi_unc(const int2eJK& h2eSSLL_SD, const int2eJK& h2eSSSS_SD, const string& Xmethod)
+vMatrixXd DHF_SPH::get_amfi_unc(const int2eJK& h2eSSLL_SD, const int2eJK& h2eSSSS_SD, const vMatrixXd& density_, const string& Xmethod)
 {
     if(!converged)
     {
@@ -698,14 +593,14 @@ vMatrixXd DHF_SPH::get_amfi_unc(const int2eJK& h2eSSLL_SD, const int2eJK& h2eSSS
                 for(int rr = 0; rr < size_tmp2; rr++)
                 {
                     int emn = mm*size_tmp+nn, esr = ss*size_tmp2+rr, emr = mm*size_tmp2+rr, esn = ss*size_tmp+nn;
-                    SO_4c(mm,nn) += density(jr)(size_tmp2+ss,size_tmp2+rr) * h2eSSLL_SD.J(jr,ir)(esr,emn);
-                    SO_4c(mm+size_tmp,nn) -= density(jr)(ss,size_tmp2+rr) * h2eSSLL_SD.K(ir,jr)(emr,esn);
+                    SO_4c(mm,nn) += density_(jr)(size_tmp2+ss,size_tmp2+rr) * h2eSSLL_SD.J(jr,ir)(esr,emn);
+                    SO_4c(mm+size_tmp,nn) -= density_(jr)(ss,size_tmp2+rr) * h2eSSLL_SD.K(ir,jr)(emr,esn);
                     if(mm != nn) 
                     {
                         int enr = nn*size_tmp2+rr, esm = ss*size_tmp+mm;
-                        SO_4c(nn+size_tmp,mm) -= density(jr)(ss,size_tmp2+rr) * h2eSSLL_SD.K(ir,jr)(enr,esm);
+                        SO_4c(nn+size_tmp,mm) -= density_(jr)(ss,size_tmp2+rr) * h2eSSLL_SD.K(ir,jr)(enr,esm);
                     }
-                    SO_4c(mm+size_tmp,nn+size_tmp) += density(jr)(size_tmp2+ss,size_tmp2+rr) * (h2eSSSS_SD.J(ir,jr)(emn,esr) - h2eSSSS_SD.K(ir,jr)(emr,esn)) + density(jr)(ss,rr) * h2eSSLL_SD.J(ir,jr)(emn,esr);
+                    SO_4c(mm+size_tmp,nn+size_tmp) += density_(jr)(size_tmp2+ss,size_tmp2+rr) * (h2eSSSS_SD.J(ir,jr)(emn,esr) - h2eSSSS_SD.K(ir,jr)(emr,esn)) + density_(jr)(ss,rr) * h2eSSLL_SD.J(ir,jr)(emn,esr);
                 }
             }
             SO_4c(nn,mm) = SO_4c(mm,nn);
@@ -747,14 +642,14 @@ vMatrixXd DHF_SPH::get_amfi_unc(const int2eJK& h2eSSLL_SD, const int2eJK& h2eSSS
                             for(int rr = 0; rr < size_tmp2; rr++)
                             {
                                 int emn = mm*size_tmp+nn, esr = ss*size_tmp2+rr, emr = mm*size_tmp2+rr, esn = ss*size_tmp+nn;
-                                fock_tmp(mm,nn) += density(jr)(ss,rr) * (h2eLLLL_JK.J(ir,jr)(emn,esr) - h2eLLLL_JK.K(ir,jr)(emr,esn)) + density(jr)(size_tmp2+ss,size_tmp2+rr) * h2eSSLL_JK.J(jr,ir)(esr,emn);
-                                fock_tmp(mm+size_tmp,nn) -= density(jr)(ss,size_tmp2+rr) * h2eSSLL_JK.K(ir,jr)(emr,esn);
+                                fock_tmp(mm,nn) += density_(jr)(ss,rr) * (h2eLLLL_JK.J(ir,jr)(emn,esr) - h2eLLLL_JK.K(ir,jr)(emr,esn)) + density_(jr)(size_tmp2+ss,size_tmp2+rr) * h2eSSLL_JK.J(jr,ir)(esr,emn);
+                                fock_tmp(mm+size_tmp,nn) -= density_(jr)(ss,size_tmp2+rr) * h2eSSLL_JK.K(ir,jr)(emr,esn);
                                 if(mm != nn) 
                                 {
                                     int enr = nn*size_tmp2+rr, esm = ss*size_tmp+mm;
-                                    fock_tmp(nn+size_tmp,mm) -= density(jr)(ss,size_tmp2+rr) * h2eSSLL_JK.K(ir,jr)(enr,esm);
+                                    fock_tmp(nn+size_tmp,mm) -= density_(jr)(ss,size_tmp2+rr) * h2eSSLL_JK.K(ir,jr)(enr,esm);
                                 }
-                                fock_tmp(mm+size_tmp,nn+size_tmp) += density(jr)(size_tmp2+ss,size_tmp2+rr) * (h2eSSSS_JK.J(ir,jr)(emn,esr) - h2eSSSS_JK.K(ir,jr)(emr,esn)) + density(jr)(ss,rr) * h2eSSLL_JK.J(ir,jr)(emn,esr);
+                                fock_tmp(mm+size_tmp,nn+size_tmp) += density_(jr)(size_tmp2+ss,size_tmp2+rr) * (h2eSSSS_JK.J(ir,jr)(emn,esr) - h2eSSSS_JK.K(ir,jr)(emr,esn)) + density_(jr)(ss,rr) * h2eSSLL_JK.J(ir,jr)(emn,esr);
                             }
                         }
                         fock_tmp(nn,mm) = fock_tmp(mm,nn);
@@ -789,14 +684,6 @@ vMatrixXd DHF_SPH::get_amfi_unc(const int2eJK& h2eSSLL_SD, const int2eJK& h2eSSS
     Evaluate amfi SOC integrals in j-adapted spinor basis for two-component calculation
     X will always be calculated based on spin-free h1e.
 */
-vMatrixXd DHF_SPH::get_amfi_unc_2c(INT_SPH& int_sph_)
-{
-    int2eJK SSLL_SD, SSSS_SD;
-    int_sph_.get_h2eSD_JK_direct(SSLL_SD, SSSS_SD);
-
-    return get_amfi_unc_2c(SSLL_SD, SSSS_SD);
-}
-
 vMatrixXd DHF_SPH::get_amfi_unc_2c(const int2eJK& h2eSSLL_SD, const int2eJK& h2eSSSS_SD)
 {
     if(!converged)

@@ -4,8 +4,11 @@
 #include<Eigen/Dense>
 #include<complex>
 #include<string>
+#include<ctime>
 using namespace std;
 using namespace Eigen;
+
+static clock_t StartTime, EndTime; 
 
 const double speedOfLight = 137.03599967994;
 

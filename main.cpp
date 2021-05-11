@@ -8,6 +8,7 @@
 #include<memory>
 #include"int_sph.h"
 #include"dhf_sph.h"
+#include"dhf_sph_ca.h"
 using namespace Eigen;
 using namespace std;
 
@@ -22,6 +23,7 @@ void readInput(const string filename);
 
 int main()
 {
+    bool twoC = false;
     readInput("input");
     INT_SPH intor(atomName, basisSet);
     DHF_SPH* dhf_test;
@@ -30,34 +32,38 @@ int main()
     else if(jobs == "SFDHF")
         dhf_test = new DHF_SPH(intor,"input",true);
     else if(jobs == "SFX2C1E")
+    {
+        twoC = true;
         dhf_test = new DHF_SPH(intor,"input",true,true);
+    }
+    else if(jobs == "CADHF")
+        dhf_test = new DHF_SPH_CA(intor,"input");
+    else if(jobs == "CASFDHF")
+        dhf_test = new DHF_SPH_CA(intor,"input",true);
+    else if(jobs == "CASFX2C1E")
+    {
+        twoC = true;
+        dhf_test = new DHF_SPH_CA(intor,"input",true,true);
+    }
     else
     {
         cout << "Wrong Jobs!" << endl;
         exit(99);
     }
-    vMatrixXd amfi;
-    if(jobs == "SFX2C1E")
-    {
-        (*dhf_test).runSCF_2c();
-        amfi = (*dhf_test).get_amfi_unc_2c(intor);
-    }
-    else
-    {
-        (*dhf_test).runSCF();
-        amfi = (*dhf_test).get_amfi_unc(intor,"partialFock");
-    }
+
+    (*dhf_test).runSCF(twoC);
+    vMatrixXd amfi = (*dhf_test).get_amfi_unc(intor,twoC);
     for(int ir = 0; ir < amfi.rows(); ir++)
         cout << amfi(ir) << endl;
-    MatrixXd amfi2 = dhf_test->unite_irrep(amfi,intor.irrep_list);
-    MatrixXd M1 = dhf_test->jspinor2sph(intor.irrep_list);
-    MatrixXcd M2 = dhf_test->sph2solid(intor.irrep_list);
-    amfi2 = M1.adjoint()*amfi2*M1;
-    MatrixXcd amfi3 = M2.adjoint()*amfi2*M2;
-    for(int ii = 0; ii < amfi3.rows(); ii++)
-    for(int jj = 0; jj < amfi3.cols(); jj++)
-        // if(abs(amfi2(ii,jj)) > 1e-8)
-            cout << ii << "\t" << jj << "\t" << amfi3(ii,jj) << endl;
+    // MatrixXd amfi2 = dhf_test->unite_irrep(amfi,intor.irrep_list);
+    // MatrixXd M1 = dhf_test->jspinor2sph(intor.irrep_list);
+    // MatrixXcd M2 = dhf_test->sph2solid(intor.irrep_list);
+    // amfi2 = M1.adjoint()*amfi2*M1;
+    // MatrixXcd amfi3 = M2.adjoint()*amfi2*M2;
+    // for(int ii = 0; ii < amfi3.rows(); ii++)
+    // for(int jj = 0; jj < amfi3.cols(); jj++)
+    //     // if(abs(amfi2(ii,jj)) > 1e-8)
+    //         cout << ii << "\t" << jj << "\t" << amfi3(ii,jj) << endl;
 
     return 0;
 }
