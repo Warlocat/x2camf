@@ -37,7 +37,7 @@ irrep_list(int_sph_.irrep_list)
     overlap = int_sph_.get_h1e("overlap");
     kinetic = int_sph_.get_h1e("kinetic");
     Vnuc = int_sph_.get_h1e("nuc_attra");
-    if(spinFree || sfx2c)
+    if(spinFree)
         WWW = int_sph_.get_h1e("s_p_nuc_s_p_sf");
     else
         WWW = int_sph_.get_h1e("s_p_nuc_s_p");
@@ -455,8 +455,8 @@ void DHF_SPH::evaluateFock(MatrixXd& fock, const bool& twoC, const vMatrixXd& de
 void DHF_SPH::readOCC(const string& filename, const string& atomName)
 {
     string flags;
-    VectorXd vecd_tmp;
-    int int_tmp;
+    VectorXd vecd_tmp = VectorXd::Zero(10);
+    int int_tmp, int_tmp2, int_tmp3;
     ifstream ifs;
     ifs.open(filename);
         while(!ifs.eof())
@@ -464,33 +464,149 @@ void DHF_SPH::readOCC(const string& filename, const string& atomName)
             ifs >> flags;
             if(flags == "%occAMFI_" + atomName)
             {
+                cout << "Found input occupation number for " << atomName << endl;
                 ifs >> int_tmp;
-                vecd_tmp.resize(int_tmp);
-                int int_tmp2 = 0;
                 for(int ii = 0; ii < int_tmp; ii++)
                 {
                     ifs >> vecd_tmp(ii);
-                    int int_tmp3 = vecd_tmp(ii) / (irrep_list(int_tmp2).two_j + 1);
-                    double d_tmp = (double)(vecd_tmp(ii) - int_tmp3*(irrep_list(int_tmp2).two_j + 1)) / (double)(irrep_list(int_tmp2).two_j + 1);
-                    for(int jj = 0; jj < irrep_list(int_tmp2).two_j + 1; jj++)
-                    {
-                        occNumber(int_tmp2+jj).resize(irrep_list(int_tmp2+jj).size);
-                        occNumber(int_tmp2+jj) = VectorXd::Zero(irrep_list(int_tmp2+jj).size);
-                        for(int kk = 0; kk < int_tmp3; kk++)
-                            occNumber(int_tmp2+jj)(kk) = 1.0;
-                        if(occNumber(int_tmp2+jj).rows() > int_tmp3)
-                            occNumber(int_tmp2+jj)(int_tmp3) = d_tmp;
-                    }
-                    occMax_irrep += irrep_list(int_tmp2).two_j+1;
-                    int_tmp2 += irrep_list(int_tmp2).two_j+1;
                 }
                 break;
             }
         }
         if(ifs.eof())
         {
-            cout << "ERROR: did NOT find %occAMFI in " << filename << endl;
-            exit(99);
+            cout << "Did NOT find %occAMFI in " << filename << endl;
+            cout << "Using default occupation number for " << atomName << endl;
+            if(atomName == "H") {int_tmp = 1; vecd_tmp(0) = 1.0;}
+            else if(atomName == "HE") {int_tmp = 1; vecd_tmp(0) = 2.0;}
+            else if(atomName == "LI") {int_tmp = 1; vecd_tmp(0) = 3.0;}
+            else if(atomName == "BE") {int_tmp = 1; vecd_tmp(0) = 4.0;}
+            else if(atomName == "B") {int_tmp = 3; vecd_tmp(0) = 4.0; vecd_tmp(1) = 1.0/3.0; vecd_tmp(2) = 2.0/3.0;}
+            else if(atomName == "C") {int_tmp = 3; vecd_tmp(0) = 4.0; vecd_tmp(1) = 2.0/3.0; vecd_tmp(2) = 4.0/3.0;}
+            else if(atomName == "N") {int_tmp = 3; vecd_tmp(0) = 4.0; vecd_tmp(1) = 1.0; vecd_tmp(2) = 2.0;}
+            else if(atomName == "O") {int_tmp = 3; vecd_tmp(0) = 4.0; vecd_tmp(1) = 4.0/3.0; vecd_tmp(2) = 8.0/3.0;}
+            else if(atomName == "F") {int_tmp = 3; vecd_tmp(0) = 4.0; vecd_tmp(1) = 5.0/3.0; vecd_tmp(2) = 10.0/3.0;}
+            else if(atomName == "NE") {int_tmp = 3; vecd_tmp(0) = 4.0; vecd_tmp(1) = 2.0; vecd_tmp(2) = 4.0;}
+            else if(atomName == "NA") {int_tmp = 3; vecd_tmp(0) = 5.0; vecd_tmp(1) = 2.0; vecd_tmp(2) = 4.0;}
+            else if(atomName == "MG") {int_tmp = 3; vecd_tmp(0) = 6.0; vecd_tmp(1) = 2.0; vecd_tmp(2) = 4.0;}
+            else if(atomName == "AL") {int_tmp = 3; vecd_tmp(0) = 6.0; vecd_tmp(1) = 7.0/3.0; vecd_tmp(2) = 14.0/3.0;}
+            else if(atomName == "SI") {int_tmp = 3; vecd_tmp(0) = 6.0; vecd_tmp(1) = 8.0/3.0; vecd_tmp(2) = 16.0/3.0;}
+            else if(atomName == "P") {int_tmp = 3; vecd_tmp(0) = 6.0; vecd_tmp(1) = 3.0; vecd_tmp(2) = 6.0;}
+            else if(atomName == "S") {int_tmp = 3; vecd_tmp(0) = 6.0; vecd_tmp(1) = 10.0/3.0; vecd_tmp(2) = 20.0/3.0;}
+            else if(atomName == "CL") {int_tmp = 3; vecd_tmp(0) = 6.0; vecd_tmp(1) = 11.0/3.0; vecd_tmp(2) = 22.0/3.0;}
+            else if(atomName == "AR") {int_tmp = 3; vecd_tmp(0) = 6.0; vecd_tmp(1) = 4.0; vecd_tmp(2) = 8.0;}
+            else if(atomName == "K") {int_tmp = 3; vecd_tmp(0) = 7.0; vecd_tmp(1) = 4.0; vecd_tmp(2) = 8.0;}
+            else if(atomName == "CA") {int_tmp = 3; vecd_tmp(0) = 8.0; vecd_tmp(1) = 4.0; vecd_tmp(2) = 8.0;}
+            else if(atomName == "SC") {int_tmp = 5; vecd_tmp(0) = 8.0; vecd_tmp(1) = 4.0; vecd_tmp(2) = 8.0; vecd_tmp(3) = 1.0/2.5; vecd_tmp(4) = 1.5/2.5;}
+            else if(atomName == "TI") {int_tmp = 5; vecd_tmp(0) = 8.0; vecd_tmp(1) = 4.0; vecd_tmp(2) = 8.0; vecd_tmp(3) = 2.0/2.5; vecd_tmp(4) = 3.0/2.5;}
+            else if(atomName == "V") {int_tmp = 5; vecd_tmp(0) = 8.0; vecd_tmp(1) = 4.0; vecd_tmp(2) = 8.0; vecd_tmp(3) = 3.0/2.5; vecd_tmp(4) = 4.5/2.5;}
+            else if(atomName == "CR") {int_tmp = 5; vecd_tmp(0) = 7.0; vecd_tmp(1) = 4.0; vecd_tmp(2) = 8.0; vecd_tmp(3) = 2.0; vecd_tmp(4) = 3.0;}
+            else if(atomName == "MN") {int_tmp = 5; vecd_tmp(0) = 8.0; vecd_tmp(1) = 4.0; vecd_tmp(2) = 8.0; vecd_tmp(3) = 2.0; vecd_tmp(4) = 3.0;}
+            else if(atomName == "FE") {int_tmp = 5; vecd_tmp(0) = 8.0; vecd_tmp(1) = 4.0; vecd_tmp(2) = 8.0; vecd_tmp(3) = 6.0/2.5; vecd_tmp(4) = 9.0/2.5;}
+            else if(atomName == "CO") {int_tmp = 5; vecd_tmp(0) = 8.0; vecd_tmp(1) = 4.0; vecd_tmp(2) = 8.0; vecd_tmp(3) = 7.0/2.5; vecd_tmp(4) = 10.5/2.5;}
+            else if(atomName == "NI") {int_tmp = 5; vecd_tmp(0) = 8.0; vecd_tmp(1) = 4.0; vecd_tmp(2) = 8.0; vecd_tmp(3) = 8.0/2.5; vecd_tmp(4) = 12.0/2.5;}
+            else if(atomName == "CU") {int_tmp = 5; vecd_tmp(0) = 7.0; vecd_tmp(1) = 4.0; vecd_tmp(2) = 8.0; vecd_tmp(3) = 4.0; vecd_tmp(4) = 6.0;}
+            else if(atomName == "ZN") {int_tmp = 5; vecd_tmp(0) = 8.0; vecd_tmp(1) = 4.0; vecd_tmp(2) = 8.0; vecd_tmp(3) = 4.0; vecd_tmp(4) = 6.0;}
+            else if(atomName == "GA") {int_tmp = 5; vecd_tmp(0) = 8.0; vecd_tmp(1) = 13.0/3.0; vecd_tmp(2) = 26.0/3.0; vecd_tmp(3) = 4.0; vecd_tmp(4) = 6.0;}
+            else if(atomName == "GE") {int_tmp = 5; vecd_tmp(0) = 8.0; vecd_tmp(1) = 14.0/3.0; vecd_tmp(2) = 28.0/3.0; vecd_tmp(3) = 4.0; vecd_tmp(4) = 6.0;}
+            else if(atomName == "AS") {int_tmp = 5; vecd_tmp(0) = 8.0; vecd_tmp(1) = 5.0; vecd_tmp(2) = 10.0; vecd_tmp(3) = 4.0; vecd_tmp(4) = 6.0;}
+            else if(atomName == "SR") {int_tmp = 5; vecd_tmp(0) = 8.0; vecd_tmp(1) = 16.0/3.0; vecd_tmp(2) = 32.0/3.0; vecd_tmp(3) = 4.0; vecd_tmp(4) = 6.0;}
+            else if(atomName == "BR") {int_tmp = 5; vecd_tmp(0) = 8.0; vecd_tmp(1) = 17.0/3.0; vecd_tmp(2) = 34.0/3.0; vecd_tmp(3) = 4.0; vecd_tmp(4) = 6.0;}
+            else if(atomName == "KR") {int_tmp = 5; vecd_tmp(0) = 8.0; vecd_tmp(1) = 6.0; vecd_tmp(2) = 12.0; vecd_tmp(3) = 4.0; vecd_tmp(4) = 6.0;}
+            else if(atomName == "RB") {int_tmp = 5; vecd_tmp(0) = 9.0; vecd_tmp(1) = 6.0; vecd_tmp(2) = 12.0; vecd_tmp(3) = 4.0; vecd_tmp(4) = 6.0;}
+            else if(atomName == "SR") {int_tmp = 5; vecd_tmp(0) = 10.0; vecd_tmp(1) = 6.0; vecd_tmp(2) = 12.0; vecd_tmp(3) = 4.0; vecd_tmp(4) = 6.0;}
+            else if(atomName == "Y") {int_tmp = 5; vecd_tmp(0) = 10.0; vecd_tmp(1) = 6.0; vecd_tmp(2) = 12.0; vecd_tmp(3) = 11.0/2.5; vecd_tmp(4) = 16.5/2.5;}
+            else if(atomName == "ZR") {int_tmp = 5; vecd_tmp(0) = 10.0; vecd_tmp(1) = 6.0; vecd_tmp(2) = 12.0; vecd_tmp(3) = 12.0/2.5; vecd_tmp(4) = 18.0/2.5;}
+            else if(atomName == "NB") {int_tmp = 5; vecd_tmp(0) = 9.0; vecd_tmp(1) = 6.0; vecd_tmp(2) = 12.0; vecd_tmp(3) = 14.0/2.5; vecd_tmp(4) = 21.0/2.5;}
+            else if(atomName == "MO") {int_tmp = 5; vecd_tmp(0) = 9.0; vecd_tmp(1) = 6.0; vecd_tmp(2) = 12.0; vecd_tmp(3) = 6.0; vecd_tmp(4) = 9.0;}
+            else if(atomName == "TC") {int_tmp = 5; vecd_tmp(0) = 10.0; vecd_tmp(1) = 6.0; vecd_tmp(2) = 12.0; vecd_tmp(3) = 6.0; vecd_tmp(4) = 9.0;}
+            else if(atomName == "RU") {int_tmp = 5; vecd_tmp(0) = 9.0; vecd_tmp(1) = 6.0; vecd_tmp(2) = 12.0; vecd_tmp(3) = 17.0/2.5; vecd_tmp(4) = 25.5/2.5;}
+            else if(atomName == "RH") {int_tmp = 5; vecd_tmp(0) = 9.0; vecd_tmp(1) = 6.0; vecd_tmp(2) = 12.0; vecd_tmp(3) = 18.0/2.5; vecd_tmp(4) = 27.0/2.5;}
+            else if(atomName == "PD") {int_tmp = 5; vecd_tmp(0) = 8.0; vecd_tmp(1) = 6.0; vecd_tmp(2) = 12.0; vecd_tmp(3) = 8.0; vecd_tmp(4) = 12.0;}
+            else if(atomName == "AG") {int_tmp = 5; vecd_tmp(0) = 9.0; vecd_tmp(1) = 6.0; vecd_tmp(2) = 12.0; vecd_tmp(3) = 8.0; vecd_tmp(4) = 12.0;}
+            else if(atomName == "CD") {int_tmp = 5; vecd_tmp(0) = 10.0; vecd_tmp(1) = 6.0; vecd_tmp(2) = 12.0; vecd_tmp(3) = 8.0; vecd_tmp(4) = 12.0;}
+            else if(atomName == "IN") {int_tmp = 5; vecd_tmp(0) = 10.0; vecd_tmp(1) = 19.0/3.0; vecd_tmp(2) = 38.0/3.0; vecd_tmp(3) = 8.0; vecd_tmp(4) = 12.0;}
+            else if(atomName == "SN") {int_tmp = 5; vecd_tmp(0) = 10.0; vecd_tmp(1) = 20.0/3.0; vecd_tmp(2) = 40.0/3.0; vecd_tmp(3) = 8.0; vecd_tmp(4) = 12.0;}
+            else if(atomName == "SB") {int_tmp = 5; vecd_tmp(0) = 10.0; vecd_tmp(1) = 21.0/3.0; vecd_tmp(2) = 42.0/3.0; vecd_tmp(3) = 8.0; vecd_tmp(4) = 12.0;}
+            else if(atomName == "TE") {int_tmp = 5; vecd_tmp(0) = 10.0; vecd_tmp(1) = 22.0/3.0; vecd_tmp(2) = 44.0/3.0; vecd_tmp(3) = 8.0; vecd_tmp(4) = 12.0;}
+            else if(atomName == "I") {int_tmp = 5; vecd_tmp(0) = 10.0; vecd_tmp(1) = 23.0/3.0; vecd_tmp(2) = 46.0/3.0; vecd_tmp(3) = 8.0; vecd_tmp(4) = 12.0;}
+            else if(atomName == "XE") {int_tmp = 5; vecd_tmp(0) = 10.0; vecd_tmp(1) = 8.0; vecd_tmp(2) = 16.0; vecd_tmp(3) = 8.0; vecd_tmp(4) = 12.0;}
+            else if(atomName == "CS") {int_tmp = 5; vecd_tmp(0) = 11.0; vecd_tmp(1) = 8.0; vecd_tmp(2) = 16.0; vecd_tmp(3) = 8.0; vecd_tmp(4) = 12.0;}
+            else if(atomName == "BA") {int_tmp = 5; vecd_tmp(0) = 12.0; vecd_tmp(1) = 8.0; vecd_tmp(2) = 16.0; vecd_tmp(3) = 8.0; vecd_tmp(4) = 12.0;}
+            else if(atomName == "LA") {int_tmp = 5; vecd_tmp(0) = 12.0; vecd_tmp(1) = 8.0; vecd_tmp(2) = 16.0; vecd_tmp(3) = 21.0/2.5; vecd_tmp(4) = 31.5/2.5;}
+            else if(atomName == "CE") {int_tmp = 7; vecd_tmp(0) = 12.0; vecd_tmp(1) = 8.0; vecd_tmp(2) = 16.0; vecd_tmp(3) = 21.0/2.5; vecd_tmp(4) = 31.5/2.5; vecd_tmp(5) = 3.0/7.0; vecd_tmp(6) = 4.0/7.0;}
+            else if(atomName == "PR") {int_tmp = 7; vecd_tmp(0) = 12.0; vecd_tmp(1) = 8.0; vecd_tmp(2) = 16.0; vecd_tmp(3) = 8.0; vecd_tmp(4) = 12.0; vecd_tmp(5) = 9.0/7.0; vecd_tmp(6) = 12.0/7.0;}
+            else if(atomName == "ND") {int_tmp = 7; vecd_tmp(0) = 12.0; vecd_tmp(1) = 8.0; vecd_tmp(2) = 16.0; vecd_tmp(3) = 8.0; vecd_tmp(4) = 12.0; vecd_tmp(5) = 12.0/7.0; vecd_tmp(6) = 16.0/7.0;}
+            else if(atomName == "PM") {int_tmp = 7; vecd_tmp(0) = 12.0; vecd_tmp(1) = 8.0; vecd_tmp(2) = 16.0; vecd_tmp(3) = 8.0; vecd_tmp(4) = 12.0; vecd_tmp(5) = 15.0/7.0; vecd_tmp(6) = 20.0/7.0;}
+            else if(atomName == "SM") {int_tmp = 7; vecd_tmp(0) = 12.0; vecd_tmp(1) = 8.0; vecd_tmp(2) = 16.0; vecd_tmp(3) = 8.0; vecd_tmp(4) = 12.0; vecd_tmp(5) = 18.0/7.0; vecd_tmp(6) = 24.0/7.0;}
+            else if(atomName == "EU") {int_tmp = 7; vecd_tmp(0) = 12.0; vecd_tmp(1) = 8.0; vecd_tmp(2) = 16.0; vecd_tmp(3) = 8.0; vecd_tmp(4) = 12.0; vecd_tmp(5) = 3.0; vecd_tmp(6) = 4.0;}
+            else if(atomName == "GD") {int_tmp = 7; vecd_tmp(0) = 12.0; vecd_tmp(1) = 8.0; vecd_tmp(2) = 16.0; vecd_tmp(3) = 21.0/2.5; vecd_tmp(4) = 31.5/2.5; vecd_tmp(5) = 21.0/7.0; vecd_tmp(6) = 28.0/7.0;}
+            else if(atomName == "TB") {int_tmp = 7; vecd_tmp(0) = 12.0; vecd_tmp(1) = 8.0; vecd_tmp(2) = 16.0; vecd_tmp(3) = 8.0; vecd_tmp(4) = 12.0; vecd_tmp(5) = 27.0/7.0; vecd_tmp(6) = 36.0/7.0;}
+            else if(atomName == "DY") {int_tmp = 7; vecd_tmp(0) = 12.0; vecd_tmp(1) = 8.0; vecd_tmp(2) = 16.0; vecd_tmp(3) = 8.0; vecd_tmp(4) = 12.0; vecd_tmp(5) = 30.0/7.0; vecd_tmp(6) = 40.0/7.0;}
+            else if(atomName == "HO") {int_tmp = 7; vecd_tmp(0) = 12.0; vecd_tmp(1) = 8.0; vecd_tmp(2) = 16.0; vecd_tmp(3) = 8.0; vecd_tmp(4) = 12.0; vecd_tmp(5) = 33.0/7.0; vecd_tmp(6) = 44.0/7.0;}
+            else if(atomName == "ER") {int_tmp = 7; vecd_tmp(0) = 12.0; vecd_tmp(1) = 8.0; vecd_tmp(2) = 16.0; vecd_tmp(3) = 8.0; vecd_tmp(4) = 12.0; vecd_tmp(5) = 36.0/7.0; vecd_tmp(6) = 48.0/7.0;}
+            else if(atomName == "TM") {int_tmp = 7; vecd_tmp(0) = 12.0; vecd_tmp(1) = 8.0; vecd_tmp(2) = 16.0; vecd_tmp(3) = 8.0; vecd_tmp(4) = 12.0; vecd_tmp(5) = 39.0/7.0; vecd_tmp(6) = 52.0/7.0;}
+            else if(atomName == "YB") {int_tmp = 7; vecd_tmp(0) = 12.0; vecd_tmp(1) = 8.0; vecd_tmp(2) = 16.0; vecd_tmp(3) = 8.0; vecd_tmp(4) = 12.0; vecd_tmp(5) = 6.0; vecd_tmp(6) = 8.0;}
+            else if(atomName == "LU") {int_tmp = 7; vecd_tmp(0) = 12.0; vecd_tmp(1) = 8.0; vecd_tmp(2) = 16.0; vecd_tmp(3) = 21.0/2.5; vecd_tmp(4) = 31.5/2.5; vecd_tmp(5) = 6.0; vecd_tmp(6) = 8.0;}
+            else if(atomName == "HF") {int_tmp = 7; vecd_tmp(0) = 12.0; vecd_tmp(1) = 8.0; vecd_tmp(2) = 16.0; vecd_tmp(3) = 22.0/2.5; vecd_tmp(4) = 33.0/2.5; vecd_tmp(5) = 6.0; vecd_tmp(6) = 8.0;}
+            else if(atomName == "TA") {int_tmp = 7; vecd_tmp(0) = 12.0; vecd_tmp(1) = 8.0; vecd_tmp(2) = 16.0; vecd_tmp(3) = 23.0/2.5; vecd_tmp(4) = 34.5/2.5; vecd_tmp(5) = 6.0; vecd_tmp(6) = 8.0;}
+            else if(atomName == "W") {int_tmp = 7; vecd_tmp(0) = 12.0; vecd_tmp(1) = 8.0; vecd_tmp(2) = 16.0; vecd_tmp(3) = 24.0/2.5; vecd_tmp(4) = 36.0/2.5; vecd_tmp(5) = 6.0; vecd_tmp(6) = 8.0;}
+            else if(atomName == "RE") {int_tmp = 7; vecd_tmp(0) = 12.0; vecd_tmp(1) = 8.0; vecd_tmp(2) = 16.0; vecd_tmp(3) = 10.0; vecd_tmp(4) = 15.0; vecd_tmp(5) = 6.0; vecd_tmp(6) = 8.0;}
+            else if(atomName == "OS") {int_tmp = 7; vecd_tmp(0) = 12.0; vecd_tmp(1) = 8.0; vecd_tmp(2) = 16.0; vecd_tmp(3) = 26.0/2.5; vecd_tmp(4) = 39.0/2.5; vecd_tmp(5) = 6.0; vecd_tmp(6) = 8.0;}
+            else if(atomName == "IR") {int_tmp = 7; vecd_tmp(0) = 12.0; vecd_tmp(1) = 8.0; vecd_tmp(2) = 16.0; vecd_tmp(3) = 27.0/2.5; vecd_tmp(4) = 40.5/2.5; vecd_tmp(5) = 6.0; vecd_tmp(6) = 8.0;}
+            else if(atomName == "PT") {int_tmp = 7; vecd_tmp(0) = 11.0; vecd_tmp(1) = 8.0; vecd_tmp(2) = 16.0; vecd_tmp(3) = 29.0/2.5; vecd_tmp(4) = 43.5/2.5; vecd_tmp(5) = 6.0; vecd_tmp(6) = 8.0;}
+            else if(atomName == "AU") {int_tmp = 7; vecd_tmp(0) = 11.0; vecd_tmp(1) = 8.0; vecd_tmp(2) = 16.0; vecd_tmp(3) = 12.0; vecd_tmp(4) = 18.0; vecd_tmp(5) = 6.0; vecd_tmp(6) = 8.0;}
+            else if(atomName == "HG") {int_tmp = 7; vecd_tmp(0) = 12.0; vecd_tmp(1) = 8.0; vecd_tmp(2) = 16.0; vecd_tmp(3) = 12.0; vecd_tmp(4) = 18.0; vecd_tmp(5) = 6.0; vecd_tmp(6) = 8.0;}
+            else if(atomName == "TL") {int_tmp = 7; vecd_tmp(0) = 12.0; vecd_tmp(1) = 25.0/3.0; vecd_tmp(2) = 50.0/3.0; vecd_tmp(3) = 12.0; vecd_tmp(4) = 18.0; vecd_tmp(5) = 6.0; vecd_tmp(6) = 8.0;}
+            else if(atomName == "PB") {int_tmp = 7; vecd_tmp(0) = 12.0; vecd_tmp(1) = 26.0/3.0; vecd_tmp(2) = 52.0/3.0; vecd_tmp(3) = 12.0; vecd_tmp(4) = 18.0; vecd_tmp(5) = 6.0; vecd_tmp(6) = 8.0;}
+            else if(atomName == "BI") {int_tmp = 7; vecd_tmp(0) = 12.0; vecd_tmp(1) = 9.0; vecd_tmp(2) = 18.0; vecd_tmp(3) = 12.0; vecd_tmp(4) = 18.0; vecd_tmp(5) = 6.0; vecd_tmp(6) = 8.0;}
+            else if(atomName == "PO") {int_tmp = 7; vecd_tmp(0) = 12.0; vecd_tmp(1) = 28.0/3.0; vecd_tmp(2) = 56.0/3.0; vecd_tmp(3) = 12.0; vecd_tmp(4) = 18.0; vecd_tmp(5) = 6.0; vecd_tmp(6) = 8.0;}
+            else if(atomName == "AT") {int_tmp = 7; vecd_tmp(0) = 12.0; vecd_tmp(1) = 29.0/3.0; vecd_tmp(2) = 58.0/3.0; vecd_tmp(3) = 12.0; vecd_tmp(4) = 18.0; vecd_tmp(5) = 6.0; vecd_tmp(6) = 8.0;}
+            else if(atomName == "RN") {int_tmp = 7; vecd_tmp(0) = 12.0; vecd_tmp(1) = 10.0; vecd_tmp(2) = 20.0; vecd_tmp(3) = 12.0; vecd_tmp(4) = 18.0; vecd_tmp(5) = 6.0; vecd_tmp(6) = 8.0;}
+            else if(atomName == "FR") {int_tmp = 7; vecd_tmp(0) = 13.0; vecd_tmp(1) = 10.0; vecd_tmp(2) = 20.0; vecd_tmp(3) = 12.0; vecd_tmp(4) = 18.0; vecd_tmp(5) = 6.0; vecd_tmp(6) = 8.0;}
+            else if(atomName == "RA") {int_tmp = 7; vecd_tmp(0) = 14.0; vecd_tmp(1) = 10.0; vecd_tmp(2) = 20.0; vecd_tmp(3) = 12.0; vecd_tmp(4) = 18.0; vecd_tmp(5) = 6.0; vecd_tmp(6) = 8.0;}
+            else if(atomName == "AC") {int_tmp = 7; vecd_tmp(0) = 14.0; vecd_tmp(1) = 10.0; vecd_tmp(2) = 20.0; vecd_tmp(3) = 31.0/2.5; vecd_tmp(4) = 46.5/2.5; vecd_tmp(5) = 6.0; vecd_tmp(6) = 8.0;}
+            else if(atomName == "TH") {int_tmp = 7; vecd_tmp(0) = 14.0; vecd_tmp(1) = 10.0; vecd_tmp(2) = 20.0; vecd_tmp(3) = 32.0/2.5; vecd_tmp(4) = 48.0/2.5; vecd_tmp(5) = 6.0; vecd_tmp(6) = 8.0;}
+            else if(atomName == "PA") {int_tmp = 7; vecd_tmp(0) = 14.0; vecd_tmp(1) = 10.0; vecd_tmp(2) = 20.0; vecd_tmp(3) = 31.0/2.5; vecd_tmp(4) = 46.5/2.5; vecd_tmp(5) = 48.0/7.0; vecd_tmp(6) = 64.0/7.0;}
+            else if(atomName == "U") {int_tmp = 7; vecd_tmp(0) = 14.0; vecd_tmp(1) = 10.0; vecd_tmp(2) = 20.0; vecd_tmp(3) = 31.0/2.5; vecd_tmp(4) = 46.5/2.5; vecd_tmp(5) = 51.0/7.0; vecd_tmp(6) = 68.0/7.0;}
+            else if(atomName == "NP") {int_tmp = 7; vecd_tmp(0) = 14.0; vecd_tmp(1) = 10.0; vecd_tmp(2) = 20.0; vecd_tmp(3) = 31.0/2.5; vecd_tmp(4) = 46.5/2.5; vecd_tmp(5) = 54.0/7.0; vecd_tmp(6) = 72.0/7.0;}
+            else if(atomName == "PU") {int_tmp = 7; vecd_tmp(0) = 14.0; vecd_tmp(1) = 10.0; vecd_tmp(2) = 20.0; vecd_tmp(3) = 12.0; vecd_tmp(4) = 18.0; vecd_tmp(5) = 60.0/7.0; vecd_tmp(6) = 80.0/7.0;}
+            else if(atomName == "AM") {int_tmp = 7; vecd_tmp(0) = 14.0; vecd_tmp(1) = 10.0; vecd_tmp(2) = 20.0; vecd_tmp(3) = 12.0; vecd_tmp(4) = 18.0; vecd_tmp(5) = 63.0/7.0; vecd_tmp(6) = 84.0/7.0;}
+            else if(atomName == "CM") {int_tmp = 7; vecd_tmp(0) = 14.0; vecd_tmp(1) = 10.0; vecd_tmp(2) = 20.0; vecd_tmp(3) = 31.0/2.5; vecd_tmp(4) = 46.5/2.5; vecd_tmp(5) = 63.0/7.0; vecd_tmp(6) = 84.0/7.0;}
+            else if(atomName == "BK") {int_tmp = 7; vecd_tmp(0) = 14.0; vecd_tmp(1) = 10.0; vecd_tmp(2) = 20.0; vecd_tmp(3) = 12.0; vecd_tmp(4) = 18.0; vecd_tmp(5) = 69.0/7.0; vecd_tmp(6) = 92.0/7.0;}
+            else if(atomName == "CF") {int_tmp = 7; vecd_tmp(0) = 14.0; vecd_tmp(1) = 10.0; vecd_tmp(2) = 20.0; vecd_tmp(3) = 12.0; vecd_tmp(4) = 18.0; vecd_tmp(5) = 72.0/7.0; vecd_tmp(6) = 96.0/7.0;}
+            else if(atomName == "ES") {int_tmp = 7; vecd_tmp(0) = 14.0; vecd_tmp(1) = 10.0; vecd_tmp(2) = 20.0; vecd_tmp(3) = 12.0; vecd_tmp(4) = 18.0; vecd_tmp(5) = 75.0/7.0; vecd_tmp(6) = 100.0/7.0;}
+            else if(atomName == "FM") {int_tmp = 7; vecd_tmp(0) = 14.0; vecd_tmp(1) = 10.0; vecd_tmp(2) = 20.0; vecd_tmp(3) = 12.0; vecd_tmp(4) = 18.0; vecd_tmp(5) = 78.0/7.0; vecd_tmp(6) = 104.0/7.0;}
+            else if(atomName == "MD") {int_tmp = 7; vecd_tmp(0) = 14.0; vecd_tmp(1) = 10.0; vecd_tmp(2) = 20.0; vecd_tmp(3) = 12.0; vecd_tmp(4) = 18.0; vecd_tmp(5) = 81.0/7.0; vecd_tmp(6) = 108.0/7.0;}
+            else if(atomName == "NO") {int_tmp = 7; vecd_tmp(0) = 14.0; vecd_tmp(1) = 10.0; vecd_tmp(2) = 20.0; vecd_tmp(3) = 12.0; vecd_tmp(4) = 18.0; vecd_tmp(5) = 12.0; vecd_tmp(6) = 16.0;}
+            else if(atomName == "LR") {int_tmp = 7; vecd_tmp(0) = 14.0; vecd_tmp(1) = 31.0/3.0; vecd_tmp(2) = 62.0/3.0; vecd_tmp(3) = 12.0; vecd_tmp(4) = 18.0; vecd_tmp(5) = 12.0; vecd_tmp(6) = 16.0;}
+            else if(atomName == "RF") {int_tmp = 7; vecd_tmp(0) = 14.0; vecd_tmp(1) = 10.0; vecd_tmp(2) = 20.0; vecd_tmp(3) = 32.0/2.5; vecd_tmp(4) = 48.0/2.5; vecd_tmp(5) = 12.0; vecd_tmp(6) = 16.0;}
+            else if(atomName == "DB") {int_tmp = 7; vecd_tmp(0) = 14.0; vecd_tmp(1) = 10.0; vecd_tmp(2) = 20.0; vecd_tmp(3) = 33.0/2.5; vecd_tmp(4) = 49.5/2.5; vecd_tmp(5) = 12.0; vecd_tmp(6) = 16.0;}
+            else if(atomName == "SG") {int_tmp = 7; vecd_tmp(0) = 14.0; vecd_tmp(1) = 10.0; vecd_tmp(2) = 20.0; vecd_tmp(3) = 34.0/2.5; vecd_tmp(4) = 51.0/2.5; vecd_tmp(5) = 12.0; vecd_tmp(6) = 16.0;}
+            else if(atomName == "BH") {int_tmp = 7; vecd_tmp(0) = 14.0; vecd_tmp(1) = 10.0; vecd_tmp(2) = 20.0; vecd_tmp(3) = 14.0; vecd_tmp(4) = 21.0; vecd_tmp(5) = 12.0; vecd_tmp(6) = 16.0;}
+            else if(atomName == "HS") {int_tmp = 7; vecd_tmp(0) = 14.0; vecd_tmp(1) = 10.0; vecd_tmp(2) = 20.0; vecd_tmp(3) = 36.0/2.5; vecd_tmp(4) = 54.0/2.5; vecd_tmp(5) = 12.0; vecd_tmp(6) = 16.0;}
+            else
+            {
+                cout << "ERROR: " << atomName << " does NOT have a default ON. Please input the occupation numbers by hand." << endl;
+                exit(99);
+            }            
+        }
+        int_tmp2 = 0;
+        for(int ii = 0; ii < int_tmp; ii++)
+        {
+            int int_tmp3 = vecd_tmp(ii) / (irrep_list(int_tmp2).two_j + 1);
+            double d_tmp = (double)(vecd_tmp(ii) - int_tmp3*(irrep_list(int_tmp2).two_j + 1)) / (double)(irrep_list(int_tmp2).two_j + 1);
+            for(int jj = 0; jj < irrep_list(int_tmp2).two_j + 1; jj++)
+            {
+                occNumber(int_tmp2+jj).resize(irrep_list(int_tmp2+jj).size);
+                occNumber(int_tmp2+jj) = VectorXd::Zero(irrep_list(int_tmp2+jj).size);
+                for(int kk = 0; kk < int_tmp3; kk++)
+                    occNumber(int_tmp2+jj)(kk) = 1.0;
+                if(occNumber(int_tmp2+jj).rows() > int_tmp3)
+                    occNumber(int_tmp2+jj)(int_tmp3) = d_tmp;
+            }
+            occMax_irrep += irrep_list(int_tmp2).two_j+1;
+            int_tmp2 += irrep_list(int_tmp2).two_j+1;
         }
     ifs.close();
 
@@ -918,5 +1034,115 @@ MatrixXcd DHF_SPH::sph2solid(const Matrix<irrep_jm, Dynamic, 1>& irrep_list)
     }
 
     return output;
+}
+
+
+/*
+    For CFOUR interface
+*/
+MatrixXd DHF_SPH::reorder_m(const int& LL)
+{
+    MatrixXd tmp = MatrixXd::Zero(2*LL+1,2*LL+1);
+    switch (LL)
+    {
+    case 0:
+        tmp(0,0) = 1.0;
+        break;
+    case 1:
+        tmp(2,0) = 1.0;
+        tmp(0,1) = 1.0;
+        tmp(1,2) = 1.0;
+        break;
+    case 2:
+        tmp(2,0) = 1.0;
+        tmp(0,1) = 1.0;
+        tmp(3,2) = 1.0;
+        tmp(4,3) = 1.0;
+        tmp(1,4) = 1.0;
+        break;
+    case 3:
+        tmp(4,0) = 1.0;
+        tmp(2,1) = 1.0;
+        tmp(3,2) = 1.0;
+        tmp(6,3) = 1.0;
+        tmp(1,4) = 1.0;
+        tmp(0,5) = 1.0;
+        tmp(5,6) = 1.0;
+        break;
+    case 4:
+        tmp(4,0) = 1.0;
+        tmp(2,1) = 1.0;
+        tmp(5,2) = 1.0;
+        tmp(8,3) = 1.0;
+        tmp(1,4) = 1.0;
+        tmp(6,5) = 1.0;
+        tmp(0,6) = 1.0;
+        tmp(7,7) = 1.0;
+        tmp(3,8) = 1.0;
+        break;
+    case 5:
+        tmp(6,0) = 1.0;
+        tmp(4,1) = 1.0;
+        tmp(7,2) = 1.0;
+        tmp(8,3) = 1.0;
+        tmp(1,4) = 1.0;
+        tmp(0,5) = 1.0;
+        tmp(9,6) = 1.0;
+        tmp(2,7) = 1.0;
+        tmp(5,8) = 1.0;
+        tmp(10,9) = 1.0;
+        tmp(3,10) = 1.0;
+        break;
+    case 6:
+        tmp(12,0) = 1.0;
+        tmp(4,1) = 1.0;
+        tmp(11,2) = 1.0;
+        tmp(10,3) = 1.0;
+        tmp(1,4) = 1.0;
+        tmp(8,5) = 1.0;
+        tmp(0,6) = 1.0;
+        tmp(9,7) = 1.0;
+        tmp(2,8) = 1.0;
+        tmp(6,9) = 1.0;
+        tmp(3,10) = 1.0;
+        tmp(5,11) = 1.0;
+        tmp(7,12) = 1.0;
+        break;
+    default:
+        cout << "ERROR: L is too large to be supported!" << endl;
+        exit(99);
+        break;
+    }
+
+    return tmp;
+}
+MatrixXcd DHF_SPH::jspinor2cfour_interface_old(const Matrix<irrep_jm, Dynamic, 1>& irrep_list)
+{
+    int Lmax = irrep_list(irrep_list.rows()-1).l;
+    vMatrixXd Lmatrices(Lmax+1);
+    for(int ll = 0; ll <= Lmax; ll++)
+        Lmatrices(ll) = reorder_m(ll);
+    int size_spinor = 0, Lsize[Lmax+1];
+    for(int ir = 0; ir < irrep_list.rows(); ir++)
+    {
+        Lsize[irrep_list(ir).l] = irrep_list(ir).size;
+        size_spinor += irrep_list(ir).size;
+    }
+    int size_nr = size_spinor/2, int_tmp = 0;
+    MatrixXd tmp(size_spinor, size_spinor);
+    tmp = MatrixXd::Zero(size_spinor,size_spinor);
+    for(int ll = 0; ll <= Lmax; ll++)
+    {
+        for(int ii = 0; ii < Lsize[ll]; ii++)
+        for(int mm = 0; mm < 2*ll+1; mm++)
+        for(int nn = 0; nn < 2*ll+1; nn++)
+        {
+            tmp(int_tmp + ii*(2*ll+1) + mm, int_tmp + ii*(2*ll+1) + nn) = Lmatrices(ll)(mm,nn);
+            tmp(size_nr+int_tmp + ii*(2*ll+1) + mm, size_nr+int_tmp + ii*(2*ll+1) + nn) = Lmatrices(ll)(mm,nn);
+        }
+        int_tmp += Lsize[ll]*(2*ll+1);
+    }
+
+    return jspinor2sph(irrep_list) * sph2solid(irrep_list) * tmp;
 }
 

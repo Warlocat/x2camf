@@ -30,15 +30,17 @@ DHF_SPH(int_sph_,filename,spinFree,sfx2c)
         }
     }
 
-    MM = irrep_list(openShell).l*4+2;
     if(openShell == -1)
     {
         NN = 0;
         f_NM = 0.0;
         MM = 0.0;
     }
-    else NN = f_NM * MM;
-
+    else 
+    {
+        MM = irrep_list(openShell).l*4+2;
+        NN = f_NM * MM;
+    }
 
     occNumberDebug.resize(occMax_irrep);
     for(int ir = 0; ir < occMax_irrep; ir++)

@@ -16,6 +16,26 @@ typedef Matrix<MatrixXd,-1,1> vMatrixXd;
 typedef Matrix<VectorXd,-1,1> vVectorXd;
 typedef Matrix<MatrixXd,-1,-1> mMatrixXd;
 
+
+/*
+    Read and write matrix in binary file
+*/
+template<typename T> void writeMatrixBinary(const Matrix<T,-1,-1>& inputM, const string& filename);
+template<typename T> void readMatrixBinary(Matrix<T,-1,-1>& inputM, const string& filename);
+template<typename T> void writeMatrixBinary(T* inputM, const int& size, const string& filename);
+template<typename T> void readMatrixBinary(T* inputM, const int& size, const string& filename);
+
+
+/*
+    Fortran interface read and write binary file
+*/
+namespace F_INTERFACE
+{
+    // extern void F_TEST_(char* FNAME);
+} // namespace F_INTERFACE
+
+
+
 /*
     gtos in form of angular shell
 */

@@ -141,7 +141,7 @@ INT_SPH::~INT_SPH()
 */
 void INT_SPH::readBasis()
 {
-    string target = atomName + ":" + basisSet, flags;
+    string target = basisSet, flags;
     
     ifstream ifs;
     int int_tmp;

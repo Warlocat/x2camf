@@ -26,14 +26,14 @@ int main()
     bool twoC = false;
     readInput("input");
     INT_SPH intor(atomName, basisSet);
-    // DHF_SPH_CA dhf_test(intor,"input",true,true);
-    // dhf_test.runSCF_separate(true);
-    // vMatrixXd amfi = dhf_test.get_amfi_unc_ca(intor,true);
+    DHF_SPH_CA dhf_test(intor,"input",true,true);
+    dhf_test.runSCF_separate(true);
+    //vMatrixXd amfi = dhf_test.get_amfi_unc_ca(intor,true);
     DHF_SPH_CA dhf_test2(intor,"input",false,false);
     dhf_test2.runSCF_separate(false);
-    vMatrixXd amfi = dhf_test2.get_amfi_unc_ca(intor,false);
-    for(int ir = 0; ir < amfi.rows(); ir++)
-        cout << amfi(ir) << endl;
+    //vMatrixXd amfi = dhf_test2.get_amfi_unc_ca(intor,false);
+    //for(int ir = 0; ir < amfi.rows(); ir++)
+    //    cout << amfi(ir) << endl;
     return 0;
 }
 

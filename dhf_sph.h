@@ -53,6 +53,9 @@ public:
     /* Generate basis transformation matrix */
     static MatrixXd jspinor2sph(const Matrix<irrep_jm, Dynamic, 1>& irrep_list);
     static MatrixXcd sph2solid(const Matrix<irrep_jm, Dynamic, 1>& irrep_list);
+    /* For CFOUR interface */
+    static MatrixXd reorder_m(const int& LL);
+    static MatrixXcd jspinor2cfour_interface_old(const Matrix<irrep_jm, Dynamic, 1>& irrep_list);
 };
 
 

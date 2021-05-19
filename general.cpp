@@ -157,6 +157,58 @@ complex<double> U_SH_trans(const int& mu, const int& mm)
     return result;
 }
 
+/*
+    Read and write matrix
+*/
+template<typename T> void writeMatrixBinary(const Matrix<T,-1,-1>& inputM, const string& filename)
+{
+    ofstream ofs;
+    ofs.open(filename, ios::binary);
+        for(int ii = 0; ii < inputM.rows(); ii++)
+        for(int jj = 0; jj < inputM.cols(); jj++)
+        {
+            ofs.write((char*) &inputM(ii,jj), sizeof(T));
+        }
+    ofs.close();
+    return;
+}
+template<typename T> void readMatrixBinary(Matrix<T,-1,-1>& inputM, const string& filename)
+{
+    ifstream ifs;
+    ifs.open(filename, ios::binary);
+        for(int ii = 0; ii < inputM.rows(); ii++)
+        for(int jj = 0; jj < inputM.cols(); jj++)
+        {
+            ifs.read((char*) &inputM(ii,jj), sizeof(T));
+        }
+    ifs.close();
+    return;
+}
+template<typename T> void writeMatrixBinary(T* inputM, const int& size, const string& filename)
+{
+    ofstream ofs;
+    ofs.open(filename, ios::binary);
+        for(int ii = 0; ii < size; ii++)
+        {
+            ofs.write((char*) &(inputM[ii]), sizeof(T));
+        }
+    ofs.close();
+    return;
+}
+template<typename T> void readMatrixBinary(T* inputM, const int& size, const string& filename)
+{
+    ifstream ifs;
+    inputM = new T[size];
+    ifs.open(filename, ios::binary);
+        for(int ii = 0; ii < size; ii++)
+        {
+            ifs.read((char*) &(inputM[ii]), sizeof(T));
+        }
+    ifs.close();
+    return;
+}
+
+
 double evaluateChange(const MatrixXd& M1, const MatrixXd& M2)
 {
     int size = M1.rows();
