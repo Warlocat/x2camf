@@ -48,14 +48,6 @@ public:
     vMatrixXd get_amfi_unc(INT_SPH& int_sph_, const bool& twoC = false, const string& Xmethod = "partialFock");
     vMatrixXd get_amfi_unc(const int2eJK& h2eSSLL_SD, const int2eJK& h2eSSSS_SD, const vMatrixXd& density_, const string& Xmethod = "partialFock");
     vMatrixXd get_amfi_unc_2c(const int2eJK& h2eSSLL_SD, const int2eJK& h2eSSSS_SD);
-    /* Put one-electron integrals in a single matrix and reorder them */
-    static MatrixXd unite_irrep(const vMatrixXd& inputM, const Matrix<irrep_jm, Dynamic, 1>& irrep_list);
-    /* Generate basis transformation matrix */
-    static MatrixXd jspinor2sph(const Matrix<irrep_jm, Dynamic, 1>& irrep_list);
-    static MatrixXcd sph2solid(const Matrix<irrep_jm, Dynamic, 1>& irrep_list);
-    /* For CFOUR interface */
-    static MatrixXd reorder_m(const int& LL);
-    static MatrixXcd jspinor2cfour_interface_old(const Matrix<irrep_jm, Dynamic, 1>& irrep_list);
 };
 
 

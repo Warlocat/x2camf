@@ -17,8 +17,6 @@ void readZMAT(const string& filename, vector<string>& atoms, vector<string>& bas
 string removeSpaces(const string& flags);
 vector<string> splitSrting(const string& flags, const char& targetChar);
 
-
-
 int main()
 {
     vector<bool> amfiMethod;
@@ -77,16 +75,17 @@ int main()
         {
             DHF_SPH_CA scfer(intor, "ZMAT", amfiMethod[1], amfiMethod[2]);
             scfer.runSCF_separate(amfiMethod[2]);
-            amfiUnique.push_back(DHF_SPH::unite_irrep(scfer.get_amfi_unc_ca(intor,amfiMethod[2]), intor.irrep_list));
+            amfiUnique.push_back(Rotate::unite_irrep(scfer.get_amfi_unc_ca(intor,amfiMethod[2]), intor.irrep_list));
         }
         else
         {
             DHF_SPH scfer(intor, "ZMAT", amfiMethod[1], amfiMethod[2]);
             scfer.runSCF(amfiMethod[2]);
-            amfiUnique.push_back(DHF_SPH::unite_irrep(scfer.get_amfi_unc(intor,amfiMethod[2]), intor.irrep_list));
+            amfiUnique.push_back(Rotate::unite_irrep(scfer.get_amfi_unc(intor,amfiMethod[2]), intor.irrep_list));
         }
-        MatrixXcd tmp = DHF_SPH::jspinor2cfour_interface_old(intor.irrep_list);
+        MatrixXcd tmp = Rotate::jspinor2cfour_interface_old(intor.irrep_list);
         amfiUnique[ii] = tmp.adjoint() * amfiUnique[ii] * tmp;
+        amfiUnique[ii] = Rotate::separate2mCompact(amfiUnique[ii],intor.irrep_list);
     }
 
     int sizeAll = 0, int_tmp = 0;
@@ -94,16 +93,34 @@ int main()
     {
         sizeAll += amfiUnique[indexList[ii]].rows();
     }
-    Eigen::dcomplex amfiAll[sizeAll*sizeAll];
+    int sizeAll2 = sizeAll*sizeAll;
+    F_INTERFACE::f_dcomplex amfiAll[sizeAll*sizeAll];
+    for(int ii = 0; ii < sizeAll2; ii++)
+    {
+        amfiAll[ii].dr = 0.0;
+        amfiAll[ii].di = 0.0;
+    }
     for(int ii = 0; ii < atomList.size(); ii++)
     {
         for(int mm = 0; mm < amfiUnique[indexList[ii]].rows(); mm++)
         for(int nn = 0; nn < amfiUnique[indexList[ii]].cols(); nn++)
-            amfiAll[(int_tmp+mm)*sizeAll + int_tmp+nn] = amfiUnique[indexList[ii]](mm,nn);
+        {
+            amfiAll[(int_tmp+mm)*sizeAll + int_tmp+nn].dr = amfiUnique[indexList[ii]](nn,mm).real();
+            amfiAll[(int_tmp+mm)*sizeAll + int_tmp+nn].di = amfiUnique[indexList[ii]](nn,mm).imag();
+        }
         int_tmp += amfiUnique[indexList[ii]].rows();
     }
-    writeMatrixBinary(amfiAll, sizeAll*sizeAll, "SX2CSOCM");
-    amfiUnique.clear();
+
+    cout << "Total length: " << sizeAll*sizeAll << endl;
+
+    sizeAll2 = 2*sizeAll2;
+    double tmp[sizeAll2];
+    // F_INTERFACE::rfile_("X2CMFSOM_CFOUR",tmp,&sizeAll2);
+    // F_INTERFACE::prvecr_(tmp,&sizeAll2);
+    F_INTERFACE::wfile_("X2CMFSOM",(double*)amfiAll,&sizeAll2);
+    F_INTERFACE::prvecr_((double*)amfiAll,&sizeAll2);
+
+    
 
     return 0;
 }
@@ -238,6 +255,3 @@ vector<string> splitSrting(const string& flags, const char& targetChar)
     }
     return res;
 }
-
-
-

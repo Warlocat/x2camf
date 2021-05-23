@@ -157,57 +157,6 @@ complex<double> U_SH_trans(const int& mu, const int& mm)
     return result;
 }
 
-/*
-    Read and write matrix
-*/
-template<typename T> void writeMatrixBinary(const Matrix<T,-1,-1>& inputM, const string& filename)
-{
-    ofstream ofs;
-    ofs.open(filename, ios::binary);
-        for(int ii = 0; ii < inputM.rows(); ii++)
-        for(int jj = 0; jj < inputM.cols(); jj++)
-        {
-            ofs.write((char*) &inputM(ii,jj), sizeof(T));
-        }
-    ofs.close();
-    return;
-}
-template<typename T> void readMatrixBinary(Matrix<T,-1,-1>& inputM, const string& filename)
-{
-    ifstream ifs;
-    ifs.open(filename, ios::binary);
-        for(int ii = 0; ii < inputM.rows(); ii++)
-        for(int jj = 0; jj < inputM.cols(); jj++)
-        {
-            ifs.read((char*) &inputM(ii,jj), sizeof(T));
-        }
-    ifs.close();
-    return;
-}
-template<typename T> void writeMatrixBinary(T* inputM, const int& size, const string& filename)
-{
-    ofstream ofs;
-    ofs.open(filename, ios::binary);
-        for(int ii = 0; ii < size; ii++)
-        {
-            ofs.write((char*) &(inputM[ii]), sizeof(T));
-        }
-    ofs.close();
-    return;
-}
-template<typename T> void readMatrixBinary(T* inputM, const int& size, const string& filename)
-{
-    ifstream ifs;
-    inputM = new T[size];
-    ifs.open(filename, ios::binary);
-        for(int ii = 0; ii < size; ii++)
-        {
-            ifs.read((char*) &(inputM[ii]), sizeof(T));
-        }
-    ifs.close();
-    return;
-}
-
 
 double evaluateChange(const MatrixXd& M1, const MatrixXd& M2)
 {
@@ -386,3 +335,235 @@ MatrixXd X2C::evaluate_h1e_x2c(const MatrixXd& S_, const MatrixXd& T_, const Mat
     MatrixXd h_eff = V_ + T_ * X_ + X_.transpose() * T_ - X_.transpose() * T_ * X_ + 0.25/pow(speedOfLight,2) * X_.transpose() * W_ * X_;
     return R_.transpose() *  h_eff * R_;
 }
+
+
+
+
+/*
+    Generate basis transformation matrix
+    j-adapted spinor to complex spherical harmonics spinor
+    complex spherical harmonics spinor to solid spherical harmonics spinor
+
+    output order is aaa...bbb... for spin, and m_l = -l, -l+1, ..., +l for each l
+*/
+MatrixXd Rotate::jspinor2sph(const Matrix<irrep_jm, Dynamic, 1>& irrep_list)
+{
+    int size_spinor = 0, size_irrep = irrep_list.rows(), Lmax = irrep_list(size_irrep - 1).l;
+    int Lsize[Lmax+1];
+    for(int ir = 0; ir < size_irrep; ir++)
+    {
+        size_spinor += irrep_list(ir).size;
+        Lsize[irrep_list(ir).l] = irrep_list(ir).size;
+    }
+    int size_nr = size_spinor/2, int_tmp = 0;
+    Matrix<Matrix<VectorXi,-1,1>,-1,1>index_tmp(Lmax+1);
+    for(int ll = 0; ll <= Lmax; ll++)
+    {
+        index_tmp(ll).resize(Lsize[ll]);
+        for(int nn = 0; nn < Lsize[ll]; nn++)
+        {
+            index_tmp(ll)(nn).resize(2*ll+1);
+            for(int mm = 0; mm < 2*ll+1; mm++)
+            {
+                index_tmp(ll)(nn)(mm) = int_tmp;
+                int_tmp++;
+            }
+        }   
+    }
+    
+    /*
+        jspinor_i = \sum_j U_{ji} sph_j
+        O^{jspinor} = U^\dagger O^{sph} U
+    */
+    MatrixXd output(size_spinor,size_spinor);
+    output = MatrixXd::Zero(size_spinor,size_spinor);
+    int_tmp = 0;
+    for(int ll = 0; ll <= Lmax; ll++)
+    for(int nn = 0; nn < Lsize[ll]; nn++)
+    {
+        if(ll != 0)
+        {
+            int twojj = 2*ll-1;
+            for(int two_mj = -twojj; two_mj <= twojj; two_mj += 2)
+            {
+                output(index_tmp(ll)(nn)((two_mj-1)/2+ll),int_tmp) = -sqrt((ll+0.5-two_mj/2.0)/(2*ll+1.0));
+                output(size_nr + index_tmp(ll)(nn)((two_mj+1)/2+ll),int_tmp) = sqrt((ll+0.5+two_mj/2.0)/(2*ll+1.0));
+                int_tmp++;
+            }
+        }
+        int twojj = 2*ll+1;
+        for(int two_mj = -twojj; two_mj <= twojj; two_mj += 2)
+        {
+            if((two_mj-1)/2 >= -ll)
+                output(index_tmp(ll)(nn)((two_mj-1)/2+ll),int_tmp) = sqrt((ll+0.5+two_mj/2.0)/(2*ll+1.0));
+            if((two_mj+1)/2 <= ll)
+                output(size_nr + index_tmp(ll)(nn)((two_mj+1)/2+ll),int_tmp) = sqrt((ll+0.5-two_mj/2.0)/(2*ll+1.0));
+            int_tmp++;
+        }
+    }
+
+    /* 
+        return M = U^\dagger 
+        O^{sph} = U O^{jspinor} U^\dagger = M^\dagger O^{jspinor} M
+    */
+    return output.adjoint();
+}
+
+MatrixXcd Rotate::sph2solid(const Matrix<irrep_jm, Dynamic, 1>& irrep_list)
+{
+    int size_spinor = 0, size_irrep = irrep_list.rows(), Lmax = irrep_list(size_irrep - 1).l;
+    int Lsize[Lmax+1];
+    for(int ir = 0; ir < size_irrep; ir++)
+    {
+        size_spinor += irrep_list(ir).size;
+        Lsize[irrep_list(ir).l] = irrep_list(ir).size;
+    }
+    int size_nr = size_spinor/2;
+
+    /*
+        real_i = \sum_j U_{ji} complex_j
+        O^{real} = U^\dagger O^{complex} U
+    */
+    MatrixXcd U_SH(2*Lmax+1,2*Lmax+1);
+    for(int ii = 0; ii < 2*Lmax+1; ii++)
+    for(int jj = 0; jj < 2*Lmax+1; jj++)
+        U_SH(ii,jj) = U_SH_trans(jj - Lmax,ii - Lmax);
+
+    int int_tmp = 0;
+    MatrixXcd output(size_spinor,size_spinor);
+    output = MatrixXcd::Zero(size_spinor,size_spinor);
+    for(int ll = 0; ll <= Lmax; ll++)
+    for(int ii = 0; ii < Lsize[ll]; ii++)
+    {
+        for(int mm = 0; mm < 2*ll+1; mm++)
+        for(int nn = 0; nn < 2*ll+1; nn++)
+        {
+            output(int_tmp+mm,int_tmp+nn) = U_SH(mm-ll+Lmax,nn-ll+Lmax);
+            output(size_nr+int_tmp+mm,size_nr+int_tmp+nn) = U_SH(mm-ll+Lmax,nn-ll+Lmax);
+        }
+        int_tmp += 2*ll+1;
+    }
+
+    return output;
+}
+
+
+/*
+    For CFOUR interface
+*/
+MatrixXd Rotate::reorder_m_cfour(const int& LL)
+{
+    MatrixXd tmp = MatrixXd::Zero(2*LL+1,2*LL+1);
+    switch (LL)
+    {
+    case 0:
+        tmp(0,0) = 1.0;
+        break;
+    case 1:
+        tmp(2,0) = 1.0;
+        tmp(0,1) = 1.0;
+        tmp(1,2) = 1.0;
+        break;
+    case 2:
+        tmp(2,0) = 1.0;
+        tmp(0,1) = 1.0;
+        tmp(3,2) = 1.0;
+        tmp(4,3) = 1.0;
+        tmp(1,4) = 1.0;
+        // tmp(1,0) = 1.0;
+        // tmp(0,1) = 1.0;
+        // tmp(3,2) = 1.0;
+        // tmp(2,3) = 1.0;
+        // tmp(4,4) = 1.0;
+        // tmp(4,0) = 1.0;
+        // tmp(0,1) = 1.0;
+        // tmp(3,2) = 1.0;
+        // tmp(1,3) = 1.0;
+        // tmp(2,4) = 1.0;
+        break;
+    case 3:
+        tmp(4,0) = 1.0;
+        tmp(2,1) = 1.0;
+        tmp(3,2) = 1.0;
+        tmp(6,3) = 1.0;
+        tmp(1,4) = 1.0;
+        tmp(0,5) = 1.0;
+        tmp(5,6) = 1.0;
+        break;
+    case 4:
+        tmp(4,0) = 1.0;
+        tmp(2,1) = 1.0;
+        tmp(5,2) = 1.0;
+        tmp(8,3) = 1.0;
+        tmp(1,4) = 1.0;
+        tmp(6,5) = 1.0;
+        tmp(0,6) = 1.0;
+        tmp(7,7) = 1.0;
+        tmp(3,8) = 1.0;
+        break;
+    case 5:
+        tmp(6,0) = 1.0;
+        tmp(4,1) = 1.0;
+        tmp(7,2) = 1.0;
+        tmp(8,3) = 1.0;
+        tmp(1,4) = 1.0;
+        tmp(0,5) = 1.0;
+        tmp(9,6) = 1.0;
+        tmp(2,7) = 1.0;
+        tmp(5,8) = 1.0;
+        tmp(10,9) = 1.0;
+        tmp(3,10) = 1.0;
+        break;
+    case 6:
+        tmp(12,0) = 1.0;
+        tmp(4,1) = 1.0;
+        tmp(11,2) = 1.0;
+        tmp(10,3) = 1.0;
+        tmp(1,4) = 1.0;
+        tmp(8,5) = 1.0;
+        tmp(0,6) = 1.0;
+        tmp(9,7) = 1.0;
+        tmp(2,8) = 1.0;
+        tmp(6,9) = 1.0;
+        tmp(3,10) = 1.0;
+        tmp(5,11) = 1.0;
+        tmp(7,12) = 1.0;
+        break;
+    default:
+        cout << "ERROR: L is too large to be supported!" << endl;
+        exit(99);
+        break;
+    }
+
+    return tmp;
+}
+MatrixXcd Rotate::jspinor2cfour_interface_old(const Matrix<irrep_jm, Dynamic, 1>& irrep_list)
+{
+    int Lmax = irrep_list(irrep_list.rows()-1).l;
+    vMatrixXd Lmatrices(Lmax+1);
+    for(int ll = 0; ll <= Lmax; ll++)
+        Lmatrices(ll) = reorder_m_cfour(ll);
+    int size_spinor = 0, Lsize[Lmax+1];
+    for(int ir = 0; ir < irrep_list.rows(); ir++)
+    {
+        Lsize[irrep_list(ir).l] = irrep_list(ir).size;
+        size_spinor += irrep_list(ir).size;
+    }
+    int size_nr = size_spinor/2, int_tmp = 0;
+    MatrixXd tmp = MatrixXd::Zero(size_spinor,size_spinor);
+    for(int ll = 0; ll <= Lmax; ll++)
+    for(int ii = 0; ii < Lsize[ll]; ii++)
+    {
+        for(int mm = 0; mm < 2*ll+1; mm++)
+        for(int nn = 0; nn < 2*ll+1; nn++)
+        {
+            tmp(int_tmp + mm, int_tmp + nn) = Lmatrices(ll)(mm,nn);
+            tmp(size_nr+int_tmp + mm, size_nr+int_tmp + nn) = Lmatrices(ll)(mm,nn);
+        }
+        int_tmp += 2*ll+1;
+    }
+
+    return jspinor2sph(irrep_list) * sph2solid(irrep_list) * tmp;
+}
+
+
