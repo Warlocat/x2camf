@@ -93,7 +93,7 @@ int main()
     {
         sizeAll += amfiUnique[indexList[ii]].rows();
     }
-    int sizeAll2 = sizeAll*sizeAll;
+    int sizeAll2 = sizeAll*sizeAll, sizeHalf = sizeAll/2;
     F_INTERFACE::f_dcomplex amfiAll[sizeAll*sizeAll];
     for(int ii = 0; ii < sizeAll2; ii++)
     {
@@ -102,23 +102,30 @@ int main()
     }
     for(int ii = 0; ii < atomList.size(); ii++)
     {
-        for(int mm = 0; mm < amfiUnique[indexList[ii]].rows(); mm++)
-        for(int nn = 0; nn < amfiUnique[indexList[ii]].cols(); nn++)
+        int size_tmp_half = amfiUnique[indexList[ii]].rows()/2;
+        for(int mm = 0; mm < size_tmp_half; mm++)
+        for(int nn = 0; nn < size_tmp_half; nn++)
         {
+            // transpose for Fortran interface
+	    // separate alpha and beta
             amfiAll[(int_tmp+mm)*sizeAll + int_tmp+nn].dr = amfiUnique[indexList[ii]](nn,mm).real();
             amfiAll[(int_tmp+mm)*sizeAll + int_tmp+nn].di = amfiUnique[indexList[ii]](nn,mm).imag();
+            amfiAll[(int_tmp+mm+sizeHalf)*sizeAll + int_tmp+nn].dr = amfiUnique[indexList[ii]](nn,size_tmp_half+mm).real();
+            amfiAll[(int_tmp+mm+sizeHalf)*sizeAll + int_tmp+nn].di = amfiUnique[indexList[ii]](nn,size_tmp_half+mm).imag();
+            amfiAll[(int_tmp+mm)*sizeAll + int_tmp+nn+sizeHalf].dr = amfiUnique[indexList[ii]](size_tmp_half+nn,mm).real();
+            amfiAll[(int_tmp+mm)*sizeAll + int_tmp+nn+sizeHalf].di = amfiUnique[indexList[ii]](size_tmp_half+nn,mm).imag();
+            amfiAll[(int_tmp+mm+sizeHalf)*sizeAll + int_tmp+nn+sizeHalf].dr = amfiUnique[indexList[ii]](size_tmp_half+nn,size_tmp_half+mm).real();
+            amfiAll[(int_tmp+mm+sizeHalf)*sizeAll + int_tmp+nn+sizeHalf].di = amfiUnique[indexList[ii]](size_tmp_half+nn,size_tmp_half+mm).imag();
         }
-        int_tmp += amfiUnique[indexList[ii]].rows();
+        int_tmp += amfiUnique[indexList[ii]].rows()/2;
     }
 
-    cout << "Total length: " << sizeAll*sizeAll << endl;
-
-    sizeAll2 = 2*sizeAll2;
-    double tmp[sizeAll2];
-    // F_INTERFACE::rfile_("X2CMFSOM_CFOUR",tmp,&sizeAll2);
-    // F_INTERFACE::prvecr_(tmp,&sizeAll2);
-    F_INTERFACE::wfile_("X2CMFSOM",(double*)amfiAll,&sizeAll2);
-    F_INTERFACE::prvecr_((double*)amfiAll,&sizeAll2);
+    int sizeAllReal = 2*sizeAll2;
+    double tmp[sizeAllReal];
+    //F_INTERFACE::rfile_("X2CMFSOM_CFOUR",tmp,&sizeAllReal);
+    //F_INTERFACE::prvecr_(tmp,&sizeAllReal);
+    F_INTERFACE::wfile_("X2CMFSOM",(double*)amfiAll,&sizeAllReal);
+    F_INTERFACE::prvecr_((double*)amfiAll,&sizeAllReal);
 
     
 
