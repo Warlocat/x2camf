@@ -1,16 +1,18 @@
 CPP = icpc
 FF = ifort
 CPPFLAG = -O3 -std=c++11 -qopenmp -mkl -DEIGEN_USE_MKL_ALL
+LIBSFLAG = -I ${EIGEN} -I ${GSL} -L ${GSL}/.libs -l gsl -l ifcore 
 EIGEN = ~/apps/Eigen3
 GSL = ~/apps/gsl-2.6
-MAIN = main.o int_sph.o general.o dhf_sph.o dhf_sph_ca.o wfile.o rfile.o prvecr.o
-TEST = test.o int_sph.o general.o dhf_sph.o dhf_sph_ca.o
+FILES = int_sph.o int_sph_gaunt.o general.o dhf_sph.o dhf_sph_ca.o wfile.o rfile.o prvecr.o
+MAIN = main.o ${FILES}
+TEST = test.o ${FILES}
 
 main.exe: ${MAIN}
-	${CPP} ${CPPFLAG} -I ${EIGEN} -I ${GSL} -L ${GSL}/.libs ${MAIN} -l gsl -l ifcore -o main.exe
+	${CPP} ${CPPFLAG} ${LIBSFLAG} ${MAIN} -o main.exe
 
 test.exe: ${TEST}
-	${CPP} ${CPPFLAG} -I ${EIGEN} -I ${GSL} -L ${GSL}/.libs ${TEST} -l gsl -o test.exe
+	${CPP} ${CPPFLAG} ${LIBSFLAG} ${TEST} -o test.exe
 
 %.o: %.cpp
 	$(CPP) $(CPPFLAG) -c $< -o $@ -I ${EIGEN} -I ${GSL}
