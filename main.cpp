@@ -74,7 +74,7 @@ int main()
         if(amfiMethod[0])
         {
             DHF_SPH_CA scfer(intor, "ZMAT", amfiMethod[1], amfiMethod[2]);
-            scfer.runSCF_separate(amfiMethod[2]);
+            scfer.runSCF(amfiMethod[2]);
             amfiUnique.push_back(Rotate::unite_irrep(scfer.get_amfi_unc_ca(intor,amfiMethod[2]), intor.irrep_list));
         }
         else
