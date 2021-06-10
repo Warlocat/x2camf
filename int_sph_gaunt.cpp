@@ -272,7 +272,7 @@ int2eJK INT_SPH::get_h2e_JK_gaunt(const string& intType, const int& occMaxL) con
                     if(l_q != 0)
                         radial_2e_list_K[LL](1,0) = int2e_get_radial(l_p,a_i_K,l_q-1,a_j_K,l_q,a_k_K,l_p+1,a_l_K,LL);
                     if(l_p != 0)
-                        radial_2e_list_K[LL](1,0) = int2e_get_radial(l_p,a_i_K,l_q+1,a_j_K,l_q,a_k_K,l_p-1,a_l_K,LL);
+                        radial_2e_list_K[LL](2,0) = int2e_get_radial(l_p,a_i_K,l_q+1,a_j_K,l_q,a_k_K,l_p-1,a_l_K,LL);
                     if(l_p != 0 && l_q != 0)
                         radial_2e_list_K[LL](3,0) = int2e_get_radial(l_p,a_i_K,l_q-1,a_j_K,l_q,a_k_K,l_p-1,a_l_K,LL);
                 }
@@ -328,7 +328,7 @@ int2eJK INT_SPH::get_h2e_JK_gaunt(const string& intType, const int& occMaxL) con
                             array_radial_J[tmp][ii][jj][kk][ll] -= 2.0*a4*lk2 * radial_2e_list_J[tmp](1,0);
                         else if(l_p == 0 && l_q != 0)
                             array_radial_J[tmp][ii][jj][kk][ll] -= 2.0*a2*lk4 * radial_2e_list_J[tmp](2,0);
-                        array_radial_J[tmp][ii][jj][kk][ll] /= -1.0 * norm_J * 4.0 * pow(speedOfLight,2);
+                        array_radial_J[tmp][ii][jj][kk][ll] /= norm_J * 4.0 * pow(speedOfLight,2);
                     }
                     else if(intType == "LSSL")
                     {
@@ -340,7 +340,7 @@ int2eJK INT_SPH::get_h2e_JK_gaunt(const string& intType, const int& occMaxL) con
                             array_radial_J[tmp][ii][jj][kk][ll] -= 2.0*a3*lk2 * radial_2e_list_J[tmp](1,0);
                         else if(l_p == 0 && l_q != 0)
                             array_radial_J[tmp][ii][jj][kk][ll] -= 2.0*a2*lk3 * radial_2e_list_J[tmp](2,0);
-                        array_radial_J[tmp][ii][jj][kk][ll] /= norm_J * 4.0 * pow(speedOfLight,2);
+                        array_radial_J[tmp][ii][jj][kk][ll] /= -1.0 * norm_J * 4.0 * pow(speedOfLight,2);
                     }
                     else
                     {
@@ -362,7 +362,7 @@ int2eJK INT_SPH::get_h2e_JK_gaunt(const string& intType, const int& occMaxL) con
                             array_radial_K[tmp][ii][ll][kk][jj] -= 2.0*a4*lk2 * radial_2e_list_K[tmp](1,0);
                         else if(l_p != 0 && l_q == 0)
                             array_radial_K[tmp][ii][ll][kk][jj] -= 2.0*a2*lk4 * radial_2e_list_K[tmp](2,0);
-                        array_radial_K[tmp][ii][ll][kk][jj] /= -1.0 * norm_K * 4.0 * pow(speedOfLight,2);
+                        array_radial_K[tmp][ii][ll][kk][jj] /= norm_K * 4.0 * pow(speedOfLight,2);
                     }
                     else if(intType == "LSSL")
                     {
@@ -370,7 +370,7 @@ int2eJK INT_SPH::get_h2e_JK_gaunt(const string& intType, const int& occMaxL) con
                         if(l_q != 0)
                             array_radial_K[tmp][ii][ll][kk][jj] += lk2*lk3 * radial_2e_list_K[tmp](3,0) 
                                     - 2.0*a3*lk2 * radial_2e_list_K[tmp](1,0) - 2.0*a2*lk3 * radial_2e_list_K[tmp](2,0);
-                        array_radial_K[tmp][ii][ll][kk][jj] /= norm_K * 4.0 * pow(speedOfLight,2);
+                        array_radial_K[tmp][ii][ll][kk][jj] /= -1.0 * norm_K * 4.0 * pow(speedOfLight,2);
                     }
                     else
                     {
@@ -462,3 +462,8 @@ int2eJK INT_SPH::get_h2e_JK_gaunt(const string& intType, const int& occMaxL) con
 }
 
 
+void INT_SPH::get_h2e_JK_gaunt_direct(int2eJK& LSLS, int2eJK& LSSL, const int& occMaxL, const bool& spinFree)
+{
+    LSLS = get_h2e_JK_gaunt("LSLS",occMaxL);
+    LSSL = get_h2e_JK_gaunt("LSSL",occMaxL);
+}

@@ -11,8 +11,8 @@ using namespace std;
 using namespace Eigen;
 
 
-DHF_SPH::DHF_SPH(INT_SPH& int_sph_, const string& filename, const bool& spinFree, const bool& sfx2c):
-irrep_list(int_sph_.irrep_list)
+DHF_SPH::DHF_SPH(INT_SPH& int_sph_, const string& filename, const bool& spinFree, const bool& sfx2c, const bool& with_gaunt_):
+irrep_list(int_sph_.irrep_list), with_gaunt(with_gaunt_)
 {
     cout << "Initializing Dirac-HF for " << int_sph_.atomName << " atom." << endl;
     Nirrep = int_sph_.irrep_list.rows();
@@ -50,7 +50,15 @@ irrep_list(int_sph_.irrep_list)
     else
         int_sph_.get_h2e_JK_direct(h2eLLLL_JK,h2eSSLL_JK,h2eSSSS_JK,irrep_list(occMax_irrep-1).l, spinFree);
     EndTime = clock();
-    cout << "2e-integral finished in " << (EndTime - StartTime) / (double)CLOCKS_PER_SEC << " seconds." << endl << endl; 
+    cout << "2e-integral finished in " << (EndTime - StartTime) / (double)CLOCKS_PER_SEC << " seconds." << endl; 
+    
+    if(with_gaunt && !sfx2c)
+    {
+        StartTime = clock();
+        int_sph_.get_h2e_JK_gaunt_direct(gauntLSLS_JK,gauntLSSL_JK,irrep_list(occMax_irrep-1).l, spinFree);
+        EndTime = clock();
+        cout << "2e-integral-Gaunt finished in " << (EndTime - StartTime) / (double)CLOCKS_PER_SEC << " seconds." << endl << endl; 
+    }
         
     fock_4c.resize(occMax_irrep);
     h1e_4c.resize(occMax_irrep);
@@ -418,6 +426,18 @@ void DHF_SPH::evaluateFock(MatrixXd& fock, const bool& twoC, const vMatrixXd& de
                         fock(nn+size,mm) -= den(jr)(ss,size_tmp2+rr) * h2eSSLL_JK.K(Iirrep,jr)(enr,esm);
                     }
                     fock(mm+size,nn+size) += den(jr)(size_tmp2+ss,size_tmp2+rr) * (h2eSSSS_JK.J(Iirrep,jr)(emn,esr) - h2eSSSS_JK.K(Iirrep,jr)(emr,esn)) + den(jr)(ss,rr) * h2eSSLL_JK.J(Iirrep,jr)(emn,esr);
+                    if(with_gaunt)
+                    {
+                        int enm = nn*size+mm, ers = rr*size_tmp2+ss, erm = rr*size+mm, ens = nn*size_tmp2+ss;
+                        fock(mm,nn) -= den(jr)(size_tmp2+ss,size_tmp2+rr) * gauntLSSL_JK.K(Iirrep,jr)(emr,esn);
+                        fock(mm+size,nn+size) -= den(jr)(ss,rr) * gauntLSSL_JK.K(jr,Iirrep)(esn,emr);
+                        fock(mm+size,nn) += den(jr)(size_tmp2+ss,rr)*(gauntLSLS_JK.J(Iirrep,jr)(enm,ers) - gauntLSLS_JK.K(jr,Iirrep)(erm,ens)) + den(jr)(ss,size_tmp2+rr) * gauntLSSL_JK.J(jr,Iirrep)(esr,emn);
+                        if(mm != nn) 
+                        {
+                            int ern = rr*size+nn, ems = mm*size_tmp2+ss;
+                            fock(nn+size,mm) += den(jr)(size_tmp2+ss,rr)*(gauntLSLS_JK.J(Iirrep,jr)(emn,ers) - gauntLSLS_JK.K(jr,Iirrep)(ern,ems)) + den(jr)(ss,size_tmp2+rr) * gauntLSSL_JK.J(jr,Iirrep)(esr,enm);
+                        }
+                    }
                 }
             }
             fock(nn,mm) = fock(mm,nn);
