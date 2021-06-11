@@ -36,6 +36,11 @@ template<typename T> void readMatrixBinary(Matrix<T,-1,-1>& inputM, const string
 {
     ifstream ifs;
     ifs.open(filename, ios::binary);
+    if(!ifs)
+    {
+        cout << "ERROR opening file " << filename << endl;
+        exit(99);
+    }
         for(int ii = 0; ii < inputM.rows(); ii++)
         for(int jj = 0; jj < inputM.cols(); jj++)
         {
@@ -60,6 +65,11 @@ template<typename T> void readMatrixBinary(T* inputM, const int& size, const str
     ifstream ifs;
     inputM = new T[size];
     ifs.open(filename, ios::binary);
+    if(!ifs)
+    {
+        cout << "ERROR opening file " << filename << endl;
+        exit(99);
+    }
         for(int ii = 0; ii < size; ii++)
         {
             ifs.read((char*) &(inputM[ii]), sizeof(T));
@@ -140,6 +150,7 @@ namespace X2C
     MatrixXd get_R(const MatrixXd& S_4c, const MatrixXd& X_);
     MatrixXd evaluate_h1e_x2c(const MatrixXd& S_, const MatrixXd& T_, const MatrixXd& W_, const MatrixXd& V_);
     MatrixXd evaluate_h1e_x2c(const MatrixXd& S_, const MatrixXd& T_, const MatrixXd& W_, const MatrixXd& V_, const MatrixXd& X_, const MatrixXd& R_);
+    MatrixXd transform_4c_2c(const MatrixXd& M_4c, const MatrixXd XXX, const MatrixXd& RRR);
 }
 
 

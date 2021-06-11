@@ -147,6 +147,11 @@ void INT_SPH::readBasis()
     int int_tmp;
     
     ifs.open("GENBAS");
+    if(!ifs)
+    {
+        cout << "ERROR opening file GENBAS." << endl;
+        exit(99);
+    }
         while (!ifs.eof())
         {
             getline(ifs,flags);

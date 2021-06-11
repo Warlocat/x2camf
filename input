@@ -1,6 +1,6 @@
-LI         atomName
-PVDZ        basisSet
-DHF     jobs
+RN         atomName
+RN:ANO-RCC      basisSet
+CASFX2C1E     jobs
 
 %occAMFI_ga
 5
@@ -29,7 +29,7 @@ DHF     jobs
 0.6666666666666666666666666666666667
 1.3333333333333333333333333333333333
 
-%occAMFI_LI
+%occAMFI_LIx
 1
 3
 

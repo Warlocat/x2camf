@@ -536,7 +536,7 @@ vMatrixXd DHF_SPH_CA::get_amfi_unc_ca(INT_SPH& int_sph_, const bool& twoC, const
     else if (!with_gaunt && amfi_with_gaunt)
     {
         StartTime = clock();
-        int_sph_.get_h2e_JK_gaunt_direct(gauntLSLS_JK,gauntLSSL_JK, irrep_list(occMax_irrep-1).l, false);
+        int_sph_.get_h2e_JK_gaunt_direct(gauntLSLS_JK,gauntLSSL_JK);
         EndTime = clock();
         cout << "2e-integral-Gaunt finished in " << (EndTime - StartTime) / (double)CLOCKS_PER_SEC << " seconds." << endl << endl; 
     }
@@ -554,7 +554,6 @@ vMatrixXd DHF_SPH_CA::get_amfi_unc_ca(INT_SPH& int_sph_, const bool& twoC, const
             cout << "Recalculate h2e and gaunt2e..." << endl;
             StartTime = clock();
             int_sph_.get_h2e_JK_direct(h2eLLLL_JK,h2eSSLL_JK,h2eSSSS_JK);
-            int_sph_.get_h2e_JK_gaunt_direct(gauntLSLS_JK,gauntLSSL_JK);
             EndTime = clock();
             cout << "Complete 2e-integral finished in " << (EndTime - StartTime) / (double)CLOCKS_PER_SEC << " seconds." << endl << endl; 
         }

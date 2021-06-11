@@ -336,7 +336,17 @@ MatrixXd X2C::evaluate_h1e_x2c(const MatrixXd& S_, const MatrixXd& T_, const Mat
     return R_.transpose() *  h_eff * R_;
 }
 
-
+MatrixXd X2C::transform_4c_2c(const MatrixXd& M_4c, const MatrixXd XXX, const MatrixXd& RRR)
+{
+    int size = M_4c.rows()/2;
+    if(size*2 != M_4c.rows())
+    {
+        cout << "Incorrect input M_4c in transform_4c_2c with an odd size" << endl;
+        exit(99);
+    }
+    MatrixXd tmp = M_4c.block(0,0,size,size) + M_4c.block(0,size,size,size) * XXX + XXX.adjoint() * M_4c.block(size,0,size,size) + XXX.adjoint() * M_4c.block(size,size,size,size) * XXX;
+    return RRR.adjoint() * tmp * RRR;
+}
 
 
 /*

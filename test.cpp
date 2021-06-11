@@ -26,26 +26,34 @@ int main()
     bool twoC = false;
     readInput("input");
     INT_SPH intor(atomName, basisSet);
-    // auto gaunt = intor.get_h2e_JK_gaunt("LSLS");
-    // int ir1 = 2, ir2 = 2;
-    // int size1 = intor.irrep_list(ir1).size, size2 = intor.irrep_list(ir2).size;
-    // for(int ii = 0; ii < size1; ii++)
-    // for(int jj = 0; jj < size1; jj++)
-    // for(int kk = 0; kk < size2; kk++)
-    // for(int ll = 0; ll < size2; ll++)
-    // {
-    //     cout << ii << "\t" << jj << "\t" << kk << "\t" << ll << "\t" << gaunt.K(ir1,ir2)(ii*size1+jj, kk*size2+ll) * -4.0*pow(speedOfLight,2) << endl;
-    // }
-    // DHF_SPH dhf(intor,"ZMAT",false,false,true);
-    // dhf.runSCF();
 
-    DHF_SPH_CA dhf_ca(intor,"ZMAT",false,false,false);
-    dhf_ca.runSCF();
-    auto amfi = dhf_ca.get_amfi_unc(intor,false);
-    for(int ii = 0; ii < amfi.rows(); ii++)
+    DHF_SPH sf4c(intor,"ZMAT",true,false,false);
+    sf4c.runSCF();
+    auto fock_sf4c = sf4c.get_fock_4c();
+    auto overlap_4c = sf4c.get_overlap_4c();
+    auto coeff_sf4c = sf4c.coeff;
+    int size_irrep = fock_sf4c.rows();
+    
+    DHF_SPH sf2c(intor,"ZMAT",true,true,false);
+    sf2c.runSCF(true);
+    auto h1e_sf2c = sf2c.get_h1e_4c();
+    auto fock_sf2c = sf2c.get_fock_4c();
+    vMatrixXd fock_pc(size_irrep);
+    vMatrixXd fock_2c_from_4c(size_irrep);
+    vMatrixXd h1e_2c_pc(size_irrep);
+    for(int ir = 0; ir < size_irrep; ir++)
     {
-        cout << amfi(ii) << endl;
+        MatrixXd XXX = X2C::get_X(coeff_sf4c(ir));
+        MatrixXd RRR = X2C::get_R(overlap_4c(ir),XXX);
+        fock_2c_from_4c(ir) = X2C::transform_4c_2c(fock_sf4c(ir), XXX, RRR);
+        fock_pc(ir) = fock_2c_from_4c(ir) - fock_sf2c(ir);
+        h1e_2c_pc(ir) = h1e_sf2c(ir) + fock_pc(ir);
     }
+
+    DHF_SPH pc2c(intor,"ZMAT",true,true,false);
+    pc2c.set_h1e_4c(h1e_2c_pc);
+    pc2c.runSCF(true);
+    
     return 0;
 }
 
@@ -55,6 +63,11 @@ void readInput(const string filename)
 {
     ifstream ifs;
     ifs.open(filename);
+    if(!ifs)
+    {
+        cout << "ERROR opening file " << filename << endl;
+        exit(99);
+    }
         ifs >> atomName >> flags;
         ifs >> basisSet >> flags;
         ifs >> jobs >> flags;

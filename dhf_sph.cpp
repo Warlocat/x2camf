@@ -66,7 +66,8 @@ irrep_list(int_sph_.irrep_list), with_gaunt(with_gaunt_)
     if(with_gaunt && !sfx2c)
     {
         StartTime = clock();
-        int_sph_.get_h2e_JK_gaunt_direct(gauntLSLS_JK,gauntLSSL_JK, irrep_list(occMax_irrep-1).l, spinFree);
+        //Always calculate all Gaunt integrals for amfi integrals
+        int_sph_.get_h2e_JK_gaunt_direct(gauntLSLS_JK,gauntLSSL_JK);
         EndTime = clock();
         cout << "2e-integral-Gaunt finished in " << (EndTime - StartTime) / (double)CLOCKS_PER_SEC << " seconds." << endl << endl; 
     }
@@ -490,6 +491,11 @@ void DHF_SPH::readOCC(const string& filename, const string& atomName)
     int int_tmp, int_tmp2, int_tmp3;
     ifstream ifs;
     ifs.open(filename);
+    if(!ifs)
+    {
+        cout << "ERROR opening file " << filename << endl;
+        exit(99);
+    }
         while(!ifs.eof())
         {
             ifs >> flags;
@@ -665,7 +671,7 @@ vMatrixXd DHF_SPH::get_amfi_unc(INT_SPH& int_sph_, const bool& twoC, const strin
     else if (!with_gaunt && amfi_with_gaunt)
     {
         StartTime = clock();
-        int_sph_.get_h2e_JK_gaunt_direct(gauntLSLS_JK,gauntLSSL_JK, irrep_list(occMax_irrep-1).l, false);
+        int_sph_.get_h2e_JK_gaunt_direct(gauntLSLS_JK,gauntLSSL_JK);
         EndTime = clock();
         cout << "2e-integral-Gaunt finished in " << (EndTime - StartTime) / (double)CLOCKS_PER_SEC << " seconds." << endl << endl; 
     }
@@ -683,7 +689,6 @@ vMatrixXd DHF_SPH::get_amfi_unc(INT_SPH& int_sph_, const bool& twoC, const strin
             cout << "Recalculate h2e and gaunt2e..." << endl;
             StartTime = clock();
             int_sph_.get_h2e_JK_direct(h2eLLLL_JK,h2eSSLL_JK,h2eSSSS_JK);
-            int_sph_.get_h2e_JK_gaunt_direct(gauntLSLS_JK,gauntLSSL_JK);
             EndTime = clock();
             cout << "Complete 2e-integral finished in " << (EndTime - StartTime) / (double)CLOCKS_PER_SEC << " seconds." << endl << endl; 
         }
@@ -972,5 +977,34 @@ vMatrixXd DHF_SPH::get_amfi_unc_2c(const int2eJK& h2eSSLL_SD, const int2eJK& h2e
     }
 
     return amfi_unc;
+}
+
+
+/*
+    Get private variable
+*/
+vMatrixXd DHF_SPH::get_fock_4c()
+{
+    return fock_4c;
+}
+vMatrixXd DHF_SPH::get_h1e_4c()
+{
+    return h1e_4c;
+}
+vMatrixXd DHF_SPH::get_overlap_4c()
+{
+    return overlap_4c;
+}
+/*
+    Set private variable
+*/
+void DHF_SPH::set_h1e_4c(const vMatrixXd& inputM)
+{
+    cout << "VERY DANGEROUS!! You changed h1e_4c!!" << endl;
+    for(int ir = 0; ir < h1e_4c.rows(); ir++)
+    {
+        h1e_4c(ir) = inputM(ir);
+    }
+    return;
 }
 

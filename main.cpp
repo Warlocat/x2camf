@@ -141,6 +141,11 @@ void readZMAT(const string& filename, vector<string>& atoms, vector<string>& bas
     ifstream ifs;
     string flags, flags2, basisSet;
     ifs.open(filename);
+    if(!ifs)
+    {
+        cout << "ERROR opening file " << filename << endl;
+        exit(99);
+    }
         getline(ifs,flags);
         while (!ifs.eof())
         {
