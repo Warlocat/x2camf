@@ -64,8 +64,8 @@ int main()
     if(amfiMethod[0])   method = method + "aoc-";
     if(amfiMethod[1])   method = method + "spin-free-";
     if(amfiMethod[2])   method = method + "x2c1e-";
-    if(amfiMethod[3])   method = method + "with Gaunt";
     else method = method + "Dirac Hatree Fock";
+    if(amfiMethod[3])   method = method + "with Gaunt";
     cout << "amfi Method input: " << method << endl;
 
     vector<MatrixXcd> amfiUnique;
@@ -208,7 +208,7 @@ void readZMAT(const string& filename, vector<string>& atoms, vector<string>& bas
                 //spin-free
                 //two-component
                 //gaunt
-                for(int ii = 0 ; ii < 3; ii++)
+                for(int ii = 0 ; ii < 4; ii++)
                 {
                     bool tmp;
                     ifs >> tmp;
@@ -219,10 +219,10 @@ void readZMAT(const string& filename, vector<string>& atoms, vector<string>& bas
         }
         if(amfiMethod.size() == 0)
         {
-            cout << "%amfiMethod is not found in ZMAT and set to default aoc-sfx2c1e" << endl;
-            amfiMethod.push_back(true); //aoc
-            amfiMethod.push_back(true); //spin-free
-            amfiMethod.push_back(true); //two-component
+            cout << "%amfiMethod is not found in ZMAT and set to default frac-DHF-gaunt" << endl;
+            amfiMethod.push_back(false); //aoc
+            amfiMethod.push_back(false); //spin-free
+            amfiMethod.push_back(false); //two-component
             amfiMethod.push_back(true); //with gaunt
         }
     ifs.close();
