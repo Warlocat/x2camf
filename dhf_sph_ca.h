@@ -27,8 +27,8 @@ public:
     virtual ~DHF_SPH_CA();
     virtual void runSCF(const bool& twoC = false);
 
-    vMatrixXd get_amfi_unc_ca(INT_SPH& int_sph_, const bool& twoC = false, const string& Xmethod = "partialFock");
-    vMatrixXd get_amfi_unc_ca_2c(const int2eJK& h2eSSLL_SD, const int2eJK& h2eSSSS_SD);
+    vMatrixXd get_amfi_unc_ca(INT_SPH& int_sph_, const bool& twoC = false, const string& Xmethod = "partialFock", const bool& amfi_with_gaunt = false);
+    vMatrixXd get_amfi_unc_ca_2c(const int2eJK& h2eSSLL_SD, const int2eJK& h2eSSSS_SD, const bool& amfi_with_gaunt = false);
 };
 
 

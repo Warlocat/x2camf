@@ -63,7 +63,8 @@ int main()
     string method = "";
     if(amfiMethod[0])   method = method + "aoc-";
     if(amfiMethod[1])   method = method + "spin-free-";
-    if(amfiMethod[2])   method = method + "x2c1e";
+    if(amfiMethod[2])   method = method + "x2c1e-";
+    if(amfiMethod[3])   method = method + "with Gaunt";
     else method = method + "Dirac Hatree Fock";
     cout << "amfi Method input: " << method << endl;
 
@@ -73,13 +74,13 @@ int main()
         INT_SPH intor(atomListUnique[ii],basisListUnique[ii]);
         if(amfiMethod[0])
         {
-            DHF_SPH_CA scfer(intor, "ZMAT", amfiMethod[1], amfiMethod[2]);
+            DHF_SPH_CA scfer(intor, "ZMAT", amfiMethod[1], amfiMethod[2], amfiMethod[3]);
             scfer.runSCF(amfiMethod[2]);
             amfiUnique.push_back(Rotate::unite_irrep(scfer.get_amfi_unc_ca(intor,amfiMethod[2]), intor.irrep_list));
         }
         else
         {
-            DHF_SPH scfer(intor, "ZMAT", amfiMethod[1], amfiMethod[2]);
+            DHF_SPH scfer(intor, "ZMAT", amfiMethod[1], amfiMethod[2], amfiMethod[3]);
             scfer.runSCF(amfiMethod[2]);
             amfiUnique.push_back(Rotate::unite_irrep(scfer.get_amfi_unc(intor,amfiMethod[2]), intor.irrep_list));
         }
@@ -107,7 +108,7 @@ int main()
         for(int nn = 0; nn < size_tmp_half; nn++)
         {
             // transpose for Fortran interface
-	    // separate alpha and beta
+	        // separate alpha and beta
             amfiAll[(int_tmp+mm)*sizeAll + int_tmp+nn].dr = amfiUnique[indexList[ii]](nn,mm).real();
             amfiAll[(int_tmp+mm)*sizeAll + int_tmp+nn].di = amfiUnique[indexList[ii]](nn,mm).imag();
             amfiAll[(int_tmp+mm+sizeHalf)*sizeAll + int_tmp+nn].dr = amfiUnique[indexList[ii]](nn,size_tmp_half+mm).real();
@@ -206,6 +207,7 @@ void readZMAT(const string& filename, vector<string>& atoms, vector<string>& bas
                 //aoc
                 //spin-free
                 //two-component
+                //gaunt
                 for(int ii = 0 ; ii < 3; ii++)
                 {
                     bool tmp;
@@ -221,6 +223,7 @@ void readZMAT(const string& filename, vector<string>& atoms, vector<string>& bas
             amfiMethod.push_back(true); //aoc
             amfiMethod.push_back(true); //spin-free
             amfiMethod.push_back(true); //two-component
+            amfiMethod.push_back(true); //with gaunt
         }
     ifs.close();
 
