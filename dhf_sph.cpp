@@ -188,7 +188,7 @@ MatrixXd DHF_SPH::evaluateErrorDIIS(const MatrixXd& den_old, const MatrixXd& den
 /*
     SCF procedure for 4-c and 2-c calculation
 */
-void DHF_SPH::runSCF(const bool& twoC)
+void DHF_SPH::runSCF(const bool& twoC, vMatrixXd* initialGuess)
 {
     vector<MatrixXd> error4DIIS[occMax_irrep], fock4DIIS[occMax_irrep];
     StartTime = clock();
@@ -197,8 +197,15 @@ void DHF_SPH::runSCF(const bool& twoC)
     else cout << "Start Dirac Hartree-Fock iterations..." << endl;
     cout << endl;
     vMatrixXd newDen;
-    eigensolverG_irrep(h1e_4c, overlap_half_i_4c, ene_orb, coeff);
-    density = evaluateDensity_spinor_irrep(twoC);
+    if(initialGuess == NULL)
+    {
+        eigensolverG_irrep(h1e_4c, overlap_half_i_4c, ene_orb, coeff);
+        density = evaluateDensity_spinor_irrep(twoC);
+    }
+    else
+    {
+        density = *initialGuess;
+    }
 
     for(int iter = 1; iter <= maxIter; iter++)
     {
@@ -986,6 +993,13 @@ vMatrixXd DHF_SPH::get_amfi_unc_2c(const int2eJK& h2eSSLL_SD, const int2eJK& h2e
 vMatrixXd DHF_SPH::get_fock_4c()
 {
     return fock_4c;
+}
+vMatrixXd DHF_SPH::get_fock_4c_2ePart()
+{
+    vMatrixXd fock_2e(occMax_irrep);
+    for(int ii = 0; ii < occMax_irrep; ii++)
+        fock_2e(ii) = fock_4c(ii) - h1e_4c(ii);
+    return fock_2e;
 }
 vMatrixXd DHF_SPH::get_h1e_4c()
 {

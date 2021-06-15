@@ -40,7 +40,7 @@ public:
 
     DHF_SPH(INT_SPH& int_sph_, const string& filename, const bool& spinFree = false, const bool& sfx2c = false, const bool& with_gaunt_ = false);
     virtual ~DHF_SPH();
-    virtual void runSCF(const bool& twoC = false);
+    virtual void runSCF(const bool& twoC = false, vMatrixXd* initialGuess = NULL);
     void renormalize_small();
     /* Read occupation numbers */
     void readOCC(const string& filename, const string& atomName);
@@ -51,6 +51,7 @@ public:
 
     // Get private variables
     vMatrixXd get_fock_4c();
+    vMatrixXd get_fock_4c_2ePart();
     vMatrixXd get_h1e_4c();
     vMatrixXd get_overlap_4c();
     void set_h1e_4c(const vMatrixXd& inputM);
