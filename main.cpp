@@ -74,15 +74,18 @@ int main()
         INT_SPH intor(atomListUnique[ii],basisListUnique[ii]);
         if(amfiMethod[0])
         {
+            cout << "Average of configuration SCF amfi is suppressed for testing purpose." << endl;
+            exit(99);
             DHF_SPH_CA scfer(intor, "ZMAT", amfiMethod[1], amfiMethod[2], amfiMethod[3]);
             scfer.runSCF(amfiMethod[2]);
             amfiUnique.push_back(Rotate::unite_irrep(scfer.get_amfi_unc_ca(intor,amfiMethod[2]), intor.irrep_list));
         }
         else
         {
-            DHF_SPH scfer(intor, "ZMAT", amfiMethod[1], amfiMethod[2], amfiMethod[3]);
+            DHF_SPH scfer(intor, "ZMAT", amfiMethod[1], amfiMethod[2], amfiMethod[3], true);
             scfer.runSCF(amfiMethod[2]);
-            amfiUnique.push_back(Rotate::unite_irrep(scfer.get_amfi_unc(intor,amfiMethod[2]), intor.irrep_list));
+            amfiUnique.push_back(Rotate::unite_irrep(scfer.x2c2ePCC(),intor.irrep_list));
+            // amfiUnique.push_back(Rotate::unite_irrep(scfer.get_amfi_unc(intor,amfiMethod[2]), intor.irrep_list));
         }
         MatrixXcd tmp = Rotate::jspinor2cfour_interface_old(intor.irrep_list);
         amfiUnique[ii] = tmp.adjoint() * amfiUnique[ii] * tmp;

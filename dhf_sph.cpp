@@ -11,7 +11,7 @@ using namespace std;
 using namespace Eigen;
 
 
-DHF_SPH::DHF_SPH(INT_SPH& int_sph_, const string& filename, const bool& spinFree, const bool& sfx2c, const bool& with_gaunt_):
+DHF_SPH::DHF_SPH(INT_SPH& int_sph_, const string& filename, const bool& spinFree, const bool& sfx2c, const bool& with_gaunt_, const bool& allInt):
 irrep_list(int_sph_.irrep_list), with_gaunt(with_gaunt_)
 {
     cout << "Initializing Dirac-HF for " << int_sph_.atomName << " atom." << endl;
@@ -21,6 +21,10 @@ irrep_list(int_sph_.irrep_list), with_gaunt(with_gaunt_)
     occNumber.resize(Nirrep);
     occMax_irrep = 0;
     readOCC(filename, int_sph_.atomName);
+    if(allInt)
+    {
+        occMax_irrep = irrep_list.rows();
+    }
     nelec = 0.0;
     cout << "Occupation number vector:" << endl;
     cout << "l\t2j\t2mj\tOcc" << endl;
@@ -1008,6 +1012,10 @@ vMatrixXd DHF_SPH::get_h1e_4c()
 vMatrixXd DHF_SPH::get_overlap_4c()
 {
     return overlap_4c;
+}
+vMatrixXd DHF_SPH::get_density()
+{
+    return density;
 }
 /*
     Set private variable

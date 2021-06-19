@@ -23,7 +23,7 @@ private:
     void evaluateFock_open(MatrixXd& fock, const bool& twoC, const vMatrixXd& den_c, const vMatrixXd den_o, const int& size, const int& Iirrep);
 
 public:
-    DHF_SPH_CA(INT_SPH& int_sph_, const string& filename, const bool& spinFree = false, const bool& sfx2c = false, const bool& with_gaunt_ = false);
+    DHF_SPH_CA(INT_SPH& int_sph_, const string& filename, const bool& spinFree = false, const bool& sfx2c = false, const bool& with_gaunt_ = false, const bool& allInt = false);
     virtual ~DHF_SPH_CA();
     virtual void runSCF(const bool& twoC = false);
 
