@@ -10,13 +10,14 @@ using namespace Eigen;
 class DHF_SPH
 {
 protected:
+    Matrix<intShell, Dynamic, 1> shell_list;
     int size_basis_spinor, Nirrep, occMax_irrep;
     Matrix<irrep_jm, Dynamic, 1> irrep_list;
     vMatrixXd overlap, kinetic, WWW, Vnuc;
     int2eJK h2eLLLL_JK, h2eSSLL_JK, h2eSSSS_JK, gauntLSLS_JK, gauntLSSL_JK;
     vMatrixXd density, fock_4c, h1e_4c, overlap_4c, overlap_half_i_4c, x2cXXX, x2cRRR;
     vVectorXd norm_s;
-    vVectorXd occNumber;
+    vVectorXd occNumber, occNumberCore;
     double d_density, nelec;
     bool converged = false, renormalizedSmall = false, with_gaunt = false;
     
@@ -32,7 +33,7 @@ protected:
 
 public:
     int maxIter = 100, size_DIIS = 8;
-    double convControl = 1e-9, ene_scf;
+    double convControl = 1e-8, ene_scf;
     vMatrixXd coeff;
     vVectorXd ene_orb;
     VectorXd ene_orb_total;
@@ -52,16 +53,22 @@ public:
     void evaluateFock(MatrixXd& fock, const bool& twoC, const vMatrixXd& den, const int& size, const int& Iirrep);
 
     /* x2c2e picture change */
-    vMatrixXd x2c2ePCC();
+    vMatrixXd x2c2ePCC(vMatrixXd* coeff2c = NULL);
+    vMatrixXd x2c2ePCC_density();
+    vMatrixXd x2c2ePCC_test();
     void evaluateFock_2e(MatrixXd& fock, const bool& twoC, const vMatrixXd& den, const int& size, const int& Iirrep);
     void evaluateFock_J(MatrixXd& fock, const bool& twoC, const vMatrixXd& den, const int& size, const int& Iirrep);
 
-    // Get private variables
+    /* Get Coeff for basis set */
+    vMatrixXd get_coeff_bs(const bool& twoC = true);
+
+    /* Get private variables */
     vMatrixXd get_fock_4c();
     vMatrixXd get_fock_4c_2ePart();
     vMatrixXd get_h1e_4c();
     vMatrixXd get_overlap_4c();
     vMatrixXd get_density();
+    vVectorXd get_occNumber();
     void set_h1e_4c(const vMatrixXd& inputM);
 };
 

@@ -12,13 +12,14 @@ using namespace Eigen;
 
 
 DHF_SPH::DHF_SPH(INT_SPH& int_sph_, const string& filename, const bool& spinFree, const bool& sfx2c, const bool& with_gaunt_, const bool& allInt):
-irrep_list(int_sph_.irrep_list), with_gaunt(with_gaunt_)
+irrep_list(int_sph_.irrep_list), with_gaunt(with_gaunt_), shell_list(int_sph_.shell_list)
 {
     cout << "Initializing Dirac-HF for " << int_sph_.atomName << " atom." << endl;
     Nirrep = int_sph_.irrep_list.rows();
     size_basis_spinor = int_sph_.size_gtou_spinor;
 
     occNumber.resize(Nirrep);
+    occNumberCore.resize(Nirrep);
     occMax_irrep = 0;
     readOCC(filename, int_sph_.atomName);
     if(allInt)
@@ -33,6 +34,12 @@ irrep_list(int_sph_.irrep_list), with_gaunt(with_gaunt_)
         cout << irrep_list(ii).l << "\t" << irrep_list(ii).two_j << "\t" << irrep_list(ii).two_mj << "\t" << occNumber(ii).transpose() << endl;
         for(int jj = 0; jj < occNumber(ii).rows(); jj++)
             nelec += occNumber(ii)(jj);
+    }
+    cout << "Core occupation number vector:" << endl;
+    cout << "l\t2j\t2mj\tOcc" << endl;
+    for(int ii = 0; ii < Nirrep; ii++)
+    {
+        cout << irrep_list(ii).l << "\t" << irrep_list(ii).two_j << "\t" << irrep_list(ii).two_mj << "\t" << occNumberCore(ii).transpose() << endl;
     }
     cout << "Highest occupied irrep: " << occMax_irrep << endl;
     cout << "Total number of electrons: " << nelec << endl << endl;
@@ -648,8 +655,17 @@ void DHF_SPH::readOCC(const string& filename, const string& atomName)
             {
                 occNumber(int_tmp2+jj).resize(irrep_list(int_tmp2+jj).size);
                 occNumber(int_tmp2+jj) = VectorXd::Zero(irrep_list(int_tmp2+jj).size);
+                occNumberCore(int_tmp2+jj).resize(irrep_list(int_tmp2+jj).size);
+                occNumberCore(int_tmp2+jj) = VectorXd::Zero(irrep_list(int_tmp2+jj).size);
                 for(int kk = 0; kk < int_tmp3; kk++)
+                {    
                     occNumber(int_tmp2+jj)(kk) = 1.0;
+                    occNumberCore(int_tmp2+jj)(kk) = 1.0;
+                    // if(kk == int_tmp3-1 && abs(d_tmp) < 1e-4)
+                    // {
+                    //    occNumberCore(int_tmp2+jj)(kk) = 0.0;
+                    // }
+                }
                 if(occNumber(int_tmp2+jj).rows() > int_tmp3)
                     occNumber(int_tmp2+jj)(int_tmp3) = d_tmp;
             }
@@ -992,6 +1008,37 @@ vMatrixXd DHF_SPH::get_amfi_unc_2c(const int2eJK& h2eSSLL_SD, const int2eJK& h2e
 
 
 /*
+    Get coeff for basis set
+    2c -> coeff
+    4c -> x2c2e coeff
+*/
+vMatrixXd DHF_SPH::get_coeff_bs(const bool& twoC)
+{
+    if(!converged)
+    {
+        cout << "SCF did not converge. get_coeff_bs cannot be used!" << endl;
+        exit(99);
+    }
+
+    if(twoC)
+        return coeff;
+    else
+    {
+        vMatrixXd overlap_2c(occMax_irrep), XXX(occMax_irrep), RRR(occMax_irrep), coeff_2c(occMax_irrep);
+        for(int ir = 0; ir < occMax_irrep; ir++)
+        {
+            overlap_2c(ir) = overlap_4c(ir).block(0,0,overlap_4c(ir).rows()/2,overlap_4c(ir).cols()/2);
+            VectorXd ene_mo_tmp;
+            XXX(ir) = X2C::get_X(coeff(ir));
+            RRR(ir) = X2C::get_R(overlap_4c(ir),XXX(ir));
+            coeff_2c(ir) = RRR(ir).inverse()*coeff(ir).block(0,coeff(ir).rows()/2,coeff(ir).rows()/2,coeff(ir).rows()/2);
+        }
+        return coeff_2c;
+    }
+}
+
+
+/*
     Get private variable
 */
 vMatrixXd DHF_SPH::get_fock_4c()
@@ -1016,6 +1063,10 @@ vMatrixXd DHF_SPH::get_overlap_4c()
 vMatrixXd DHF_SPH::get_density()
 {
     return density;
+}
+vVectorXd DHF_SPH::get_occNumber()
+{
+    return occNumber;
 }
 /*
     Set private variable

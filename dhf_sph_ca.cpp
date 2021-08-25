@@ -271,19 +271,36 @@ void DHF_SPH_CA::runSCF(const bool& twoC)
             }
             
             coeff.resize(occMax_irrep);
-            for(int ir = 0; ir < occMax_irrep; ir++)
+            if(twoC)
             {
-                coeff(ir) = coeff_c(ir);
-                for(int ii = 0; ii < irrep_list(ir).size; ii++)
+                for(int ir = 0; ir < occMax_irrep; ir++)
                 {
-                    if(abs(occNumberDebug(ir)(ii) - 1.0) < 1e-5)
+                    coeff(ir) = coeff_c(ir);
+                    for(int ii = 0; ii < irrep_list(ir).size; ii++)
                     {
-                        for(int jj = 0; jj < coeff(ir).rows(); jj++)
-                            coeff(ir)(jj,ii) = coeff_o(ir)(jj,ii);
+                        if(abs(occNumberDebug(ir)(ii) - 1.0) < 1e-5)
+                        {
+                            for(int jj = 0; jj < coeff(ir).rows(); jj++)
+                                coeff(ir)(jj,ii) = coeff_o(ir)(jj,ii);
+                        }
                     }
                 }
             }
-            
+            else
+            {
+                for(int ir = 0; ir < occMax_irrep; ir++)
+                {
+                    coeff(ir) = coeff_c(ir);
+                    for(int ii = 0; ii < irrep_list(ir).size; ii++)
+                    {
+                        if(abs(occNumberDebug(ir)(ii) - 1.0) < 1e-5)
+                        {
+                            for(int jj = 0; jj < coeff(ir).rows(); jj++)
+                                coeff(ir)(jj,ii+coeff(ir).rows()/2) = coeff_o(ir)(jj,ii+coeff(ir).rows()/2);
+                        }
+                    }
+                }
+            }
 
             ene_scf = 0.0;
             for(int ir = 0; ir < occMax_irrep; ir++)

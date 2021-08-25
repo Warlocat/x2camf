@@ -7,9 +7,13 @@ GSL = ~/apps/gsl-2.6
 FILES = int_sph.o int_sph_gaunt.o general.o dhf_sph.o dhf_sph_ca.o dhf_sph_pcc.o wfile.o rfile.o prvecr.o
 MAIN = main.o ${FILES}
 TEST = test.o ${FILES}
+PYSCF = pyscf_interface.o ${FILES}
 
 main.exe: ${MAIN}
 	${CPP} ${CPPFLAG} ${LIBSFLAG} ${MAIN} -o main.exe
+
+py.exe: ${PYSCF}
+	${CPP} ${CPPFLAG} ${LIBSFLAG} ${PYSCF} -o py.exe
 
 test.exe: ${TEST}
 	${CPP} ${CPPFLAG} ${LIBSFLAG} ${TEST} -o test.exe
