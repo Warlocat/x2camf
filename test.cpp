@@ -26,26 +26,11 @@ int main()
 {
     readInput("input");
     INT_SPH intor(atomName, basisSet);
-    vMatrixXd overlap_2c = intor.get_h1e("overlap");
-    vMatrixXd s_h_i_2c(overlap_2c.rows());
-    for(int ii = 0; ii < overlap_2c.rows(); ii++)
-    {
-        s_h_i_2c(ii) = matrix_half_inverse(overlap_2c(ii));
-    }
+    bool twoC = false, spinFree = false, withGaunt=false;
 
-    DHF_SPH scf4c(intor,"ZMAT",true,false,false);
-    scf4c.runSCF(false);
-    vMatrixXd fock_pcc = scf4c.x2c2ePCC();
+    DHF_SPH scf4c(intor,"input",spinFree,twoC,withGaunt,true);
+    scf4c.runSCF(twoC);
 
-    DHF_SPH scf2c(intor,"ZMAT",true,true,false);
-    vMatrixXd h1e_2c = scf2c.get_h1e_4c();
-
-    for(int ir = 0; ir < h1e_2c.rows(); ir++)
-    {
-        h1e_2c(ir) = h1e_2c(ir) + fock_pcc(ir);
-    }
-    scf2c.set_h1e_4c(h1e_2c);
-    scf2c.runSCF(true);
 
     return 0;
 }

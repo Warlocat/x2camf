@@ -164,9 +164,12 @@ double evaluateChange(const MatrixXd& M1, const MatrixXd& M2)
     double tmp = 0.0;
     for(int ii = 0; ii < size; ii++)
     for(int jj = 0; jj < size; jj++)
-        tmp += pow((M1(ii,jj) - M2(ii,jj)),2);
+    {
+        if(abs(M1(ii,jj)-M2(ii,jj)) > tmp)
+            tmp = abs(M1(ii,jj)-M2(ii,jj));
+    }
 
-    return sqrt(tmp);
+    return tmp;
 }
 
 MatrixXd matrix_half_inverse(const MatrixXd& inputM)
