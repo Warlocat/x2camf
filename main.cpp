@@ -84,8 +84,8 @@ int main()
         {
             DHF_SPH scfer(intor, "ZMAT", amfiMethod[1], amfiMethod[2], amfiMethod[3], true);
             scfer.runSCF(amfiMethod[2]);
-            amfiUnique.push_back(Rotate::unite_irrep(scfer.x2c2ePCC(),intor.irrep_list));
-            // amfiUnique.push_back(Rotate::unite_irrep(scfer.get_amfi_unc(intor,amfiMethod[2]), intor.irrep_list));
+            //amfiUnique.push_back(Rotate::unite_irrep(scfer.x2c2ePCC(),intor.irrep_list));
+            amfiUnique.push_back(Rotate::unite_irrep(scfer.get_amfi_unc(intor,amfiMethod[2]), intor.irrep_list));
         }
         MatrixXcd tmp = Rotate::jspinor2cfour_interface_old(intor.irrep_list);
         amfiUnique[ii] = tmp.adjoint() * amfiUnique[ii] * tmp;
@@ -196,15 +196,22 @@ void readZMAT(const string& filename, vector<string>& atoms, vector<string>& bas
                 break;
             }
         }
-        if(readBasis)
+        while (!ifs.eof() && readBasis)
         {
             getline(ifs,flags);
-            for(int ii = 0; ii < atoms.size(); ii++)
-            {
-                getline(ifs,flags);
+	    size_t found = flags.find(":");
+            if(found != string::npos)
+	    {
                 flags = removeSpaces(flags);
                 basis.push_back(flags);
-            }
+                for(int ii = 1; ii < atoms.size(); ii++)
+                {
+                    getline(ifs,flags);
+                    flags = removeSpaces(flags);
+                    basis.push_back(flags);
+                }
+		break;
+	    }
         }
         while (!ifs.eof())
         {

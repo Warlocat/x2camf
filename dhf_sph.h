@@ -42,6 +42,7 @@ public:
     virtual ~DHF_SPH();
     virtual void runSCF(const bool& twoC = false, vMatrixXd* initialGuess = NULL);
     void renormalize_small();
+    void symmetrize_h2e(const bool& twoC = false);
     /* Read occupation numbers */
     void readOCC(const string& filename, const string& atomName);
     /* Evaluate amfi SOC integrals */

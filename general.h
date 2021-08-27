@@ -10,7 +10,7 @@ using namespace Eigen;
 
 static clock_t StartTime, EndTime; 
 
-const double speedOfLight = 137.03599967994;
+const double speedOfLight = 137.0359991;
 
 typedef Matrix<MatrixXd,-1,1> vMatrixXd;
 typedef Matrix<VectorXd,-1,1> vVectorXd;
