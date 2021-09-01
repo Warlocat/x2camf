@@ -22,10 +22,28 @@ irrep_list(int_sph_.irrep_list), with_gaunt(with_gaunt_), shell_list(int_sph_.sh
     occNumberCore.resize(Nirrep);
     occMax_irrep = 0;
     readOCC(filename, int_sph_.atomName);
+
     if(allInt)
     {
         occMax_irrep = irrep_list.rows();
     }
+    occMax_irrep_compact = irrep_list(occMax_irrep-1).l*2+1;
+    compact2all.resize(occMax_irrep_compact);
+    all2compact.resize(occMax_irrep);
+    for(int ir = 0; ir < occMax_irrep ; ir++)
+    {
+        if(irrep_list(ir).two_j - 2*irrep_list(ir).l > 0)   all2compact(ir) = 2*irrep_list(ir).l;
+        else all2compact(ir) = 2*irrep_list(ir).l - 1;
+    }
+    int tmp_i = 0;
+    for(int ir = 0; ir < occMax_irrep ; ir+=irrep_list(ir).two_j+1)
+    {
+        compact2all(tmp_i) = ir;
+        tmp_i++;
+    }
+    cout << all2compact.transpose() << endl;
+    cout << compact2all.transpose() << endl;
+
     nelec = 0.0;
     cout << "Occupation number vector:" << endl;
     cout << "l\t2j\t2mj\tOcc" << endl;
@@ -35,19 +53,19 @@ irrep_list(int_sph_.irrep_list), with_gaunt(with_gaunt_), shell_list(int_sph_.sh
         for(int jj = 0; jj < occNumber(ii).rows(); jj++)
             nelec += occNumber(ii)(jj);
     }
-    cout << "Core occupation number vector:" << endl;
-    cout << "l\t2j\t2mj\tOcc" << endl;
-    for(int ii = 0; ii < Nirrep; ii++)
-    {
-        cout << irrep_list(ii).l << "\t" << irrep_list(ii).two_j << "\t" << irrep_list(ii).two_mj << "\t" << occNumberCore(ii).transpose() << endl;
-    }
+    // cout << "Core occupation number vector:" << endl;
+    // cout << "l\t2j\t2mj\tOcc" << endl;
+    // for(int ii = 0; ii < Nirrep; ii++)
+    // {
+    //     cout << irrep_list(ii).l << "\t" << irrep_list(ii).two_j << "\t" << irrep_list(ii).two_mj << "\t" << occNumberCore(ii).transpose() << endl;
+    // }
     cout << "Highest occupied irrep: " << occMax_irrep << endl;
     cout << "Total number of electrons: " << nelec << endl << endl;
 
     // Calculate the maximum memory cost for 2e integrals
     double numberOfDouble = 0;
-    for(int ir = 0; ir < irrep_list.size(); ir++)
-    for(int jr = 0; jr < irrep_list.size(); jr++)
+    for(int ir = 0; ir < irrep_list.size(); ir+=irrep_list(ir).two_j+1)
+    for(int jr = 0; jr < irrep_list.size(); jr+=irrep_list(jr).two_j+1)
     {
         numberOfDouble += 2.0*irrep_list(ir).size*irrep_list(ir).size*irrep_list(jr).size*irrep_list(jr).size;
     }
@@ -68,12 +86,12 @@ irrep_list(int_sph_.irrep_list), with_gaunt(with_gaunt_), shell_list(int_sph_.sh
 
     StartTime = clock();
     if(sfx2c)
-        h2eLLLL_JK = int_sph_.get_h2e_JK("LLLL",irrep_list(occMax_irrep-1).l);
+        h2eLLLL_JK = int_sph_.get_h2e_JK_compact("LLLL",irrep_list(occMax_irrep-1).l);
     else
         int_sph_.get_h2e_JK_direct(h2eLLLL_JK,h2eSSLL_JK,h2eSSSS_JK,irrep_list(occMax_irrep-1).l, spinFree);
     EndTime = clock();
     cout << "2e-integral finished in " << (EndTime - StartTime) / (double)CLOCKS_PER_SEC << " seconds." << endl; 
-    
+
     if(with_gaunt && !sfx2c)
     {
         StartTime = clock();
@@ -83,7 +101,7 @@ irrep_list(int_sph_.irrep_list), with_gaunt(with_gaunt_), shell_list(int_sph_.sh
         cout << "2e-integral-Gaunt finished in " << (EndTime - StartTime) / (double)CLOCKS_PER_SEC << " seconds." << endl << endl; 
     }
     symmetrize_h2e(sfx2c);
-        
+
     fock_4c.resize(occMax_irrep);
     h1e_4c.resize(occMax_irrep);
     overlap_4c.resize(occMax_irrep);
@@ -152,10 +170,10 @@ void DHF_SPH::symmetrize_h2e(const bool& twoC)
 {
     if(twoC)
     {
-        for(int ir = 0; ir < occMax_irrep; ir++)
-        for(int jr = 0; jr < occMax_irrep; jr++)
+        for(int ir = 0; ir < occMax_irrep_compact; ir++)
+        for(int jr = 0; jr < occMax_irrep_compact; jr++)
         {
-            int size_i = irrep_list(ir).size, size_j = irrep_list(jr).size;
+            int size_i = round(sqrt(h2eLLLL_JK.J(ir,jr).rows())), size_j = round(sqrt(h2eLLLL_JK.J(ir,jr).cols()));
             auto tmpJ = h2eLLLL_JK.J(ir,jr);
             for(int mm = 0; mm < size_i; mm++)
             for(int nn = 0; nn < size_i; nn++)
@@ -167,27 +185,13 @@ void DHF_SPH::symmetrize_h2e(const bool& twoC)
             }
             h2eLLLL_JK.J(ir,jr) = tmpJ;
         }
-        for(int ir = 0; ir < occMax_irrep; ir++)
-        for(int jr = 0; jr < occMax_irrep; jr += irrep_list(jr).two_j+1)
-        {
-            auto tmpJ = h2eLLLL_JK.J(ir,jr);
-            for(int kk = 1; kk < irrep_list(jr).two_j+1; kk++)
-            {
-                tmpJ += h2eLLLL_JK.J(ir,jr+kk);
-            }
-            tmpJ = tmpJ / (irrep_list(jr).two_j+1);
-            for(int kk = 0; kk < irrep_list(jr).two_j+1; kk++)
-            {
-                h2eLLLL_JK.J(ir,jr+kk) = tmpJ;
-            }
-        }
     }
     else
     {
-        for(int ir = 0; ir < occMax_irrep; ir++)
-        for(int jr = 0; jr < occMax_irrep; jr++)
+        for(int ir = 0; ir < occMax_irrep_compact; ir++)
+        for(int jr = 0; jr < occMax_irrep_compact; jr++)
         {
-            int size_i = irrep_list(ir).size, size_j = irrep_list(jr).size;
+            int size_i = irrep_list(compact2all(ir)).size, size_j = irrep_list(compact2all(jr)).size;
             MatrixXd tmpJ1 = h2eLLLL_JK.J(ir,jr), tmpJ2 = h2eSSSS_JK.J(ir,jr);
             for(int mm = 0; mm < size_i; mm++)
             for(int nn = 0; nn < size_i; nn++)
@@ -200,29 +204,6 @@ void DHF_SPH::symmetrize_h2e(const bool& twoC)
             }
             h2eLLLL_JK.J(ir,jr) = tmpJ1;
             h2eSSSS_JK.J(ir,jr) = tmpJ2;
-        }
-        for(int ir = 0; ir < occMax_irrep; ir++)
-        for(int jr = 0; jr < occMax_irrep; jr += irrep_list(jr).two_j+1)
-        {
-            MatrixXd tmpJ1 = h2eLLLL_JK.J(ir,jr), tmpJ2 = h2eSSSS_JK.J(ir,jr), tmpJ3 = h2eSSLL_JK.J(ir,jr), tmpK3 = h2eSSLL_JK.K(ir,jr);
-            for(int kk = 1; kk < irrep_list(jr).two_j+1; kk++)
-            {
-                tmpJ1 += h2eLLLL_JK.J(ir,jr+kk);
-                tmpJ2 += h2eSSSS_JK.J(ir,jr+kk);
-                tmpJ3 += h2eSSLL_JK.J(ir,jr+kk);
-                tmpK3 += h2eSSLL_JK.K(ir,jr+kk);
-            }
-            tmpJ1 = tmpJ1 / (irrep_list(jr).two_j+1);
-            tmpJ2 = tmpJ2 / (irrep_list(jr).two_j+1);
-            tmpJ3 = tmpJ3 / (irrep_list(jr).two_j+1);
-            tmpK3 = tmpK3 / (irrep_list(jr).two_j+1);
-            for(int kk = 0; kk < irrep_list(jr).two_j+1; kk++)
-            {
-                h2eLLLL_JK.J(ir,jr+kk) = tmpJ1;
-                h2eSSSS_JK.J(ir,jr+kk) = tmpJ2;
-                h2eSSLL_JK.J(ir,jr+kk) = tmpJ3;
-                h2eSSLL_JK.K(ir,jr+kk) = tmpK3;
-            }
         }
         if(with_gaunt)
         {
@@ -244,6 +225,7 @@ void DHF_SPH::symmetrize_h2e(const bool& twoC)
             for(int ir = 0; ir < occMax_irrep; ir++)
             for(int jr = 0; jr < occMax_irrep; jr += irrep_list(jr).two_j+1)
             {
+                double twojP1 = irrep_list(jr).two_j+1;
                 MatrixXd tmpJ1 = gauntLSLS_JK.J(ir,jr), tmpJ2 = gauntLSSL_JK.J(ir,jr), tmpK2 = gauntLSSL_JK.K(ir,jr);
                 for(int kk = 1; kk < irrep_list(jr).two_j+1; kk++)
                 {
@@ -251,9 +233,9 @@ void DHF_SPH::symmetrize_h2e(const bool& twoC)
                     tmpJ2 += gauntLSSL_JK.J(ir,jr+kk);
                     tmpK2 += gauntLSSL_JK.K(ir,jr+kk);
                 }
-                tmpJ1 = tmpJ1 / (irrep_list(jr).two_j+1);
-                tmpJ2 = tmpJ2 / (irrep_list(jr).two_j+1);
-                tmpK2 = tmpK2 / (irrep_list(jr).two_j+1);
+                tmpJ1 = tmpJ1 / twojP1;
+                tmpJ2 = tmpJ2 / twojP1;
+                tmpK2 = tmpK2 / twojP1;
                 for(int kk = 0; kk < irrep_list(jr).two_j+1; kk++)
                 {
                     gauntLSLS_JK.J(ir,jr+kk) = tmpJ1;
@@ -335,13 +317,6 @@ void DHF_SPH::runSCF(const bool& twoC, vMatrixXd* initialGuess)
     {
         eigensolverG_irrep(h1e_4c, overlap_half_i_4c, ene_orb, coeff);
         density = evaluateDensity_spinor_irrep(twoC);
-        // for(int ir = 0; ir < occMax_irrep; ir += irrep_list(ir).two_j+1)
-        // {
-        //     for(int jj = 1; jj < irrep_list(ir).two_j+1; jj++)
-        //     {
-        //         density(ir+jj) = density(ir);
-        //     }
-        // }
     }
     else
     {
@@ -388,17 +363,10 @@ void DHF_SPH::runSCF(const bool& twoC, vMatrixXd* initialGuess)
                 }
             }
         }
+
         eigensolverG_irrep(fock_4c, overlap_half_i_4c, ene_orb, coeff);
         newDen = evaluateDensity_spinor_irrep(twoC);
         d_density = evaluateChange_irrep(density, newDen);
-        // for(int ir = 0; ir < occMax_irrep; ir += irrep_list(ir).two_j+1)
-        // {
-        //     for(int jj = 1; jj < irrep_list(ir).two_j+1; jj++)
-        //     {
-        //         fock_4c(ir+jj) = fock_4c(ir);
-        //         newDen(ir+jj) = newDen(ir);
-        //     }
-        // }
         
         cout << "Iter #" << iter << " maximum density difference: " << d_density << endl;
         
@@ -426,7 +394,7 @@ void DHF_SPH::runSCF(const bool& twoC, vMatrixXd* initialGuess)
                     for(int ii = 0; ii < size_tmp; ii++)
                     for(int jj = 0; jj < size_tmp; jj++)
                     {
-                        ene_scf += 0.5 * density(ir)(ii,jj) * (h1e_4c(ir)(jj,ii) + fock_4c(ir)(jj,ii)) * (irrep_list(ir).two_j+1);
+                        ene_scf += 0.5 * density(ir)(ii,jj) * (h1e_4c(ir)(jj,ii) + fock_4c(ir)(jj,ii)) * (irrep_list(ir).two_j+1.0);
                     }
                 }
                 else
@@ -434,7 +402,7 @@ void DHF_SPH::runSCF(const bool& twoC, vMatrixXd* initialGuess)
                     for(int ii = 0; ii < size_tmp * 2; ii++)
                     for(int jj = 0; jj < size_tmp * 2; jj++)
                     {
-                        ene_scf += 0.5 * density(ir)(ii,jj) * (h1e_4c(ir)(jj,ii) + fock_4c(ir)(jj,ii)) * (irrep_list(ir).two_j+1);
+                        ene_scf += 0.5 * density(ir)(ii,jj) * (h1e_4c(ir)(jj,ii) + fock_4c(ir)(jj,ii)) * (irrep_list(ir).two_j+1.0);
                     }
                 }
             }
@@ -567,7 +535,7 @@ MatrixXd DHF_SPH::evaluateDensity_spinor(const MatrixXd& coeff_, const VectorXd&
 vMatrixXd DHF_SPH::evaluateDensity_spinor_irrep(const bool& twoC)
 {
     vMatrixXd den(occMax_irrep);
-    for(int ir = 0; ir < occMax_irrep; ir++)
+    for(int ir = 0; ir < occMax_irrep; ir += irrep_list(ir).two_j+1)
     {
         den(ir) = evaluateDensity_spinor(coeff(ir),occNumber(ir), twoC);
     }
@@ -580,9 +548,7 @@ vMatrixXd DHF_SPH::evaluateDensity_spinor_irrep(const bool& twoC)
 */
 void DHF_SPH::evaluateFock(MatrixXd& fock, const bool& twoC, const vMatrixXd& den, const int& size, const int& Iirrep)
 {
-    // vMatrixXd den_twoj(occMax_irrep);
-    // for(int ir = 0; ir < occMax_irrep; ir += irrep_list(ir).two_j+1)
-    //     den_twoj(ir) = den(ir) * (irrep_list(ir).two_j+1);
+    int ir = all2compact(Iirrep);
     if(!twoC)
     {
         fock.resize(size*2,size*2);
@@ -594,31 +560,33 @@ void DHF_SPH::evaluateFock(MatrixXd& fock, const bool& twoC, const vMatrixXd& de
             fock(mm+size,nn) = h1e_4c(Iirrep)(mm+size,nn);
             if(mm != nn) fock(nn+size,mm) = h1e_4c(Iirrep)(nn+size,mm);
             fock(mm+size,nn+size) = h1e_4c(Iirrep)(mm+size,nn+size);
-            for(int jr = 0; jr < occMax_irrep; jr+=irrep_list(jr).two_j+1)
+            for(int jr = 0; jr < occMax_irrep_compact; jr++)
             {
-                int size_tmp2 = irrep_list(jr).size;
+                int Jirrep = compact2all(jr);
+                double twojP1 = irrep_list(Jirrep).two_j+1;
+                int size_tmp2 = irrep_list(Jirrep).size;
                 for(int ss = 0; ss < size_tmp2; ss++)
                 for(int rr = 0; rr < size_tmp2; rr++)
                 {
                     int emn = mm*size+nn, esr = ss*size_tmp2+rr, emr = mm*size_tmp2+rr, esn = ss*size+nn;
-                    fock(mm,nn) += (irrep_list(jr).two_j+1)*den(jr)(ss,rr) * h2eLLLL_JK.J(Iirrep,jr)(emn,esr) + (irrep_list(jr).two_j+1)*den(jr)(size_tmp2+ss,size_tmp2+rr) * h2eSSLL_JK.J(jr,Iirrep)(esr,emn);
-                    fock(mm+size,nn) -= (irrep_list(jr).two_j+1)*den(jr)(ss,size_tmp2+rr) * h2eSSLL_JK.K(Iirrep,jr)(emr,esn);
+                    fock(mm,nn) += twojP1*den(Jirrep)(ss,rr) * h2eLLLL_JK.J(ir,jr)(emn,esr) + twojP1*den(Jirrep)(size_tmp2+ss,size_tmp2+rr) * h2eSSLL_JK.J(jr,ir)(esr,emn);
+                    fock(mm+size,nn) -= twojP1*den(Jirrep)(ss,size_tmp2+rr) * h2eSSLL_JK.K(ir,jr)(emr,esn);
                     if(mm != nn) 
                     {
                         int enr = nn*size_tmp2+rr, esm = ss*size+mm;
-                        fock(nn+size,mm) -= (irrep_list(jr).two_j+1)*den(jr)(ss,size_tmp2+rr) * h2eSSLL_JK.K(Iirrep,jr)(enr,esm);
+                        fock(nn+size,mm) -= twojP1*den(Jirrep)(ss,size_tmp2+rr) * h2eSSLL_JK.K(ir,jr)(enr,esm);
                     }
-                    fock(mm+size,nn+size) += (irrep_list(jr).two_j+1)*den(jr)(size_tmp2+ss,size_tmp2+rr) * h2eSSSS_JK.J(Iirrep,jr)(emn,esr) + (irrep_list(jr).two_j+1)*den(jr)(ss,rr) * h2eSSLL_JK.J(Iirrep,jr)(emn,esr);
+                    fock(mm+size,nn+size) += twojP1*den(Jirrep)(size_tmp2+ss,size_tmp2+rr) * h2eSSSS_JK.J(ir,jr)(emn,esr) + twojP1*den(Jirrep)(ss,rr) * h2eSSLL_JK.J(ir,jr)(emn,esr);
                     if(with_gaunt)
                     {
                         int enm = nn*size+mm, ers = rr*size_tmp2+ss, erm = rr*size+mm, ens = nn*size_tmp2+ss;
-                        fock(mm,nn) -= (irrep_list(jr).two_j+1)*den(jr)(size_tmp2+ss,size_tmp2+rr) * gauntLSSL_JK.K(Iirrep,jr)(emr,esn);
-                        fock(mm+size,nn+size) -= (irrep_list(jr).two_j+1)*den(jr)(ss,rr) * gauntLSSL_JK.K(jr,Iirrep)(esn,emr);
-                        fock(mm+size,nn) += (irrep_list(jr).two_j+1)*den(jr)(size_tmp2+ss,rr)*gauntLSLS_JK.J(Iirrep,jr)(enm,ers) + (irrep_list(jr).two_j+1)*den(jr)(ss,size_tmp2+rr) * gauntLSSL_JK.J(jr,Iirrep)(esr,emn);
+                        fock(mm,nn) -= twojP1*den(Jirrep)(size_tmp2+ss,size_tmp2+rr) * gauntLSSL_JK.K(ir,jr)(emr,esn);
+                        fock(mm+size,nn+size) -= twojP1*den(Jirrep)(ss,rr) * gauntLSSL_JK.K(jr,ir)(esn,emr);
+                        fock(mm+size,nn) += twojP1*den(Jirrep)(size_tmp2+ss,rr)*gauntLSLS_JK.J(ir,jr)(enm,ers) + twojP1*den(Jirrep)(ss,size_tmp2+rr) * gauntLSSL_JK.J(jr,ir)(esr,emn);
                         if(mm != nn) 
                         {
                             int ern = rr*size+nn, ems = mm*size_tmp2+ss;
-                            fock(nn+size,mm) += (irrep_list(jr).two_j+1)*den(jr)(size_tmp2+ss,rr)*gauntLSLS_JK.J(Iirrep,jr)(emn,ers) + (irrep_list(jr).two_j+1)*den(jr)(ss,size_tmp2+rr) * gauntLSSL_JK.J(jr,Iirrep)(esr,enm);
+                            fock(nn+size,mm) += twojP1*den(Jirrep)(size_tmp2+ss,rr)*gauntLSLS_JK.J(ir,jr)(emn,ers) + twojP1*den(Jirrep)(ss,size_tmp2+rr) * gauntLSSL_JK.J(jr,ir)(esr,enm);
                         }
                     }
                 }
@@ -637,14 +605,16 @@ void DHF_SPH::evaluateFock(MatrixXd& fock, const bool& twoC, const vMatrixXd& de
         for(int nn = 0; nn <= mm; nn++)
         {
             fock(mm,nn) = h1e_4c(Iirrep)(mm,nn);
-            for(int jr = 0; jr < occMax_irrep; jr+=irrep_list(jr).two_j+1)
+            for(int jr = 0; jr < occMax_irrep_compact; jr++)
             {
-                int size_tmp2 = irrep_list(jr).size;
+                int Jirrep = compact2all(jr);
+                double twojP1 = irrep_list(Jirrep).two_j+1;
+                int size_tmp2 = irrep_list(Jirrep).size;
                 for(int ss = 0; ss < size_tmp2; ss++)
                 for(int rr = 0; rr < size_tmp2; rr++)
                 {
                     int emn = mm*size+nn, esr = ss*size_tmp2+rr, emr = mm*size_tmp2+rr, esn = ss*size+nn;
-                    fock(mm,nn) += (irrep_list(jr).two_j+1)*den(jr)(ss,rr) * h2eLLLL_JK.J(Iirrep,jr)(emn,esr);
+                    fock(mm,nn) += twojP1*den(Jirrep)(ss,rr) * h2eLLLL_JK.J(ir,jr)(emn,esr);
                 }
             }
             fock(nn,mm) = fock(mm,nn);

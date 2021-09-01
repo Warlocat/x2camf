@@ -11,8 +11,9 @@ class DHF_SPH
 {
 protected:
     Matrix<intShell, Dynamic, 1> shell_list;
-    int size_basis_spinor, Nirrep, occMax_irrep;
+    int size_basis_spinor, Nirrep, occMax_irrep, occMax_irrep_compact;
     Matrix<irrep_jm, Dynamic, 1> irrep_list;
+    VectorXi all2compact,compact2all;
     vMatrixXd overlap, kinetic, WWW, Vnuc;
     int2eJK h2eLLLL_JK, h2eSSLL_JK, h2eSSSS_JK, gauntLSLS_JK, gauntLSSL_JK;
     vMatrixXd density, fock_4c, h1e_4c, overlap_4c, overlap_half_i_4c, x2cXXX, x2cRRR;

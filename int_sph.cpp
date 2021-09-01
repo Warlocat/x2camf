@@ -362,14 +362,24 @@ double INT_SPH::int2e_get_angular(const int& l1, const int& two_m1, const int& s
     {
         if(two_m2 - two_m1 - 2*mm != 0 || two_m4 - two_m3 + 2*mm != 0) continue;
         else
+        {
             angular += pow(-1, mm) 
             * (pow(-1,(two_m1-1)/2)*s1*s2*sqrt((l1+0.5+s1*two_m1/2.0)*(l2+0.5+s2*two_m2/2.0))*wigner_3j(l1,l2,LL,(1-two_m1)/2,(two_m2-1)/2,-mm)
             + pow(-1,(two_m1+1)/2)*sqrt((l1+0.5-s1*two_m1/2.0)*(l2+0.5-s2*two_m2/2.0))*wigner_3j(l1,l2,LL,(-1-two_m1)/2,(two_m2+1)/2,-mm)) 
             * (pow(-1,(two_m3-1)/2)*s3*s4*sqrt((l3+0.5+s3*two_m3/2.0)*(l4+0.5+s4*two_m4/2.0))*wigner_3j(l3,l4,LL,(1-two_m3)/2,(two_m4-1)/2,mm)
             + pow(-1,(two_m3+1)/2)*sqrt((l3+0.5-s3*two_m3/2.0)*(l4+0.5-s4*two_m4/2.0))*wigner_3j(l3,l4,LL,(-1-two_m3)/2,(two_m4+1)/2,mm));
+        }
     }
 
     return angular * wigner_3j_zeroM(l1, l2, LL) * wigner_3j_zeroM(l3, l4, LL);
+}
+double INT_SPH::int2e_get_angular_J(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& LL) const
+{
+    return int2e_get_angular(l1,two_m1,s1,l1,two_m1,s1,l2,two_m2,s2,l2,two_m2,s2,LL);
+}
+double INT_SPH::int2e_get_angular_K(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& LL) const
+{
+    return int2e_get_angular(l1,two_m1,s1,l2,two_m2,s2,l2,two_m2,s2,l1,two_m1,s1,LL);
 }
 
 
@@ -479,6 +489,7 @@ vMatrixXd INT_SPH::get_h1e(const string& intType) const
 */
 int2eJK INT_SPH::get_h2e_JK(const string& intType, const int& occMaxL) const
 {
+    double time_a = 0.0, time_r = 0.0, time_c = 0.0;
     int occMaxShell = 0;
     if(occMaxL == -1)    occMaxShell = size_shell;
     else
@@ -495,13 +506,6 @@ int2eJK INT_SPH::get_h2e_JK(const string& intType, const int& occMaxL) const
     int2eJK int_2e_JK;
     int_2e_JK.J.resize(Nirrep, Nirrep);
     int_2e_JK.K.resize(Nirrep, Nirrep);
-
-    for(int ii = 0; ii < Nirrep; ii++)
-    for(int jj = 0; jj < Nirrep; jj++)
-    {
-        int_2e_JK.J(ii,jj).resize(irrep_list(ii).size*irrep_list(ii).size, irrep_list(jj).size*irrep_list(jj).size);
-        int_2e_JK.K(ii,jj).resize(irrep_list(ii).size*irrep_list(ii).size, irrep_list(jj).size*irrep_list(jj).size);
-    }
     
     int int_tmp1_p = 0;
     for(int pshell = 0; pshell < occMaxShell; pshell++)
@@ -511,69 +515,54 @@ int2eJK INT_SPH::get_h2e_JK(const string& intType, const int& occMaxL) const
     {
         int l_q = shell_list(qshell).l, l_max = max(l_p,l_q), LmaxJ = min(l_p+l_p, l_q+l_q), LmaxK = l_p+l_q;
         int size_gtos_p = shell_list(pshell).coeff.rows(), size_gtos_q = shell_list(qshell).coeff.rows();
-        MatrixXd radial_2e_list_J[LmaxJ+1], radial_2e_list_K[LmaxK+1];
-        double array_radial_J[LmaxJ+1][size_gtos_p][size_gtos_p][size_gtos_q][size_gtos_q];
-        double array_radial_K[LmaxK+1][size_gtos_p][size_gtos_q][size_gtos_q][size_gtos_p];
-
-        Matrix<mMatrixXd,-1,-1> h2eJ, h2eK;
-        int size_tmp_p = 0, size_tmp_q = 0;
-        if(l_p == 0)
-            size_tmp_p = 1;
-        else
-            size_tmp_p = 2;
-        if(l_q == 0)
-            size_tmp_q = 1;
-        else
-            size_tmp_q = 2;
-        h2eJ.resize(size_tmp_p,size_tmp_q);
-        h2eK.resize(size_tmp_p,size_tmp_q);
+        double array_radial_J[LmaxJ+1][size_gtos_p*size_gtos_p][size_gtos_q*size_gtos_q];
+        double array_radial_K[LmaxK+1][size_gtos_p*size_gtos_q][size_gtos_q*size_gtos_p];
+        int size_tmp_p = (l_p == 0) ? 1 : 2, size_tmp_q = (l_q == 0) ? 1 : 2;
         
-        // if((l_i+l_j+l_k+l_l)%2 || l_max > (l_i+l_j+l_k+l_l-l_max)) 
-        // {
-            // int_tmp_l += loop_l * (2*shell_list(lshell).l+1) * 2;
-            // continue;
-        // }
         MatrixXd array_angular_J[LmaxJ+1][size_tmp_p][size_tmp_q], array_angular_K[LmaxK+1][size_tmp_p][size_tmp_q];
 
+        StartTime = clock();
+        #pragma omp parallel  for
         for(int twojj_p = abs(2*l_p-1); twojj_p <= 2*l_p+1; twojj_p = twojj_p + 2)
         for(int twojj_q = abs(2*l_q-1); twojj_q <= 2*l_q+1; twojj_q = twojj_q + 2)
         {
             int sym_ap = twojj_p - 2*l_p, sym_aq = twojj_q - 2*l_q;
-            int index_tmp_p = 1 - (2*l_p+1 - twojj_p)/2;
-            if(l_p == 0) index_tmp_p = 0;
-            int index_tmp_q = 1 - (2*l_q+1 - twojj_q)/2;
-            if(l_q == 0) index_tmp_q = 0;
-
-            h2eJ(index_tmp_p,index_tmp_q).resize(twojj_p+1,twojj_q+1);
-            h2eK(index_tmp_p,index_tmp_q).resize(twojj_p+1,twojj_q+1);
-            for(int mp = 0; mp < twojj_p + 1; mp++)
-            for(int mq = 0; mq < twojj_q + 1; mq++)
-            {
-                h2eJ(index_tmp_p,index_tmp_q)(mp,mq).resize(size_gtos_p*size_gtos_p,size_gtos_q*size_gtos_q);
-                h2eK(index_tmp_p,index_tmp_q)(mp,mq).resize(size_gtos_p*size_gtos_q,size_gtos_q*size_gtos_p);
-            }
+            int index_tmp_p = (l_p > 0) ? 1 - (2*l_p+1 - twojj_p)/2 : 0;
+            int index_tmp_q = (l_q > 0) ? 1 - (2*l_q+1 - twojj_q)/2 : 0;
 
             for(int tmp = LmaxJ; tmp >= 0; tmp -= 2)
             {
                 array_angular_J[tmp][index_tmp_p][index_tmp_q].resize(twojj_p + 1,twojj_q + 1);
                 for(int mp = 0; mp < twojj_p + 1; mp++)
                 for(int mq = 0; mq < twojj_q + 1; mq++)
-                    array_angular_J[tmp][index_tmp_p][index_tmp_q](mp,mq) = int2e_get_angular(l_p, 2*mp-twojj_p, sym_ap, l_p, 2*mp-twojj_p, sym_ap, l_q, 2*mq-twojj_q, sym_aq, l_q, 2*mq-twojj_q, sym_aq, tmp);
+                {
+                    array_angular_J[tmp][index_tmp_p][index_tmp_q](mp,mq) = int2e_get_angular_J(l_p, 2*mp-twojj_p, sym_ap, l_q, 2*mq-twojj_q, sym_aq, tmp);
+                }
             }
             for(int tmp = LmaxK; tmp >= 0; tmp -= 2)
             {
                 array_angular_K[tmp][index_tmp_p][index_tmp_q].resize(twojj_p + 1,twojj_q + 1);
                 for(int mp = 0; mp < twojj_p + 1; mp++)
                 for(int mq = 0; mq < twojj_q + 1; mq++)
-                    array_angular_K[tmp][index_tmp_p][index_tmp_q](mp,mq) = int2e_get_angular(l_p, 2*mp-twojj_p, sym_ap, l_q, 2*mq-twojj_q, sym_aq, l_q, 2*mq-twojj_q, sym_aq, l_p, 2*mp-twojj_p, sym_ap, tmp);
+                {
+                    array_angular_K[tmp][index_tmp_p][index_tmp_q](mp,mq) = int2e_get_angular_K(l_p, 2*mp-twojj_p, sym_ap, l_q, 2*mq-twojj_q, sym_aq, tmp);
+                }
             }
         }
+        EndTime = clock();
+        time_a += (EndTime - StartTime)/(double)CLOCKS_PER_SEC;
 
-        for(int ii = 0; ii < size_gtos_p; ii++)
-        for(int jj = 0; jj < size_gtos_p; jj++)
-        for(int kk = 0; kk < size_gtos_q; kk++)
-        for(int ll = 0; ll < size_gtos_q; ll++)
+
+        StartTime = clock();
+        #pragma omp parallel  for
+        for(int tt = 0; tt < size_gtos_p*size_gtos_p*size_gtos_q*size_gtos_q; tt++)
         {
+            int e1J = tt/(size_gtos_q*size_gtos_q);
+            int e2J = tt - e1J*(size_gtos_q*size_gtos_q);
+            int ii = e1J/size_gtos_p, jj = e1J - ii*size_gtos_p;
+            int kk = e2J/size_gtos_q, ll = e2J - kk*size_gtos_q;
+            int e1K = ii*size_gtos_q+ll, e2K = kk*size_gtos_p+jj;
+            MatrixXd radial_2e_list_J[LmaxJ+1], radial_2e_list_K[LmaxK+1];
             double a_i_J = shell_list(pshell).exp_a(ii), a_j_J = shell_list(pshell).exp_a(jj), a_k_J = shell_list(qshell).exp_a(kk), a_l_J = shell_list(qshell).exp_a(ll);
             double a_i_K = shell_list(pshell).exp_a(ii), a_j_K = shell_list(qshell).exp_a(ll), a_k_K = shell_list(qshell).exp_a(kk), a_l_K = shell_list(pshell).exp_a(jj);
         
@@ -661,81 +650,81 @@ int2eJK INT_SPH::get_h2e_JK(const string& intType, const int& occMaxL) const
                 {
                     if(intType == "LLLL")
                     {
-                        array_radial_J[tmp][ii][jj][kk][ll] = radial_2e_list_J[tmp](0,0) / norm_J;
+                        array_radial_J[tmp][e1J][e2J] = radial_2e_list_J[tmp](0,0) / norm_J;
                     }
                     else if(intType == "SSLL")
                     {
-                        array_radial_J[tmp][ii][jj][kk][ll] = 4.0*a1*a2 * radial_2e_list_J[tmp](1,0);
+                        array_radial_J[tmp][e1J][e2J] = 4.0*a1*a2 * radial_2e_list_J[tmp](1,0);
                         if(l_p != 0)
-                            array_radial_J[tmp][ii][jj][kk][ll] += lk1*lk2 * radial_2e_list_J[tmp](2,0) - (2.0*a1*lk2+2.0*a2*lk1) * radial_2e_list_J[tmp](0,0);
-                        array_radial_J[tmp][ii][jj][kk][ll] /= norm_J * 4.0 * pow(speedOfLight,2);
+                            array_radial_J[tmp][e1J][e2J] += lk1*lk2 * radial_2e_list_J[tmp](2,0) - (2.0*a1*lk2+2.0*a2*lk1) * radial_2e_list_J[tmp](0,0);
+                        array_radial_J[tmp][e1J][e2J] /= norm_J * 4.0 * pow(speedOfLight,2);
                     }
                     else if(intType == "SSSS")
                     {
-                        array_radial_J[tmp][ii][jj][kk][ll] = 4*a1*a2*4*a3*a4 * radial_2e_list_J[tmp](1,1);
+                        array_radial_J[tmp][e1J][e2J] = 4*a1*a2*4*a3*a4 * radial_2e_list_J[tmp](1,1);
                         if(l_p != 0)
                         {
                             if(l_q != 0)
-                                array_radial_J[tmp][ii][jj][kk][ll] += lk1*lk2*lk3*lk4 * radial_2e_list_J[tmp](2,2) - (2*a1*lk2+2*a2*lk1)*lk3*lk4 * radial_2e_list_J[tmp](0,2) + 4*a1*a2*lk3*lk4 * radial_2e_list_J[tmp](1,2) - lk1*lk2*(2*a3*lk4+2*a4*lk3) * radial_2e_list_J[tmp](2,0) + (2*a1*lk2+2*a2*lk1)*(2*a3*lk4+2*a4*lk3) * radial_2e_list_J[tmp](0,0) - 4*a1*a2*(2*a3*lk4+2*a4*lk3) * radial_2e_list_J[tmp](1,0) + lk1*lk2*4*a3*a4 * radial_2e_list_J[tmp](2,1) - (2*a1*lk2+2*a2*lk1)*4*a3*a4 * radial_2e_list_J[tmp](0,1);
+                                array_radial_J[tmp][e1J][e2J] += lk1*lk2*lk3*lk4 * radial_2e_list_J[tmp](2,2) - (2*a1*lk2+2*a2*lk1)*lk3*lk4 * radial_2e_list_J[tmp](0,2) + 4*a1*a2*lk3*lk4 * radial_2e_list_J[tmp](1,2) - lk1*lk2*(2*a3*lk4+2*a4*lk3) * radial_2e_list_J[tmp](2,0) + (2*a1*lk2+2*a2*lk1)*(2*a3*lk4+2*a4*lk3) * radial_2e_list_J[tmp](0,0) - 4*a1*a2*(2*a3*lk4+2*a4*lk3) * radial_2e_list_J[tmp](1,0) + lk1*lk2*4*a3*a4 * radial_2e_list_J[tmp](2,1) - (2*a1*lk2+2*a2*lk1)*4*a3*a4 * radial_2e_list_J[tmp](0,1);
                             else
-                                array_radial_J[tmp][ii][jj][kk][ll] += lk1*lk2*4*a3*a4 * radial_2e_list_J[tmp](2,1) - (2*a1*lk2+2*a2*lk1)*4*a3*a4 * radial_2e_list_J[tmp](0,1);
+                                array_radial_J[tmp][e1J][e2J] += lk1*lk2*4*a3*a4 * radial_2e_list_J[tmp](2,1) - (2*a1*lk2+2*a2*lk1)*4*a3*a4 * radial_2e_list_J[tmp](0,1);
                         }
                         else
                         {
                             if(l_q != 0)
-                                array_radial_J[tmp][ii][jj][kk][ll] += 4*a1*a2*lk3*lk4 * radial_2e_list_J[tmp](1,2) - 4*a1*a2*(2*a3*lk4+2*a4*lk3) * radial_2e_list_J[tmp](1,0);
+                                array_radial_J[tmp][e1J][e2J] += 4*a1*a2*lk3*lk4 * radial_2e_list_J[tmp](1,2) - 4*a1*a2*(2*a3*lk4+2*a4*lk3) * radial_2e_list_J[tmp](1,0);
                         }
-                        array_radial_J[tmp][ii][jj][kk][ll] /= norm_J * 16.0 * pow(speedOfLight,4);
+                        array_radial_J[tmp][e1J][e2J] /= norm_J * 16.0 * pow(speedOfLight,4);
                     }
                     else if(intType == "SSLL_SF")
                     {
-                        array_radial_J[tmp][ii][jj][kk][ll] = 4.0*a1*a2 * radial_2e_list_J[tmp](1,0);
+                        array_radial_J[tmp][e1J][e2J] = 4.0*a1*a2 * radial_2e_list_J[tmp](1,0);
                         if(l_p != 0)
-                            array_radial_J[tmp][ii][jj][kk][ll] += (l_p*l_p + l_p*(l_p+1)/2 + l_p*(l_p+1)/2 - tmp*(tmp+1)/2) * radial_2e_list_J[tmp](2,0) - (2.0*a1*l_p+2.0*a2*l_p) * radial_2e_list_J[tmp](0,0);
-                        array_radial_J[tmp][ii][jj][kk][ll] /= norm_J * 4.0 * pow(speedOfLight,2);
+                            array_radial_J[tmp][e1J][e2J] += (l_p*l_p + l_p*(l_p+1)/2 + l_p*(l_p+1)/2 - tmp*(tmp+1)/2) * radial_2e_list_J[tmp](2,0) - (2.0*a1*l_p+2.0*a2*l_p) * radial_2e_list_J[tmp](0,0);
+                        array_radial_J[tmp][e1J][e2J] /= norm_J * 4.0 * pow(speedOfLight,2);
                     }
                     else if(intType == "SSSS_SF")
                     {
                         double l12 = l_p*l_p + l_p*(l_p+1)/2 + l_p*(l_p+1)/2 - tmp*(tmp+1)/2, l34 = l_q*l_q + l_q*(l_q+1)/2 + l_q*(l_q+1)/2 - tmp*(tmp+1)/2;
-                        array_radial_J[tmp][ii][jj][kk][ll] = 4*a1*a2*4*a3*a4 * radial_2e_list_J[tmp](1,1);
+                        array_radial_J[tmp][e1J][e2J] = 4*a1*a2*4*a3*a4 * radial_2e_list_J[tmp](1,1);
                         if(l_p != 0)
                         {
                             if(l_q != 0)
-                                array_radial_J[tmp][ii][jj][kk][ll] += l12*l34 * radial_2e_list_J[tmp](2,2) - (2*a1*l_p+2*a2*l_p)*l34 * radial_2e_list_J[tmp](0,2) + 4*a1*a2*l34 * radial_2e_list_J[tmp](1,2) - l12*(2*a3*l_q+2*a4*l_q) * radial_2e_list_J[tmp](2,0) + (2*a1*l_p+2*a2*l_p)*(2*a3*l_q+2*a4*l_q) * radial_2e_list_J[tmp](0,0) - 4*a1*a2*(2*a3*l_q+2*a4*l_q) * radial_2e_list_J[tmp](1,0) + l12*4*a3*a4 * radial_2e_list_J[tmp](2,1) - (2*a1*l_p+2*a2*l_p)*4*a3*a4 * radial_2e_list_J[tmp](0,1);
+                                array_radial_J[tmp][e1J][e2J] += l12*l34 * radial_2e_list_J[tmp](2,2) - (2*a1*l_p+2*a2*l_p)*l34 * radial_2e_list_J[tmp](0,2) + 4*a1*a2*l34 * radial_2e_list_J[tmp](1,2) - l12*(2*a3*l_q+2*a4*l_q) * radial_2e_list_J[tmp](2,0) + (2*a1*l_p+2*a2*l_p)*(2*a3*l_q+2*a4*l_q) * radial_2e_list_J[tmp](0,0) - 4*a1*a2*(2*a3*l_q+2*a4*l_q) * radial_2e_list_J[tmp](1,0) + l12*4*a3*a4 * radial_2e_list_J[tmp](2,1) - (2*a1*l_p+2*a2*l_p)*4*a3*a4 * radial_2e_list_J[tmp](0,1);
                             else
-                                array_radial_J[tmp][ii][jj][kk][ll] += l12*4*a3*a4 * radial_2e_list_J[tmp](2,1) - (2*a1*l_p+2*a2*l_p)*4*a3*a4 * radial_2e_list_J[tmp](0,1);
+                                array_radial_J[tmp][e1J][e2J] += l12*4*a3*a4 * radial_2e_list_J[tmp](2,1) - (2*a1*l_p+2*a2*l_p)*4*a3*a4 * radial_2e_list_J[tmp](0,1);
                         }
                         else
                         {
                             if(l_q != 0)
-                                array_radial_J[tmp][ii][jj][kk][ll] += 4*a1*a2*l34 * radial_2e_list_J[tmp](1,2) - 4*a1*a2*(2*a3*l_q+2*a4*l_q) * radial_2e_list_J[tmp](1,0);
+                                array_radial_J[tmp][e1J][e2J] += 4*a1*a2*l34 * radial_2e_list_J[tmp](1,2) - 4*a1*a2*(2*a3*l_q+2*a4*l_q) * radial_2e_list_J[tmp](1,0);
                         }
-                        array_radial_J[tmp][ii][jj][kk][ll] /= norm_J * 16.0 * pow(speedOfLight,4);
+                        array_radial_J[tmp][e1J][e2J] /= norm_J * 16.0 * pow(speedOfLight,4);
                     }
                     else if(intType == "SSLL_SD")
                     {
-                        array_radial_J[tmp][ii][jj][kk][ll] = 0.0;
+                        array_radial_J[tmp][e1J][e2J] = 0.0;
                         if(l_p != 0)
-                            array_radial_J[tmp][ii][jj][kk][ll] += (lk1*lk2 - (l_p*l_p + l_p*(l_p+1)/2 + l_p*(l_p+1)/2 - tmp*(tmp+1)/2)) * radial_2e_list_J[tmp](2,0) - (2.0*a1*lk2+2.0*a2*lk1 - 2.0*a1*l_p-2.0*a2*l_p) * radial_2e_list_J[tmp](0,0);
-                        array_radial_J[tmp][ii][jj][kk][ll] /= norm_J * 4.0 * pow(speedOfLight,2);
+                            array_radial_J[tmp][e1J][e2J] += (lk1*lk2 - (l_p*l_p + l_p*(l_p+1)/2 + l_p*(l_p+1)/2 - tmp*(tmp+1)/2)) * radial_2e_list_J[tmp](2,0) - (2.0*a1*lk2+2.0*a2*lk1 - 2.0*a1*l_p-2.0*a2*l_p) * radial_2e_list_J[tmp](0,0);
+                        array_radial_J[tmp][e1J][e2J] /= norm_J * 4.0 * pow(speedOfLight,2);
                     }
                     else if(intType == "SSSS_SD")
                     {
                         double l12 = l_p*l_p + l_p*(l_p+1)/2 + l_p*(l_p+1)/2 - tmp*(tmp+1)/2, l34 = l_q*l_q + l_q*(l_q+1)/2 + l_q*(l_q+1)/2 - tmp*(tmp+1)/2;
-                        array_radial_J[tmp][ii][jj][kk][ll] = 0.0;
+                        array_radial_J[tmp][e1J][e2J] = 0.0;
                         if(l_p != 0)
                         {
                             if(l_q != 0)
-                                array_radial_J[tmp][ii][jj][kk][ll] += (lk1*lk2*lk3*lk4 - l12*l34) * radial_2e_list_J[tmp](2,2) - ((2*a1*lk2+2*a2*lk1)*lk3*lk4 - (2*a1*l_p+2*a2*l_p)*l34) * radial_2e_list_J[tmp](0,2) + (4*a1*a2*lk3*lk4 - 4*a1*a2*l34) * radial_2e_list_J[tmp](1,2) - (lk1*lk2*(2*a3*lk4+2*a4*lk3) - l12*(2*a3*l_q+2*a4*l_q)) * radial_2e_list_J[tmp](2,0) + ((2*a1*lk2+2*a2*lk1)*(2*a3*lk4+2*a4*lk3) - (2*a1*l_p+2*a2*l_p)*(2*a3*l_q+2*a4*l_q)) * radial_2e_list_J[tmp](0,0) - (4*a1*a2*(2*a3*lk4+2*a4*lk3) - 4*a1*a2*(2*a3*l_q+2*a4*l_q)) * radial_2e_list_J[tmp](1,0) + (lk1*lk2*4*a3*a4 - l12*4*a3*a4) * radial_2e_list_J[tmp](2,1) - ((2*a1*lk2+2*a2*lk1)*4*a3*a4 - (2*a1*l_p+2*a2*l_p)*4*a3*a4) * radial_2e_list_J[tmp](0,1);
+                                array_radial_J[tmp][e1J][e2J] += (lk1*lk2*lk3*lk4 - l12*l34) * radial_2e_list_J[tmp](2,2) - ((2*a1*lk2+2*a2*lk1)*lk3*lk4 - (2*a1*l_p+2*a2*l_p)*l34) * radial_2e_list_J[tmp](0,2) + (4*a1*a2*lk3*lk4 - 4*a1*a2*l34) * radial_2e_list_J[tmp](1,2) - (lk1*lk2*(2*a3*lk4+2*a4*lk3) - l12*(2*a3*l_q+2*a4*l_q)) * radial_2e_list_J[tmp](2,0) + ((2*a1*lk2+2*a2*lk1)*(2*a3*lk4+2*a4*lk3) - (2*a1*l_p+2*a2*l_p)*(2*a3*l_q+2*a4*l_q)) * radial_2e_list_J[tmp](0,0) - (4*a1*a2*(2*a3*lk4+2*a4*lk3) - 4*a1*a2*(2*a3*l_q+2*a4*l_q)) * radial_2e_list_J[tmp](1,0) + (lk1*lk2*4*a3*a4 - l12*4*a3*a4) * radial_2e_list_J[tmp](2,1) - ((2*a1*lk2+2*a2*lk1)*4*a3*a4 - (2*a1*l_p+2*a2*l_p)*4*a3*a4) * radial_2e_list_J[tmp](0,1);
                             else
-                                array_radial_J[tmp][ii][jj][kk][ll] += (lk1*lk2*4*a3*a4 - l12*4*a3*a4) * radial_2e_list_J[tmp](2,1) - ((2*a1*lk2+2*a2*lk1)*4*a3*a4 - (2*a1*l_p+2*a2*l_p)*4*a3*a4) * radial_2e_list_J[tmp](0,1);
+                                array_radial_J[tmp][e1J][e2J] += (lk1*lk2*4*a3*a4 - l12*4*a3*a4) * radial_2e_list_J[tmp](2,1) - ((2*a1*lk2+2*a2*lk1)*4*a3*a4 - (2*a1*l_p+2*a2*l_p)*4*a3*a4) * radial_2e_list_J[tmp](0,1);
                         }
                         else
                         {
                             if(l_q != 0)
-                                array_radial_J[tmp][ii][jj][kk][ll] += (4*a1*a2*lk3*lk4 - 4*a1*a2*l34) * radial_2e_list_J[tmp](1,2) - (4*a1*a2*(2*a3*lk4+2*a4*lk3) - 4*a1*a2*(2*a3*l_q+2*a4*l_q)) * radial_2e_list_J[tmp](1,0);
+                                array_radial_J[tmp][e1J][e2J] += (4*a1*a2*lk3*lk4 - 4*a1*a2*l34) * radial_2e_list_J[tmp](1,2) - (4*a1*a2*(2*a3*lk4+2*a4*lk3) - 4*a1*a2*(2*a3*l_q+2*a4*l_q)) * radial_2e_list_J[tmp](1,0);
                         }
-                        array_radial_J[tmp][ii][jj][kk][ll] /= norm_J * 16.0 * pow(speedOfLight,4);
+                        array_radial_J[tmp][e1J][e2J] /= norm_J * 16.0 * pow(speedOfLight,4);
                     }
                     else
                     {
@@ -749,75 +738,75 @@ int2eJK INT_SPH::get_h2e_JK(const string& intType, const int& occMaxL) const
                 {
                     if(intType == "LLLL")
                     {
-                        array_radial_K[tmp][ii][ll][kk][jj] = radial_2e_list_K[tmp](0,0) / norm_K;
+                        array_radial_K[tmp][e1K][e2K] = radial_2e_list_K[tmp](0,0) / norm_K;
                     }
                     else if(intType == "SSLL")
                     {
-                        array_radial_K[tmp][ii][ll][kk][jj] = 4.0*a1*a2 * radial_2e_list_K[tmp](1,0);
+                        array_radial_K[tmp][e1K][e2K] = 4.0*a1*a2 * radial_2e_list_K[tmp](1,0);
                         if(l_p != 0 && l_q != 0)
-                            array_radial_K[tmp][ii][ll][kk][jj] += lk1*lk2 * radial_2e_list_K[tmp](2,0) - (2.0*a1*lk2+2.0*a2*lk1) * radial_2e_list_K[tmp](0,0);
+                            array_radial_K[tmp][e1K][e2K] += lk1*lk2 * radial_2e_list_K[tmp](2,0) - (2.0*a1*lk2+2.0*a2*lk1) * radial_2e_list_K[tmp](0,0);
                         else if(l_p != 0 || l_q != 0)
-                            array_radial_K[tmp][ii][ll][kk][jj] += - (2.0*a1*lk2+2.0*a2*lk1) * radial_2e_list_K[tmp](0,0);
-                        array_radial_K[tmp][ii][ll][kk][jj] /= norm_K * 4.0 * pow(speedOfLight,2);
+                            array_radial_K[tmp][e1K][e2K] += - (2.0*a1*lk2+2.0*a2*lk1) * radial_2e_list_K[tmp](0,0);
+                        array_radial_K[tmp][e1K][e2K] /= norm_K * 4.0 * pow(speedOfLight,2);
                     }
                     else if(intType == "SSSS")
                     {
-                        array_radial_K[tmp][ii][ll][kk][jj] = 4*a1*a2*4*a3*a4 * radial_2e_list_K[tmp](1,1);
+                        array_radial_K[tmp][e1K][e2K] = 4*a1*a2*4*a3*a4 * radial_2e_list_K[tmp](1,1);
                         if(l_p != 0 && l_q != 0)
                         {
-                            array_radial_K[tmp][ii][ll][kk][jj] += lk1*lk2*lk3*lk4 * radial_2e_list_K[tmp](2,2) - (2*a1*lk2+2*a2*lk1)*lk3*lk4 * radial_2e_list_K[tmp](0,2) + 4*a1*a2*lk3*lk4 * radial_2e_list_K[tmp](1,2) - lk1*lk2*(2*a3*lk4+2*a4*lk3) * radial_2e_list_K[tmp](2,0) + (2*a1*lk2+2*a2*lk1)*(2*a3*lk4+2*a4*lk3) * radial_2e_list_K[tmp](0,0) - 4*a1*a2*(2*a3*lk4+2*a4*lk3) * radial_2e_list_K[tmp](1,0) + lk1*lk2*4*a3*a4 * radial_2e_list_K[tmp](2,1) - (2*a1*lk2+2*a2*lk1)*4*a3*a4 * radial_2e_list_K[tmp](0,1);
+                            array_radial_K[tmp][e1K][e2K] += lk1*lk2*lk3*lk4 * radial_2e_list_K[tmp](2,2) - (2*a1*lk2+2*a2*lk1)*lk3*lk4 * radial_2e_list_K[tmp](0,2) + 4*a1*a2*lk3*lk4 * radial_2e_list_K[tmp](1,2) - lk1*lk2*(2*a3*lk4+2*a4*lk3) * radial_2e_list_K[tmp](2,0) + (2*a1*lk2+2*a2*lk1)*(2*a3*lk4+2*a4*lk3) * radial_2e_list_K[tmp](0,0) - 4*a1*a2*(2*a3*lk4+2*a4*lk3) * radial_2e_list_K[tmp](1,0) + lk1*lk2*4*a3*a4 * radial_2e_list_K[tmp](2,1) - (2*a1*lk2+2*a2*lk1)*4*a3*a4 * radial_2e_list_K[tmp](0,1);
                         }
                         else if(l_p != 0 || l_q != 0)
                         {
-                            array_radial_K[tmp][ii][ll][kk][jj] += (2*a1*lk2+2*a2*lk1)*(2*a3*lk4+2*a4*lk3) * radial_2e_list_K[tmp](0,0) - 4*a1*a2*(2*a3*lk4+2*a4*lk3) * radial_2e_list_K[tmp](1,0) - (2*a1*lk2+2*a2*lk1)*4*a3*a4 * radial_2e_list_K[tmp](0,1);
+                            array_radial_K[tmp][e1K][e2K] += (2*a1*lk2+2*a2*lk1)*(2*a3*lk4+2*a4*lk3) * radial_2e_list_K[tmp](0,0) - 4*a1*a2*(2*a3*lk4+2*a4*lk3) * radial_2e_list_K[tmp](1,0) - (2*a1*lk2+2*a2*lk1)*4*a3*a4 * radial_2e_list_K[tmp](0,1);
                         }
-                        array_radial_K[tmp][ii][ll][kk][jj] /= norm_K * 16.0 * pow(speedOfLight,4);
+                        array_radial_K[tmp][e1K][e2K] /= norm_K * 16.0 * pow(speedOfLight,4);
                     }
                     else if(intType == "SSLL_SF")
                     {
-                        array_radial_K[tmp][ii][ll][kk][jj] = 4.0*a1*a2 * radial_2e_list_K[tmp](1,0);
+                        array_radial_K[tmp][e1K][e2K] = 4.0*a1*a2 * radial_2e_list_K[tmp](1,0);
                         if(l_p != 0 && l_q != 0)
-                            array_radial_K[tmp][ii][ll][kk][jj] += (l_p*l_q + l_p*(l_p+1)/2 + l_q*(l_q+1)/2 - tmp*(tmp+1)/2) * radial_2e_list_K[tmp](2,0) - (2.0*a1*l_q+2.0*a2*l_p)* radial_2e_list_K[tmp](0,0);
+                            array_radial_K[tmp][e1K][e2K] += (l_p*l_q + l_p*(l_p+1)/2 + l_q*(l_q+1)/2 - tmp*(tmp+1)/2) * radial_2e_list_K[tmp](2,0) - (2.0*a1*l_q+2.0*a2*l_p)* radial_2e_list_K[tmp](0,0);
                         else if(l_p != 0 || l_q != 0)
-                            array_radial_K[tmp][ii][ll][kk][jj] += - (2.0*a1*l_q+2.0*a2*l_p) * radial_2e_list_K[tmp](0,0);
-                        array_radial_K[tmp][ii][ll][kk][jj] /= norm_K * 4.0 * pow(speedOfLight,2);
+                            array_radial_K[tmp][e1K][e2K] += - (2.0*a1*l_q+2.0*a2*l_p) * radial_2e_list_K[tmp](0,0);
+                        array_radial_K[tmp][e1K][e2K] /= norm_K * 4.0 * pow(speedOfLight,2);
                     }
                     else if(intType == "SSSS_SF")
                     {
                         double l12 = l_p*l_q + l_p*(l_p+1)/2 + l_q*(l_q+1)/2 - tmp*(tmp+1)/2, l34 = l_q*l_p + l_q*(l_q+1)/2 + l_p*(l_p+1)/2 - tmp*(tmp+1)/2;
-                        array_radial_K[tmp][ii][ll][kk][jj] = 4*a1*a2*4*a3*a4 * radial_2e_list_K[tmp](1,1);
+                        array_radial_K[tmp][e1K][e2K] = 4*a1*a2*4*a3*a4 * radial_2e_list_K[tmp](1,1);
                         if(l_p != 0 && l_q != 0)
                         {
-                            array_radial_K[tmp][ii][ll][kk][jj] += l12*l34 * radial_2e_list_K[tmp](2,2) - (2*a1*l_q+2*a2*l_p)*l34 * radial_2e_list_K[tmp](0,2) + 4*a1*a2*l34 * radial_2e_list_K[tmp](1,2) - l12*(2*a3*l_p+2*a4*l_q) * radial_2e_list_K[tmp](2,0) + (2*a1*l_q+2*a2*l_p)*(2*a3*l_p+2*a4*l_q) * radial_2e_list_K[tmp](0,0) - 4*a1*a2*(2*a3*l_p+2*a4*l_q) * radial_2e_list_K[tmp](1,0) + l12*4*a3*a4 * radial_2e_list_K[tmp](2,1) - (2*a1*l_q+2*a2*l_p)*4*a3*a4 * radial_2e_list_K[tmp](0,1);
+                            array_radial_K[tmp][e1K][e2K] += l12*l34 * radial_2e_list_K[tmp](2,2) - (2*a1*l_q+2*a2*l_p)*l34 * radial_2e_list_K[tmp](0,2) + 4*a1*a2*l34 * radial_2e_list_K[tmp](1,2) - l12*(2*a3*l_p+2*a4*l_q) * radial_2e_list_K[tmp](2,0) + (2*a1*l_q+2*a2*l_p)*(2*a3*l_p+2*a4*l_q) * radial_2e_list_K[tmp](0,0) - 4*a1*a2*(2*a3*l_p+2*a4*l_q) * radial_2e_list_K[tmp](1,0) + l12*4*a3*a4 * radial_2e_list_K[tmp](2,1) - (2*a1*l_q+2*a2*l_p)*4*a3*a4 * radial_2e_list_K[tmp](0,1);
                         }
                         else if(l_p != 0 || l_q != 0)
                         {
-                            array_radial_K[tmp][ii][ll][kk][jj] += (2*a1*l_q+2*a2*l_p)*(2*a3*l_p+2*a4*l_q) * radial_2e_list_K[tmp](0,0) - 4*a1*a2*(2*a3*l_p+2*a4*l_q) * radial_2e_list_K[tmp](1,0) - (2*a1*l_q+2*a2*l_p)*4*a3*a4 * radial_2e_list_K[tmp](0,1);
+                            array_radial_K[tmp][e1K][e2K] += (2*a1*l_q+2*a2*l_p)*(2*a3*l_p+2*a4*l_q) * radial_2e_list_K[tmp](0,0) - 4*a1*a2*(2*a3*l_p+2*a4*l_q) * radial_2e_list_K[tmp](1,0) - (2*a1*l_q+2*a2*l_p)*4*a3*a4 * radial_2e_list_K[tmp](0,1);
                         }
-                        array_radial_K[tmp][ii][ll][kk][jj] /= norm_K * 16.0 * pow(speedOfLight,4);
+                        array_radial_K[tmp][e1K][e2K] /= norm_K * 16.0 * pow(speedOfLight,4);
                     }
                     else if(intType == "SSLL_SD")
                     {
-                        array_radial_K[tmp][ii][ll][kk][jj] = 0.0;
+                        array_radial_K[tmp][e1K][e2K] = 0.0;
                         if(l_p != 0 && l_q != 0)
-                            array_radial_K[tmp][ii][ll][kk][jj] += (lk1*lk2-(l_p*l_q + l_p*(l_p+1)/2 + l_q*(l_q+1)/2 - tmp*(tmp+1)/2)) * radial_2e_list_K[tmp](2,0) - (2.0*a1*lk2+2.0*a2*lk1 - 2.0*a1*l_q - 2.0*a2*l_p)* radial_2e_list_K[tmp](0,0);
+                            array_radial_K[tmp][e1K][e2K] += (lk1*lk2-(l_p*l_q + l_p*(l_p+1)/2 + l_q*(l_q+1)/2 - tmp*(tmp+1)/2)) * radial_2e_list_K[tmp](2,0) - (2.0*a1*lk2+2.0*a2*lk1 - 2.0*a1*l_q - 2.0*a2*l_p)* radial_2e_list_K[tmp](0,0);
                         else if(l_p != 0 || l_q != 0)
-                            array_radial_K[tmp][ii][ll][kk][jj] += - (2.0*a1*lk2+2.0*a2*lk1 - 2.0*a1*l_q-2.0*a2*l_p) * radial_2e_list_K[tmp](0,0);
-                        array_radial_K[tmp][ii][ll][kk][jj] /= norm_K * 4.0 * pow(speedOfLight,2);
+                            array_radial_K[tmp][e1K][e2K] += - (2.0*a1*lk2+2.0*a2*lk1 - 2.0*a1*l_q-2.0*a2*l_p) * radial_2e_list_K[tmp](0,0);
+                        array_radial_K[tmp][e1K][e2K] /= norm_K * 4.0 * pow(speedOfLight,2);
                     }
                     else if(intType == "SSSS_SD")
                     {
                         double l12 = l_p*l_q + l_p*(l_p+1)/2 + l_q*(l_q+1)/2 - tmp*(tmp+1)/2, l34 = l_q*l_p + l_q*(l_q+1)/2 + l_p*(l_p+1)/2 - tmp*(tmp+1)/2;
-                        array_radial_K[tmp][ii][ll][kk][jj] = 0.0;
+                        array_radial_K[tmp][e1K][e2K] = 0.0;
                         if(l_p != 0 && l_q != 0)
                         {
-                            array_radial_K[tmp][ii][ll][kk][jj] += (lk1*lk2*lk3*lk4 - l12*l34) * radial_2e_list_K[tmp](2,2) - ((2*a1*lk2+2*a2*lk1)*lk3*lk4 - (2*a1*l_q+2*a2*l_p)*l34) * radial_2e_list_K[tmp](0,2) + (4*a1*a2*lk3*lk4 - 4*a1*a2*l34) * radial_2e_list_K[tmp](1,2) - (lk1*lk2*(2*a3*lk4+2*a4*lk3) - l12*(2*a3*l_p+2*a4*l_q)) * radial_2e_list_K[tmp](2,0) + ((2*a1*lk2+2*a2*lk1)*(2*a3*lk4+2*a4*lk3) - (2*a1*l_q+2*a2*l_p)*(2*a3*l_p+2*a4*l_q)) * radial_2e_list_K[tmp](0,0) - (4*a1*a2*(2*a3*lk4+2*a4*lk3) -  4*a1*a2*(2*a3*l_p+2*a4*l_q)) * radial_2e_list_K[tmp](1,0) + (lk1*lk2*4*a3*a4 - l12*4*a3*a4) * radial_2e_list_K[tmp](2,1) - ((2*a1*lk2+2*a2*lk1)*4*a3*a4 - (2*a1*l_q+2*a2*l_p)*4*a3*a4) * radial_2e_list_K[tmp](0,1);
+                            array_radial_K[tmp][e1K][e2K] += (lk1*lk2*lk3*lk4 - l12*l34) * radial_2e_list_K[tmp](2,2) - ((2*a1*lk2+2*a2*lk1)*lk3*lk4 - (2*a1*l_q+2*a2*l_p)*l34) * radial_2e_list_K[tmp](0,2) + (4*a1*a2*lk3*lk4 - 4*a1*a2*l34) * radial_2e_list_K[tmp](1,2) - (lk1*lk2*(2*a3*lk4+2*a4*lk3) - l12*(2*a3*l_p+2*a4*l_q)) * radial_2e_list_K[tmp](2,0) + ((2*a1*lk2+2*a2*lk1)*(2*a3*lk4+2*a4*lk3) - (2*a1*l_q+2*a2*l_p)*(2*a3*l_p+2*a4*l_q)) * radial_2e_list_K[tmp](0,0) - (4*a1*a2*(2*a3*lk4+2*a4*lk3) -  4*a1*a2*(2*a3*l_p+2*a4*l_q)) * radial_2e_list_K[tmp](1,0) + (lk1*lk2*4*a3*a4 - l12*4*a3*a4) * radial_2e_list_K[tmp](2,1) - ((2*a1*lk2+2*a2*lk1)*4*a3*a4 - (2*a1*l_q+2*a2*l_p)*4*a3*a4) * radial_2e_list_K[tmp](0,1);
                         }
                         else if(l_p != 0 || l_q != 0)
                         {
-                            array_radial_K[tmp][ii][ll][kk][jj] += ((2*a1*lk2+2*a2*lk1)*(2*a3*lk4+2*a4*lk3) - (2*a1*l_q+2*a2*l_p)*(2*a3*l_p+2*a4*l_q)) * radial_2e_list_K[tmp](0,0) - (4*a1*a2*(2*a3*lk4+2*a4*lk3) - 4*a1*a2*(2*a3*l_p+2*a4*l_q)) * radial_2e_list_K[tmp](1,0) - ((2*a1*lk2+2*a2*lk1)*4*a3*a4 - (2*a1*l_q+2*a2*l_p)*4*a3*a4) * radial_2e_list_K[tmp](0,1);
+                            array_radial_K[tmp][e1K][e2K] += ((2*a1*lk2+2*a2*lk1)*(2*a3*lk4+2*a4*lk3) - (2*a1*l_q+2*a2*l_p)*(2*a3*l_p+2*a4*l_q)) * radial_2e_list_K[tmp](0,0) - (4*a1*a2*(2*a3*lk4+2*a4*lk3) - 4*a1*a2*(2*a3*l_p+2*a4*l_q)) * radial_2e_list_K[tmp](1,0) - ((2*a1*lk2+2*a2*lk1)*4*a3*a4 - (2*a1*l_q+2*a2*l_p)*4*a3*a4) * radial_2e_list_K[tmp](0,1);
                         }
-                        array_radial_K[tmp][ii][ll][kk][jj] /= norm_K * 16.0 * pow(speedOfLight,4);
+                        array_radial_K[tmp][e1K][e2K] /= norm_K * 16.0 * pow(speedOfLight,4);
                     }
                     else
                     {
@@ -825,95 +814,52 @@ int2eJK INT_SPH::get_h2e_JK(const string& intType, const int& occMaxL) const
                         exit(99);
                     }
                 }
+            }
+        }
+        EndTime = clock();
+        time_r += (EndTime - StartTime)/(double)CLOCKS_PER_SEC;
 
-                int index_tmp_p = 1 - (2*l_p+1 - twojj_p)/2;
-                if(l_p == 0) index_tmp_p = 0;
-                int index_tmp_q = 1 - (2*l_q+1 - twojj_q)/2;
-                if(l_q == 0) index_tmp_q = 0;
-                for(int mp = 0; mp < twojj_p + 1; mp++)
-                for(int mq = 0; mq < twojj_q + 1; mq++)
+        StartTime = clock();
+        int l_p_cycle = (l_p == 0) ? 1 : 2, l_q_cycle = (l_q == 0) ? 1 : 2;
+        for(int int_tmp2_p = 0; int_tmp2_p < l_p_cycle; int_tmp2_p++)
+        for(int int_tmp2_q = 0; int_tmp2_q < l_q_cycle; int_tmp2_q++)
+        {
+            int add_p = int_tmp2_p*(irrep_list(int_tmp1_p).two_j+1), add_q = int_tmp2_q*(irrep_list(int_tmp1_q).two_j+1);
+            for(int mp = 0; mp < irrep_list(int_tmp1_p+add_p).two_j + 1; mp++)
+            for(int mq = 0; mq < irrep_list(int_tmp1_q+add_q).two_j + 1; mq++)
+            {
+                int_2e_JK.J(int_tmp1_p+add_p + mp, int_tmp1_q + add_q + mq).resize(size_gtos_p*size_gtos_p,size_gtos_q*size_gtos_q);
+                int_2e_JK.K(int_tmp1_p+add_p + mp, int_tmp1_q+add_q + mq).resize(size_gtos_p*size_gtos_q,size_gtos_q*size_gtos_p);
+                #pragma omp parallel  for
+                for(int tt = 0; tt < size_gtos_p*size_gtos_p*size_gtos_q*size_gtos_q; tt++)
                 {
-                    int e1J = ii*size_gtos_p+jj, e2J = kk*size_gtos_q+ll;
-                    int e1K = ii*size_gtos_q+ll, e2K = kk*size_gtos_p+jj;
-                    h2eJ(index_tmp_p,index_tmp_q)(mp,mq)(e1J,e2J) = 0.0;
-                    h2eK(index_tmp_p,index_tmp_q)(mp,mq)(e1K,e2K) = 0.0;
+                    int e1J = tt/(size_gtos_q*size_gtos_q);
+                    int e2J = tt - e1J*(size_gtos_q*size_gtos_q);
+                    int e1K = tt/(size_gtos_p*size_gtos_q);
+                    int e2K = tt - e1K*(size_gtos_p*size_gtos_q);
+                    int_2e_JK.J(int_tmp1_p+add_p + mp, int_tmp1_q+add_q + mq)(e1J,e2J) = 0.0;
+                    int_2e_JK.K(int_tmp1_p+add_p + mp, int_tmp1_q+add_q + mq)(e1K,e2K) = 0.0;
                     for(int tmp = LmaxJ; tmp >= 0; tmp = tmp - 2)
-                        h2eJ(index_tmp_p,index_tmp_q)(mp,mq)(e1J,e2J) += array_radial_J[tmp][ii][jj][kk][ll] * array_angular_J[tmp][index_tmp_p][index_tmp_q](mp,mq);
+                        int_2e_JK.J(int_tmp1_p+add_p + mp, int_tmp1_q+add_q + mq)(e1J,e2J) += array_radial_J[tmp][e1J][e2J] * array_angular_J[tmp][int_tmp2_p][int_tmp2_q](mp,mq);
                     for(int tmp = LmaxK; tmp >= 0; tmp = tmp - 2)
-                        h2eK(index_tmp_p,index_tmp_q)(mp,mq)(e1K,e2K) += array_radial_K[tmp][ii][ll][kk][jj] * array_angular_K[tmp][index_tmp_p][index_tmp_q](mp,mq);
+                        int_2e_JK.K(int_tmp1_p+add_p + mp, int_tmp1_q+add_q + mq)(e1K,e2K) += array_radial_K[tmp][e1K][e2K] * array_angular_K[tmp][int_tmp2_p][int_tmp2_q](mp,mq);
                 }
             }
         }
-
-        int int_tmp2_p = 0, int_tmp2_q = 0;
-        for(int ii = 0; ii < irrep_list(int_tmp1_p+int_tmp2_p).two_j + 1; ii++)
-        for(int jj = 0; jj < irrep_list(int_tmp1_q+int_tmp2_q).two_j + 1; jj++)
-        {
-            int_2e_JK.J(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eJ(0,0)(ii,jj);
-            int_2e_JK.K(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eK(0,0)(ii,jj);
-        }
-        if(l_p != 0 && l_q == 0)
-        {
-            int_tmp2_p += irrep_list(int_tmp1_p+int_tmp2_p).two_j + 1;
-            for(int ii = 0; ii < irrep_list(int_tmp1_p+int_tmp2_p).two_j + 1; ii++)
-            for(int jj = 0; jj < irrep_list(int_tmp1_q+int_tmp2_q).two_j + 1; jj++)
-            {
-                int_2e_JK.J(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eJ(1,0)(ii,jj);
-                int_2e_JK.K(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eK(1,0)(ii,jj);
-            }
-        }
-        else if(l_q != 0 && l_p == 0)
-        {
-            int_tmp2_q += irrep_list(int_tmp1_q+int_tmp2_q).two_j + 1;
-            for(int ii = 0; ii < irrep_list(int_tmp1_p+int_tmp2_p).two_j + 1; ii++)
-            for(int jj = 0; jj < irrep_list(int_tmp1_q+int_tmp2_q).two_j + 1; jj++)
-            {
-                int_2e_JK.J(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eJ(0,1)(ii,jj);
-                int_2e_JK.K(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eK(0,1)(ii,jj);
-            }
-            
-        }
-        else if(l_p != 0 && l_q != 0)
-        {
-            int int_tmp3_p = irrep_list(int_tmp1_p+int_tmp2_p).two_j + 1;
-            int int_tmp3_q = irrep_list(int_tmp1_q+int_tmp2_q).two_j + 1;
-            int_tmp2_p += int_tmp3_p;
-            for(int ii = 0; ii < irrep_list(int_tmp1_p+int_tmp2_p).two_j + 1; ii++)
-            for(int jj = 0; jj < irrep_list(int_tmp1_q+int_tmp2_q).two_j + 1; jj++)
-            {
-                int_2e_JK.J(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eJ(1,0)(ii,jj);
-                int_2e_JK.K(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eK(1,0)(ii,jj);
-            }
-            int_tmp2_p -= int_tmp3_p;
-            int_tmp2_q += int_tmp3_q;
-            for(int ii = 0; ii < irrep_list(int_tmp1_p+int_tmp2_p).two_j + 1; ii++)
-            for(int jj = 0; jj < irrep_list(int_tmp1_q+int_tmp2_q).two_j + 1; jj++)
-            {
-                int_2e_JK.J(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eJ(0,1)(ii,jj);
-                int_2e_JK.K(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eK(0,1)(ii,jj);
-            }
-            int_tmp2_p += int_tmp3_p;
-            for(int ii = 0; ii < irrep_list(int_tmp1_p+int_tmp2_p).two_j + 1; ii++)
-            for(int jj = 0; jj < irrep_list(int_tmp1_q+int_tmp2_q).two_j + 1; jj++)
-            {
-                int_2e_JK.J(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eJ(1,1)(ii,jj);
-                int_2e_JK.K(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eK(1,1)(ii,jj);
-            }
-        }
+        EndTime = clock();
+        time_c += (EndTime - StartTime)/(double)CLOCKS_PER_SEC;
         int_tmp1_q += 4*l_q+2;
     }
     int_tmp1_p += 4*l_p+2;
     }
 
+    cout << time_a << "\t" << time_r << "\t" << time_c <<endl;
     return int_2e_JK;
 }
-
-/*
-    Evaluate all 2e integral together for HF calculations
-*/
-void INT_SPH::get_h2e_JK_direct(int2eJK& LLLL, int2eJK& SSLL, int2eJK& SSSS, const int& occMaxL, const bool& spinFree)
+int2eJK INT_SPH::get_h2e_JK_compact(const string& intType, const int& occMaxL) const
 {
-    int occMaxShell = 0;
+    double time_a = 0.0, time_r = 0.0, time_c = 0.0;
+    int occMaxShell = 0, Nirrep_compact = 0;
     if(occMaxL == -1)    occMaxShell = size_shell;
     else
     {
@@ -925,24 +871,395 @@ void INT_SPH::get_h2e_JK_direct(int2eJK& LLLL, int2eJK& SSLL, int2eJK& SSSS, con
                 break;
         }
     }
-
-    LLLL.J.resize(Nirrep, Nirrep);
-    LLLL.K.resize(Nirrep, Nirrep);
-    SSLL.J.resize(Nirrep, Nirrep);
-    SSLL.K.resize(Nirrep, Nirrep);
-    SSSS.J.resize(Nirrep, Nirrep);
-    SSSS.K.resize(Nirrep, Nirrep);
-
-    for(int ii = 0; ii < Nirrep; ii++)
-    for(int jj = 0; jj < Nirrep; jj++)
+    for(int ii = 0; ii < occMaxShell; ii++)
     {
-        LLLL.J(ii,jj).resize(irrep_list(ii).size*irrep_list(ii).size, irrep_list(jj).size*irrep_list(jj).size);
-        LLLL.K(ii,jj).resize(irrep_list(ii).size*irrep_list(ii).size, irrep_list(jj).size*irrep_list(jj).size);
-        SSLL.J(ii,jj).resize(irrep_list(ii).size*irrep_list(ii).size, irrep_list(jj).size*irrep_list(jj).size);
-        SSLL.K(ii,jj).resize(irrep_list(ii).size*irrep_list(ii).size, irrep_list(jj).size*irrep_list(jj).size);
-        SSSS.J(ii,jj).resize(irrep_list(ii).size*irrep_list(ii).size, irrep_list(jj).size*irrep_list(jj).size);
-        SSSS.K(ii,jj).resize(irrep_list(ii).size*irrep_list(ii).size, irrep_list(jj).size*irrep_list(jj).size);
+        if(shell_list(ii).l == 0) Nirrep_compact += 1;
+        else Nirrep_compact += 2;
     }
+    
+    int2eJK int_2e_JK;
+    int_2e_JK.J.resize(Nirrep_compact, Nirrep_compact);
+    int_2e_JK.K.resize(Nirrep_compact, Nirrep_compact);
+    
+    int int_tmp1_p = 0;
+    for(int pshell = 0; pshell < occMaxShell; pshell++)
+    {
+    int l_p = shell_list(pshell).l, int_tmp1_q = 0;
+    for(int qshell = 0; qshell < occMaxShell; qshell++)
+    {
+        int l_q = shell_list(qshell).l, l_max = max(l_p,l_q), LmaxJ = min(l_p+l_p, l_q+l_q), LmaxK = l_p+l_q;
+        int size_gtos_p = shell_list(pshell).coeff.rows(), size_gtos_q = shell_list(qshell).coeff.rows();
+        int size_tmp_p = (l_p == 0) ? 1 : 2, size_tmp_q = (l_q == 0) ? 1 : 2;
+        double array_radial_J[LmaxJ+1][size_gtos_p*size_gtos_p][size_gtos_q*size_gtos_q][size_tmp_p][size_tmp_q];
+        double array_radial_K[LmaxK+1][size_gtos_p*size_gtos_q][size_gtos_q*size_gtos_p][size_tmp_p][size_tmp_q];
+        double array_angular_J[LmaxJ+1][size_tmp_p][size_tmp_q], array_angular_K[LmaxK+1][size_tmp_p][size_tmp_q];
+
+        StartTime = clock();
+        #pragma omp parallel  for
+        for(int twojj_p = abs(2*l_p-1); twojj_p <= 2*l_p+1; twojj_p = twojj_p + 2)
+        for(int twojj_q = abs(2*l_q-1); twojj_q <= 2*l_q+1; twojj_q = twojj_q + 2)
+        {
+            int sym_ap = twojj_p - 2*l_p, sym_aq = twojj_q - 2*l_q;
+            int index_tmp_p = (l_p > 0) ? 1 - (2*l_p+1 - twojj_p)/2 : 0;
+            int index_tmp_q = (l_q > 0) ? 1 - (2*l_q+1 - twojj_q)/2 : 0;
+
+            for(int tmp = LmaxJ; tmp >= 0; tmp -= 2)
+            {
+                double tmp_d = 0.0;
+                for(int mq = 0; mq < twojj_q + 1; mq++)
+                {
+                    tmp_d += int2e_get_angular_J(l_p, twojj_p, sym_ap, l_q, 2*mq-twojj_q, sym_aq, tmp);
+                }
+                tmp_d /= (twojj_q + 1);
+                array_angular_J[tmp][index_tmp_p][index_tmp_q] = tmp_d;
+            }
+            for(int tmp = LmaxK; tmp >= 0; tmp -= 2)
+            {
+                double tmp_d = 0.0;
+                for(int mq = 0; mq < twojj_q + 1; mq++)
+                {
+                    tmp_d += int2e_get_angular_K(l_p, twojj_p, sym_ap, l_q, 2*mq-twojj_q, sym_aq, tmp);
+                }
+                tmp_d /= (twojj_q + 1);
+                array_angular_K[tmp][index_tmp_p][index_tmp_q] = tmp_d;
+            }
+        }
+        EndTime = clock();
+        time_a += (EndTime - StartTime)/(double)CLOCKS_PER_SEC;
+
+
+        StartTime = clock();
+        #pragma omp parallel  for
+        for(int tt = 0; tt < size_gtos_p*size_gtos_p*size_gtos_q*size_gtos_q; tt++)
+        {
+            int e1J = tt/(size_gtos_q*size_gtos_q);
+            int e2J = tt - e1J*(size_gtos_q*size_gtos_q);
+            int ii = e1J/size_gtos_p, jj = e1J - ii*size_gtos_p;
+            int kk = e2J/size_gtos_q, ll = e2J - kk*size_gtos_q;
+            int e1K = ii*size_gtos_q+ll, e2K = kk*size_gtos_p+jj;
+            MatrixXd radial_2e_list_J[LmaxJ+1], radial_2e_list_K[LmaxK+1];
+            double a_i_J = shell_list(pshell).exp_a(ii), a_j_J = shell_list(pshell).exp_a(jj), a_k_J = shell_list(qshell).exp_a(kk), a_l_J = shell_list(qshell).exp_a(ll);
+            double a_i_K = shell_list(pshell).exp_a(ii), a_j_K = shell_list(qshell).exp_a(ll), a_k_K = shell_list(qshell).exp_a(kk), a_l_K = shell_list(pshell).exp_a(jj);
+        
+            if(intType.substr(0,4) == "LLLL")
+            {
+                for(int LL = LmaxJ; LL >= 0; LL -= 2)
+                {
+                    radial_2e_list_J[LL].resize(1,1);
+                    radial_2e_list_J[LL](0,0) = int2e_get_radial(l_p,a_i_J,l_p,a_j_J,l_q,a_k_J,l_q,a_l_J,LL);
+                }
+                for(int LL = LmaxK; LL >= 0; LL -= 2)
+                {
+                    radial_2e_list_K[LL].resize(1,1);
+                    radial_2e_list_K[LL](0,0) = int2e_get_radial(l_p,a_i_K,l_q,a_j_K,l_q,a_k_K,l_p,a_l_K,LL);
+                }
+            }
+            else if(intType.substr(0,4) == "SSLL")
+            {
+                for(int LL = LmaxJ; LL >= 0; LL -= 2)
+                {
+                    radial_2e_list_J[LL].resize(3,1);
+                    radial_2e_list_J[LL](0,0) = int2e_get_radial(l_p,a_i_J,l_p,a_j_J,l_q,a_k_J,l_q,a_l_J,LL);
+                    radial_2e_list_J[LL](1,0) = int2e_get_radial(l_p+1,a_i_J,l_p+1,a_j_J,l_q,a_k_J,l_q,a_l_J,LL);
+                    if(l_p != 0)
+                        radial_2e_list_J[LL](2,0) = int2e_get_radial(l_p-1,a_i_J,l_p-1,a_j_J,l_q,a_k_J,l_q,a_l_J,LL);
+                }
+                for(int LL = LmaxK; LL >= 0; LL -= 2)
+                {
+                    radial_2e_list_K[LL].resize(3,1);
+                    radial_2e_list_K[LL](0,0) = int2e_get_radial(l_p,a_i_K,l_q,a_j_K,l_q,a_k_K,l_p,a_l_K,LL);
+                    radial_2e_list_K[LL](1,0) = int2e_get_radial(l_p+1,a_i_K,l_q+1,a_j_K,l_q,a_k_K,l_p,a_l_K,LL);
+                    if(l_p != 0 && l_q != 0)
+                        radial_2e_list_K[LL](2,0) = int2e_get_radial(l_p-1,a_i_K,l_q-1,a_j_K,l_q,a_k_K,l_p,a_l_K,LL);
+                }
+            }
+            else if(intType.substr(0,4) == "SSSS")
+            {
+                for(int LL = LmaxJ; LL >= 0; LL -= 2)
+                {
+                    radial_2e_list_J[LL].resize(3,3);
+                    radial_2e_list_J[LL](0,0) = int2e_get_radial(l_p,a_i_J,l_p,a_j_J,l_q,a_k_J,l_q,a_l_J,LL);
+                    radial_2e_list_J[LL](1,0) = int2e_get_radial(l_p+1,a_i_J,l_p+1,a_j_J,l_q,a_k_J,l_q,a_l_J,LL);
+                    radial_2e_list_J[LL](0,1) = int2e_get_radial(l_p,a_i_J,l_p,a_j_J,l_q+1,a_k_J,l_q+1,a_l_J,LL);
+                    radial_2e_list_J[LL](1,1) = int2e_get_radial(l_p+1,a_i_J,l_p+1,a_j_J,l_q+1,a_k_J,l_q+1,a_l_J,LL);
+                    if(l_p != 0)
+                    {
+                        radial_2e_list_J[LL](2,0) = int2e_get_radial(l_p-1,a_i_J,l_p-1,a_j_J,l_q,a_k_J,l_q,a_l_J,LL);
+                        radial_2e_list_J[LL](2,1) = int2e_get_radial(l_p-1,a_i_J,l_p-1,a_j_J,l_q+1,a_k_J,l_q+1,a_l_J,LL);
+                    }
+                    if(l_q != 0)
+                    {
+                        radial_2e_list_J[LL](0,2) = int2e_get_radial(l_p,a_i_J,l_p,a_j_J,l_q-1,a_k_J,l_q-1,a_l_J,LL);
+                        radial_2e_list_J[LL](1,2) = int2e_get_radial(l_p+1,a_i_J,l_p+1,a_j_J,l_q-1,a_k_J,l_q-1,a_l_J,LL);
+                    }
+                    if(l_p!=0 && l_q!=0)
+                        radial_2e_list_J[LL](2,2) = int2e_get_radial(l_p-1,a_i_J,l_p-1,a_j_J,l_q-1,a_k_J,l_q-1,a_l_J,LL);
+                }
+                for(int LL = LmaxK; LL >= 0; LL -= 2)
+                {
+                    radial_2e_list_K[LL].resize(3,3);
+                    radial_2e_list_K[LL](0,0) = int2e_get_radial(l_p,a_i_K,l_q,a_j_K,l_q,a_k_K,l_p,a_l_K,LL);
+                    radial_2e_list_K[LL](1,0) = int2e_get_radial(l_p+1,a_i_K,l_q+1,a_j_K,l_q,a_k_K,l_p,a_l_K,LL);
+                    radial_2e_list_K[LL](0,1) = int2e_get_radial(l_p,a_i_K,l_q,a_j_K,l_q+1,a_k_K,l_p+1,a_l_K,LL);
+                    radial_2e_list_K[LL](1,1) = int2e_get_radial(l_p+1,a_i_K,l_q+1,a_j_K,l_q+1,a_k_K,l_p+1,a_l_K,LL);
+                    if(l_p != 0 && l_q != 0)
+                    {
+                        radial_2e_list_K[LL](2,0) = int2e_get_radial(l_p-1,a_i_K,l_q-1,a_j_K,l_q,a_k_K,l_p,a_l_K,LL);
+                        radial_2e_list_K[LL](2,1) = int2e_get_radial(l_p-1,a_i_K,l_q-1,a_j_K,l_q+1,a_k_K,l_p+1,a_l_K,LL);
+                        radial_2e_list_K[LL](0,2) = int2e_get_radial(l_p,a_i_K,l_q,a_j_K,l_q-1,a_k_K,l_p-1,a_l_K,LL);
+                        radial_2e_list_K[LL](1,2) = int2e_get_radial(l_p+1,a_i_K,l_q+1,a_j_K,l_q-1,a_k_K,l_p-1,a_l_K,LL);
+                        radial_2e_list_K[LL](2,2) = int2e_get_radial(l_p-1,a_i_K,l_q-1,a_j_K,l_q-1,a_k_K,l_p-1,a_l_K,LL);
+                    }
+                }
+            }
+
+            for(int twojj_p = abs(2*l_p-1); twojj_p <= 2*l_p+1; twojj_p = twojj_p + 2)
+            for(int twojj_q = abs(2*l_q-1); twojj_q <= 2*l_q+1; twojj_q = twojj_q + 2)
+            {
+                int index_tmp_p = (l_p > 0) ? 1 - (2*l_p+1 - twojj_p)/2 : 0;
+                int index_tmp_q = (l_q > 0) ? 1 - (2*l_q+1 - twojj_q)/2 : 0;
+                int sym_ap = twojj_p - 2*l_p, sym_aq = twojj_q - 2*l_q;
+                double k_p = -(twojj_p+1.0)*sym_ap/2.0, k_q = -(twojj_q+1.0)*sym_aq/2.0;
+                double norm_J = shell_list(pshell).norm(ii) * shell_list(pshell).norm(jj) * shell_list(qshell).norm(kk) * shell_list(qshell).norm(ll), norm_K = shell_list(pshell).norm(ii) * shell_list(qshell).norm(ll) * shell_list(qshell).norm(kk) * shell_list(pshell).norm(jj);
+                double lk1 = 1+l_p+k_p, lk2 = 1+l_p+k_p, lk3 = 1+l_q+k_q, lk4 = 1+l_q+k_q, a1 = shell_list(pshell).exp_a(ii), a2 = shell_list(pshell).exp_a(jj), a3 = shell_list(qshell).exp_a(kk), a4 = shell_list(qshell).exp_a(ll);
+
+                for(int tmp = LmaxJ; tmp >= 0; tmp -= 2)
+                {
+                    if(intType == "LLLL")
+                    {
+                        array_radial_J[tmp][e1J][e2J][index_tmp_p][index_tmp_q] = radial_2e_list_J[tmp](0,0) / norm_J;
+                    }
+                    else if(intType == "SSLL")
+                    {
+                        array_radial_J[tmp][e1J][e2J][index_tmp_p][index_tmp_q] = 4.0*a1*a2 * radial_2e_list_J[tmp](1,0);
+                        if(l_p != 0)
+                            array_radial_J[tmp][e1J][e2J][index_tmp_p][index_tmp_q] += lk1*lk2 * radial_2e_list_J[tmp](2,0) - (2.0*a1*lk2+2.0*a2*lk1) * radial_2e_list_J[tmp](0,0);
+                        array_radial_J[tmp][e1J][e2J][index_tmp_p][index_tmp_q] /= norm_J * 4.0 * pow(speedOfLight,2);
+                    }
+                    else if(intType == "SSSS")
+                    {
+                        array_radial_J[tmp][e1J][e2J][index_tmp_p][index_tmp_q] = 4*a1*a2*4*a3*a4 * radial_2e_list_J[tmp](1,1);
+                        if(l_p != 0)
+                        {
+                            if(l_q != 0)
+                                array_radial_J[tmp][e1J][e2J][index_tmp_p][index_tmp_q] += lk1*lk2*lk3*lk4 * radial_2e_list_J[tmp](2,2) - (2*a1*lk2+2*a2*lk1)*lk3*lk4 * radial_2e_list_J[tmp](0,2) + 4*a1*a2*lk3*lk4 * radial_2e_list_J[tmp](1,2) - lk1*lk2*(2*a3*lk4+2*a4*lk3) * radial_2e_list_J[tmp](2,0) + (2*a1*lk2+2*a2*lk1)*(2*a3*lk4+2*a4*lk3) * radial_2e_list_J[tmp](0,0) - 4*a1*a2*(2*a3*lk4+2*a4*lk3) * radial_2e_list_J[tmp](1,0) + lk1*lk2*4*a3*a4 * radial_2e_list_J[tmp](2,1) - (2*a1*lk2+2*a2*lk1)*4*a3*a4 * radial_2e_list_J[tmp](0,1);
+                            else
+                                array_radial_J[tmp][e1J][e2J][index_tmp_p][index_tmp_q] += lk1*lk2*4*a3*a4 * radial_2e_list_J[tmp](2,1) - (2*a1*lk2+2*a2*lk1)*4*a3*a4 * radial_2e_list_J[tmp](0,1);
+                        }
+                        else
+                        {
+                            if(l_q != 0)
+                                array_radial_J[tmp][e1J][e2J][index_tmp_p][index_tmp_q] += 4*a1*a2*lk3*lk4 * radial_2e_list_J[tmp](1,2) - 4*a1*a2*(2*a3*lk4+2*a4*lk3) * radial_2e_list_J[tmp](1,0);
+                        }
+                        array_radial_J[tmp][e1J][e2J][index_tmp_p][index_tmp_q] /= norm_J * 16.0 * pow(speedOfLight,4);
+                    }
+                    else if(intType == "SSLL_SF")
+                    {
+                        array_radial_J[tmp][e1J][e2J][index_tmp_p][index_tmp_q] = 4.0*a1*a2 * radial_2e_list_J[tmp](1,0);
+                        if(l_p != 0)
+                            array_radial_J[tmp][e1J][e2J][index_tmp_p][index_tmp_q] += (l_p*l_p + l_p*(l_p+1)/2 + l_p*(l_p+1)/2 - tmp*(tmp+1)/2) * radial_2e_list_J[tmp](2,0) - (2.0*a1*l_p+2.0*a2*l_p) * radial_2e_list_J[tmp](0,0);
+                        array_radial_J[tmp][e1J][e2J][index_tmp_p][index_tmp_q] /= norm_J * 4.0 * pow(speedOfLight,2);
+                    }
+                    else if(intType == "SSSS_SF")
+                    {
+                        double l12 = l_p*l_p + l_p*(l_p+1)/2 + l_p*(l_p+1)/2 - tmp*(tmp+1)/2, l34 = l_q*l_q + l_q*(l_q+1)/2 + l_q*(l_q+1)/2 - tmp*(tmp+1)/2;
+                        array_radial_J[tmp][e1J][e2J][index_tmp_p][index_tmp_q] = 4*a1*a2*4*a3*a4 * radial_2e_list_J[tmp](1,1);
+                        if(l_p != 0)
+                        {
+                            if(l_q != 0)
+                                array_radial_J[tmp][e1J][e2J][index_tmp_p][index_tmp_q] += l12*l34 * radial_2e_list_J[tmp](2,2) - (2*a1*l_p+2*a2*l_p)*l34 * radial_2e_list_J[tmp](0,2) + 4*a1*a2*l34 * radial_2e_list_J[tmp](1,2) - l12*(2*a3*l_q+2*a4*l_q) * radial_2e_list_J[tmp](2,0) + (2*a1*l_p+2*a2*l_p)*(2*a3*l_q+2*a4*l_q) * radial_2e_list_J[tmp](0,0) - 4*a1*a2*(2*a3*l_q+2*a4*l_q) * radial_2e_list_J[tmp](1,0) + l12*4*a3*a4 * radial_2e_list_J[tmp](2,1) - (2*a1*l_p+2*a2*l_p)*4*a3*a4 * radial_2e_list_J[tmp](0,1);
+                            else
+                                array_radial_J[tmp][e1J][e2J][index_tmp_p][index_tmp_q] += l12*4*a3*a4 * radial_2e_list_J[tmp](2,1) - (2*a1*l_p+2*a2*l_p)*4*a3*a4 * radial_2e_list_J[tmp](0,1);
+                        }
+                        else
+                        {
+                            if(l_q != 0)
+                                array_radial_J[tmp][e1J][e2J][index_tmp_p][index_tmp_q] += 4*a1*a2*l34 * radial_2e_list_J[tmp](1,2) - 4*a1*a2*(2*a3*l_q+2*a4*l_q) * radial_2e_list_J[tmp](1,0);
+                        }
+                        array_radial_J[tmp][e1J][e2J][index_tmp_p][index_tmp_q] /= norm_J * 16.0 * pow(speedOfLight,4);
+                    }
+                    else if(intType == "SSLL_SD")
+                    {
+                        array_radial_J[tmp][e1J][e2J][index_tmp_p][index_tmp_q] = 0.0;
+                        if(l_p != 0)
+                            array_radial_J[tmp][e1J][e2J][index_tmp_p][index_tmp_q] += (lk1*lk2 - (l_p*l_p + l_p*(l_p+1)/2 + l_p*(l_p+1)/2 - tmp*(tmp+1)/2)) * radial_2e_list_J[tmp](2,0) - (2.0*a1*lk2+2.0*a2*lk1 - 2.0*a1*l_p-2.0*a2*l_p) * radial_2e_list_J[tmp](0,0);
+                        array_radial_J[tmp][e1J][e2J][index_tmp_p][index_tmp_q] /= norm_J * 4.0 * pow(speedOfLight,2);
+                    }
+                    else if(intType == "SSSS_SD")
+                    {
+                        double l12 = l_p*l_p + l_p*(l_p+1)/2 + l_p*(l_p+1)/2 - tmp*(tmp+1)/2, l34 = l_q*l_q + l_q*(l_q+1)/2 + l_q*(l_q+1)/2 - tmp*(tmp+1)/2;
+                        array_radial_J[tmp][e1J][e2J][index_tmp_p][index_tmp_q] = 0.0;
+                        if(l_p != 0)
+                        {
+                            if(l_q != 0)
+                                array_radial_J[tmp][e1J][e2J][index_tmp_p][index_tmp_q] += (lk1*lk2*lk3*lk4 - l12*l34) * radial_2e_list_J[tmp](2,2) - ((2*a1*lk2+2*a2*lk1)*lk3*lk4 - (2*a1*l_p+2*a2*l_p)*l34) * radial_2e_list_J[tmp](0,2) + (4*a1*a2*lk3*lk4 - 4*a1*a2*l34) * radial_2e_list_J[tmp](1,2) - (lk1*lk2*(2*a3*lk4+2*a4*lk3) - l12*(2*a3*l_q+2*a4*l_q)) * radial_2e_list_J[tmp](2,0) + ((2*a1*lk2+2*a2*lk1)*(2*a3*lk4+2*a4*lk3) - (2*a1*l_p+2*a2*l_p)*(2*a3*l_q+2*a4*l_q)) * radial_2e_list_J[tmp](0,0) - (4*a1*a2*(2*a3*lk4+2*a4*lk3) - 4*a1*a2*(2*a3*l_q+2*a4*l_q)) * radial_2e_list_J[tmp](1,0) + (lk1*lk2*4*a3*a4 - l12*4*a3*a4) * radial_2e_list_J[tmp](2,1) - ((2*a1*lk2+2*a2*lk1)*4*a3*a4 - (2*a1*l_p+2*a2*l_p)*4*a3*a4) * radial_2e_list_J[tmp](0,1);
+                            else
+                                array_radial_J[tmp][e1J][e2J][index_tmp_p][index_tmp_q] += (lk1*lk2*4*a3*a4 - l12*4*a3*a4) * radial_2e_list_J[tmp](2,1) - ((2*a1*lk2+2*a2*lk1)*4*a3*a4 - (2*a1*l_p+2*a2*l_p)*4*a3*a4) * radial_2e_list_J[tmp](0,1);
+                        }
+                        else
+                        {
+                            if(l_q != 0)
+                                array_radial_J[tmp][e1J][e2J][index_tmp_p][index_tmp_q] += (4*a1*a2*lk3*lk4 - 4*a1*a2*l34) * radial_2e_list_J[tmp](1,2) - (4*a1*a2*(2*a3*lk4+2*a4*lk3) - 4*a1*a2*(2*a3*l_q+2*a4*l_q)) * radial_2e_list_J[tmp](1,0);
+                        }
+                        array_radial_J[tmp][e1J][e2J][index_tmp_p][index_tmp_q] /= norm_J * 16.0 * pow(speedOfLight,4);
+                    }
+                    else
+                    {
+                        cout << "ERROR: Unknown integralTYPE in get_h2e:\n";
+                        exit(99);
+                    }
+                }
+                lk2 = 1+l_q+k_q; lk4 = 1+l_p+k_p; 
+                a2 = shell_list(qshell).exp_a(ll); a4 = shell_list(pshell).exp_a(jj);
+                for(int tmp = LmaxK; tmp >= 0; tmp -= 2)
+                {
+                    if(intType == "LLLL")
+                    {
+                        array_radial_K[tmp][e1K][e2K][index_tmp_p][index_tmp_q] = radial_2e_list_K[tmp](0,0) / norm_K;
+                    }
+                    else if(intType == "SSLL")
+                    {
+                        array_radial_K[tmp][e1K][e2K][index_tmp_p][index_tmp_q] = 4.0*a1*a2 * radial_2e_list_K[tmp](1,0);
+                        if(l_p != 0 && l_q != 0)
+                            array_radial_K[tmp][e1K][e2K][index_tmp_p][index_tmp_q] += lk1*lk2 * radial_2e_list_K[tmp](2,0) - (2.0*a1*lk2+2.0*a2*lk1) * radial_2e_list_K[tmp](0,0);
+                        else if(l_p != 0 || l_q != 0)
+                            array_radial_K[tmp][e1K][e2K][index_tmp_p][index_tmp_q] += - (2.0*a1*lk2+2.0*a2*lk1) * radial_2e_list_K[tmp](0,0);
+                        array_radial_K[tmp][e1K][e2K][index_tmp_p][index_tmp_q] /= norm_K * 4.0 * pow(speedOfLight,2);
+                    }
+                    else if(intType == "SSSS")
+                    {
+                        array_radial_K[tmp][e1K][e2K][index_tmp_p][index_tmp_q] = 4*a1*a2*4*a3*a4 * radial_2e_list_K[tmp](1,1);
+                        if(l_p != 0 && l_q != 0)
+                        {
+                            array_radial_K[tmp][e1K][e2K][index_tmp_p][index_tmp_q] += lk1*lk2*lk3*lk4 * radial_2e_list_K[tmp](2,2) - (2*a1*lk2+2*a2*lk1)*lk3*lk4 * radial_2e_list_K[tmp](0,2) + 4*a1*a2*lk3*lk4 * radial_2e_list_K[tmp](1,2) - lk1*lk2*(2*a3*lk4+2*a4*lk3) * radial_2e_list_K[tmp](2,0) + (2*a1*lk2+2*a2*lk1)*(2*a3*lk4+2*a4*lk3) * radial_2e_list_K[tmp](0,0) - 4*a1*a2*(2*a3*lk4+2*a4*lk3) * radial_2e_list_K[tmp](1,0) + lk1*lk2*4*a3*a4 * radial_2e_list_K[tmp](2,1) - (2*a1*lk2+2*a2*lk1)*4*a3*a4 * radial_2e_list_K[tmp](0,1);
+                        }
+                        else if(l_p != 0 || l_q != 0)
+                        {
+                            array_radial_K[tmp][e1K][e2K][index_tmp_p][index_tmp_q] += (2*a1*lk2+2*a2*lk1)*(2*a3*lk4+2*a4*lk3) * radial_2e_list_K[tmp](0,0) - 4*a1*a2*(2*a3*lk4+2*a4*lk3) * radial_2e_list_K[tmp](1,0) - (2*a1*lk2+2*a2*lk1)*4*a3*a4 * radial_2e_list_K[tmp](0,1);
+                        }
+                        array_radial_K[tmp][e1K][e2K][index_tmp_p][index_tmp_q] /= norm_K * 16.0 * pow(speedOfLight,4);
+                    }
+                    else if(intType == "SSLL_SF")
+                    {
+                        array_radial_K[tmp][e1K][e2K][index_tmp_p][index_tmp_q] = 4.0*a1*a2 * radial_2e_list_K[tmp](1,0);
+                        if(l_p != 0 && l_q != 0)
+                            array_radial_K[tmp][e1K][e2K][index_tmp_p][index_tmp_q] += (l_p*l_q + l_p*(l_p+1)/2 + l_q*(l_q+1)/2 - tmp*(tmp+1)/2) * radial_2e_list_K[tmp](2,0) - (2.0*a1*l_q+2.0*a2*l_p)* radial_2e_list_K[tmp](0,0);
+                        else if(l_p != 0 || l_q != 0)
+                            array_radial_K[tmp][e1K][e2K][index_tmp_p][index_tmp_q] += - (2.0*a1*l_q+2.0*a2*l_p) * radial_2e_list_K[tmp](0,0);
+                        array_radial_K[tmp][e1K][e2K][index_tmp_p][index_tmp_q] /= norm_K * 4.0 * pow(speedOfLight,2);
+                    }
+                    else if(intType == "SSSS_SF")
+                    {
+                        double l12 = l_p*l_q + l_p*(l_p+1)/2 + l_q*(l_q+1)/2 - tmp*(tmp+1)/2, l34 = l_q*l_p + l_q*(l_q+1)/2 + l_p*(l_p+1)/2 - tmp*(tmp+1)/2;
+                        array_radial_K[tmp][e1K][e2K][index_tmp_p][index_tmp_q] = 4*a1*a2*4*a3*a4 * radial_2e_list_K[tmp](1,1);
+                        if(l_p != 0 && l_q != 0)
+                        {
+                            array_radial_K[tmp][e1K][e2K][index_tmp_p][index_tmp_q] += l12*l34 * radial_2e_list_K[tmp](2,2) - (2*a1*l_q+2*a2*l_p)*l34 * radial_2e_list_K[tmp](0,2) + 4*a1*a2*l34 * radial_2e_list_K[tmp](1,2) - l12*(2*a3*l_p+2*a4*l_q) * radial_2e_list_K[tmp](2,0) + (2*a1*l_q+2*a2*l_p)*(2*a3*l_p+2*a4*l_q) * radial_2e_list_K[tmp](0,0) - 4*a1*a2*(2*a3*l_p+2*a4*l_q) * radial_2e_list_K[tmp](1,0) + l12*4*a3*a4 * radial_2e_list_K[tmp](2,1) - (2*a1*l_q+2*a2*l_p)*4*a3*a4 * radial_2e_list_K[tmp](0,1);
+                        }
+                        else if(l_p != 0 || l_q != 0)
+                        {
+                            array_radial_K[tmp][e1K][e2K][index_tmp_p][index_tmp_q] += (2*a1*l_q+2*a2*l_p)*(2*a3*l_p+2*a4*l_q) * radial_2e_list_K[tmp](0,0) - 4*a1*a2*(2*a3*l_p+2*a4*l_q) * radial_2e_list_K[tmp](1,0) - (2*a1*l_q+2*a2*l_p)*4*a3*a4 * radial_2e_list_K[tmp](0,1);
+                        }
+                        array_radial_K[tmp][e1K][e2K][index_tmp_p][index_tmp_q] /= norm_K * 16.0 * pow(speedOfLight,4);
+                    }
+                    else if(intType == "SSLL_SD")
+                    {
+                        array_radial_K[tmp][e1K][e2K][index_tmp_p][index_tmp_q] = 0.0;
+                        if(l_p != 0 && l_q != 0)
+                            array_radial_K[tmp][e1K][e2K][index_tmp_p][index_tmp_q] += (lk1*lk2-(l_p*l_q + l_p*(l_p+1)/2 + l_q*(l_q+1)/2 - tmp*(tmp+1)/2)) * radial_2e_list_K[tmp](2,0) - (2.0*a1*lk2+2.0*a2*lk1 - 2.0*a1*l_q - 2.0*a2*l_p)* radial_2e_list_K[tmp](0,0);
+                        else if(l_p != 0 || l_q != 0)
+                            array_radial_K[tmp][e1K][e2K][index_tmp_p][index_tmp_q] += - (2.0*a1*lk2+2.0*a2*lk1 - 2.0*a1*l_q-2.0*a2*l_p) * radial_2e_list_K[tmp](0,0);
+                        array_radial_K[tmp][e1K][e2K][index_tmp_p][index_tmp_q] /= norm_K * 4.0 * pow(speedOfLight,2);
+                    }
+                    else if(intType == "SSSS_SD")
+                    {
+                        double l12 = l_p*l_q + l_p*(l_p+1)/2 + l_q*(l_q+1)/2 - tmp*(tmp+1)/2, l34 = l_q*l_p + l_q*(l_q+1)/2 + l_p*(l_p+1)/2 - tmp*(tmp+1)/2;
+                        array_radial_K[tmp][e1K][e2K][index_tmp_p][index_tmp_q] = 0.0;
+                        if(l_p != 0 && l_q != 0)
+                        {
+                            array_radial_K[tmp][e1K][e2K][index_tmp_p][index_tmp_q] += (lk1*lk2*lk3*lk4 - l12*l34) * radial_2e_list_K[tmp](2,2) - ((2*a1*lk2+2*a2*lk1)*lk3*lk4 - (2*a1*l_q+2*a2*l_p)*l34) * radial_2e_list_K[tmp](0,2) + (4*a1*a2*lk3*lk4 - 4*a1*a2*l34) * radial_2e_list_K[tmp](1,2) - (lk1*lk2*(2*a3*lk4+2*a4*lk3) - l12*(2*a3*l_p+2*a4*l_q)) * radial_2e_list_K[tmp](2,0) + ((2*a1*lk2+2*a2*lk1)*(2*a3*lk4+2*a4*lk3) - (2*a1*l_q+2*a2*l_p)*(2*a3*l_p+2*a4*l_q)) * radial_2e_list_K[tmp](0,0) - (4*a1*a2*(2*a3*lk4+2*a4*lk3) -  4*a1*a2*(2*a3*l_p+2*a4*l_q)) * radial_2e_list_K[tmp](1,0) + (lk1*lk2*4*a3*a4 - l12*4*a3*a4) * radial_2e_list_K[tmp](2,1) - ((2*a1*lk2+2*a2*lk1)*4*a3*a4 - (2*a1*l_q+2*a2*l_p)*4*a3*a4) * radial_2e_list_K[tmp](0,1);
+                        }
+                        else if(l_p != 0 || l_q != 0)
+                        {
+                            array_radial_K[tmp][e1K][e2K][index_tmp_p][index_tmp_q] += ((2*a1*lk2+2*a2*lk1)*(2*a3*lk4+2*a4*lk3) - (2*a1*l_q+2*a2*l_p)*(2*a3*l_p+2*a4*l_q)) * radial_2e_list_K[tmp](0,0) - (4*a1*a2*(2*a3*lk4+2*a4*lk3) - 4*a1*a2*(2*a3*l_p+2*a4*l_q)) * radial_2e_list_K[tmp](1,0) - ((2*a1*lk2+2*a2*lk1)*4*a3*a4 - (2*a1*l_q+2*a2*l_p)*4*a3*a4) * radial_2e_list_K[tmp](0,1);
+                        }
+                        array_radial_K[tmp][e1K][e2K][index_tmp_p][index_tmp_q] /= norm_K * 16.0 * pow(speedOfLight,4);
+                    }
+                    else
+                    {
+                        cout << "ERROR: Unknown integralTYPE in get_h2e:\n";
+                        exit(99);
+                    }
+                }
+            }
+        }
+        EndTime = clock();
+        time_r += (EndTime - StartTime)/(double)CLOCKS_PER_SEC;
+
+        StartTime = clock();
+        int l_p_cycle = (l_p == 0) ? 1 : 2, l_q_cycle = (l_q == 0) ? 1 : 2;
+        for(int int_tmp2_p = 0; int_tmp2_p < l_p_cycle; int_tmp2_p++)
+        for(int int_tmp2_q = 0; int_tmp2_q < l_q_cycle; int_tmp2_q++)
+        {
+            int add_p = int_tmp2_p*(irrep_list(int_tmp1_p).two_j+1), add_q = int_tmp2_q*(irrep_list(int_tmp1_q).two_j+1);
+            int_2e_JK.J(int_tmp1_p+int_tmp2_p, int_tmp1_q+int_tmp2_q).resize(size_gtos_p*size_gtos_p,size_gtos_q*size_gtos_q);
+            int_2e_JK.K(int_tmp1_p+int_tmp2_p, int_tmp1_q+int_tmp2_q).resize(size_gtos_p*size_gtos_q,size_gtos_q*size_gtos_p);
+            #pragma omp parallel  for
+            for(int tt = 0; tt < size_gtos_p*size_gtos_p*size_gtos_q*size_gtos_q; tt++)
+            {
+                int e1J = tt/(size_gtos_q*size_gtos_q);
+                int e2J = tt - e1J*(size_gtos_q*size_gtos_q);
+                int e1K = tt/(size_gtos_p*size_gtos_q);
+                int e2K = tt - e1K*(size_gtos_p*size_gtos_q);
+                int_2e_JK.J(int_tmp1_p+int_tmp2_p, int_tmp1_q+int_tmp2_q)(e1J,e2J) = 0.0;
+                int_2e_JK.K(int_tmp1_p+int_tmp2_p, int_tmp1_q+int_tmp2_q)(e1K,e2K) = 0.0;
+                for(int tmp = LmaxJ; tmp >= 0; tmp = tmp - 2)
+                    int_2e_JK.J(int_tmp1_p+int_tmp2_p, int_tmp1_q+int_tmp2_q)(e1J,e2J) += array_radial_J[tmp][e1J][e2J][int_tmp2_p][int_tmp2_q] * array_angular_J[tmp][int_tmp2_p][int_tmp2_q];
+                for(int tmp = LmaxK; tmp >= 0; tmp = tmp - 2)
+                    int_2e_JK.K(int_tmp1_p+int_tmp2_p, int_tmp1_q+int_tmp2_q)(e1K,e2K) += array_radial_K[tmp][e1K][e2K][int_tmp2_p][int_tmp2_q] * array_angular_K[tmp][int_tmp2_p][int_tmp2_q];
+            }
+        }
+        EndTime = clock();
+        time_c += (EndTime - StartTime)/(double)CLOCKS_PER_SEC;
+        int_tmp1_q += (l_q == 0) ? 1 : 2;
+    }
+    int_tmp1_p += (l_p == 0) ? 1 : 2;
+    }
+
+    cout << time_a << "\t" << time_r << "\t" << time_c <<endl;
+    return int_2e_JK;
+}
+
+/*
+    Evaluate all compact 2e integral together for DHF calculations
+*/
+void INT_SPH::get_h2e_JK_direct(int2eJK& LLLL, int2eJK& SSLL, int2eJK& SSSS, const int& occMaxL, const bool& spinFree)
+{
+    double time_a = 0.0, time_r = 0.0, time_c = 0.0;
+    int occMaxShell = 0, Nirrep_compact = 0;
+    if(occMaxL == -1)    occMaxShell = size_shell;
+    else
+    {
+        for(int ii = 0; ii < size_shell; ii++)
+        {
+            if(shell_list(ii).l <= occMaxL)
+                occMaxShell++;
+            else
+                break;
+        }
+    }
+    for(int ii = 0; ii < occMaxShell; ii++)
+    {
+        if(shell_list(ii).l == 0) Nirrep_compact += 1;
+        else Nirrep_compact += 2;
+    }
+
+    LLLL.J.resize(Nirrep_compact, Nirrep_compact);
+    LLLL.K.resize(Nirrep_compact, Nirrep_compact);
+    SSLL.J.resize(Nirrep_compact, Nirrep_compact);
+    SSLL.K.resize(Nirrep_compact, Nirrep_compact);
+    SSSS.J.resize(Nirrep_compact, Nirrep_compact);
+    SSSS.K.resize(Nirrep_compact, Nirrep_compact);
 
     int int_tmp1_p = 0;
     for(int pshell = 0; pshell < occMaxShell; pshell++)
@@ -952,80 +1269,59 @@ void INT_SPH::get_h2e_JK_direct(int2eJK& LLLL, int2eJK& SSLL, int2eJK& SSSS, con
     {
         int l_q = shell_list(qshell).l, l_max = max(l_p,l_q), LmaxJ = min(l_p+l_p, l_q+l_q), LmaxK = l_p+l_q;
         int size_gtos_p = shell_list(pshell).coeff.rows(), size_gtos_q = shell_list(qshell).coeff.rows();
-        MatrixXd radial_2e_list_J[LmaxJ+1], radial_2e_list_K[LmaxK+1];
-        double array_radial_J_LLLL[LmaxJ+1][size_gtos_p][size_gtos_p][size_gtos_q][size_gtos_q];
-        double array_radial_K_LLLL[LmaxK+1][size_gtos_p][size_gtos_q][size_gtos_q][size_gtos_p];
-        double array_radial_J_SSLL[LmaxJ+1][size_gtos_p][size_gtos_p][size_gtos_q][size_gtos_q];
-        double array_radial_K_SSLL[LmaxK+1][size_gtos_p][size_gtos_q][size_gtos_q][size_gtos_p];
-        double array_radial_J_SSSS[LmaxJ+1][size_gtos_p][size_gtos_p][size_gtos_q][size_gtos_q];
-        double array_radial_K_SSSS[LmaxK+1][size_gtos_p][size_gtos_q][size_gtos_q][size_gtos_p];
+        int size_tmp_p = (l_p == 0) ? 1 : 2, size_tmp_q = (l_q == 0) ? 1 : 2; 
+        double array_radial_J_LLLL[LmaxJ+1][size_gtos_p*size_gtos_p][size_gtos_q*size_gtos_q][size_tmp_p][size_tmp_q];
+        double array_radial_K_LLLL[LmaxK+1][size_gtos_p*size_gtos_q][size_gtos_q*size_gtos_p][size_tmp_p][size_tmp_q];
+        double array_radial_J_SSLL[LmaxJ+1][size_gtos_p*size_gtos_p][size_gtos_q*size_gtos_q][size_tmp_p][size_tmp_q];
+        double array_radial_K_SSLL[LmaxK+1][size_gtos_p*size_gtos_q][size_gtos_q*size_gtos_p][size_tmp_p][size_tmp_q];
+        double array_radial_J_SSSS[LmaxJ+1][size_gtos_p*size_gtos_p][size_gtos_q*size_gtos_q][size_tmp_p][size_tmp_q];
+        double array_radial_K_SSSS[LmaxK+1][size_gtos_p*size_gtos_q][size_gtos_q*size_gtos_p][size_tmp_p][size_tmp_q];
+        double array_angular_J[LmaxJ+1][size_tmp_p][size_tmp_q], array_angular_K[LmaxK+1][size_tmp_p][size_tmp_q];
 
-        Matrix<mMatrixXd,-1,-1> h2eJ_LLLL, h2eK_LLLL, h2eJ_SSLL, h2eK_SSLL, h2eJ_SSSS, h2eK_SSSS;
-        int size_tmp_p = 0, size_tmp_q = 0;
-        if(l_p == 0)
-            size_tmp_p = 1;
-        else
-            size_tmp_p = 2;
-        if(l_q == 0)
-            size_tmp_q = 1;
-        else
-            size_tmp_q = 2;
-        h2eJ_LLLL.resize(size_tmp_p,size_tmp_q);
-        h2eK_LLLL.resize(size_tmp_p,size_tmp_q);
-        h2eJ_SSLL.resize(size_tmp_p,size_tmp_q);
-        h2eK_SSLL.resize(size_tmp_p,size_tmp_q);
-        h2eJ_SSSS.resize(size_tmp_p,size_tmp_q);
-        h2eK_SSSS.resize(size_tmp_p,size_tmp_q);
- 
-        MatrixXd array_angular_J[LmaxJ+1][size_tmp_p][size_tmp_q], array_angular_K[LmaxK+1][size_tmp_p][size_tmp_q];
-
+        StartTime = clock();
+        #pragma omp parallel  for
         for(int twojj_p = abs(2*l_p-1); twojj_p <= 2*l_p+1; twojj_p = twojj_p + 2)
         for(int twojj_q = abs(2*l_q-1); twojj_q <= 2*l_q+1; twojj_q = twojj_q + 2)
         {
             int sym_ap = twojj_p - 2*l_p, sym_aq = twojj_q - 2*l_q;
-            int index_tmp_p = 1 - (2*l_p+1 - twojj_p)/2;
-            if(l_p == 0) index_tmp_p = 0;
-            int index_tmp_q = 1 - (2*l_q+1 - twojj_q)/2;
-            if(l_q == 0) index_tmp_q = 0;
-
-            h2eJ_LLLL(index_tmp_p,index_tmp_q).resize(twojj_p+1,twojj_q+1);
-            h2eK_LLLL(index_tmp_p,index_tmp_q).resize(twojj_p+1,twojj_q+1);
-            h2eJ_SSLL(index_tmp_p,index_tmp_q).resize(twojj_p+1,twojj_q+1);
-            h2eK_SSLL(index_tmp_p,index_tmp_q).resize(twojj_p+1,twojj_q+1);
-            h2eJ_SSSS(index_tmp_p,index_tmp_q).resize(twojj_p+1,twojj_q+1);
-            h2eK_SSSS(index_tmp_p,index_tmp_q).resize(twojj_p+1,twojj_q+1);
-            for(int mp = 0; mp < twojj_p + 1; mp++)
-            for(int mq = 0; mq < twojj_q + 1; mq++)
-            {
-                h2eJ_LLLL(index_tmp_p,index_tmp_q)(mp,mq).resize(size_gtos_p*size_gtos_p,size_gtos_q*size_gtos_q);
-                h2eK_LLLL(index_tmp_p,index_tmp_q)(mp,mq).resize(size_gtos_p*size_gtos_q,size_gtos_q*size_gtos_p);
-                h2eJ_SSLL(index_tmp_p,index_tmp_q)(mp,mq).resize(size_gtos_p*size_gtos_p,size_gtos_q*size_gtos_q);
-                h2eK_SSLL(index_tmp_p,index_tmp_q)(mp,mq).resize(size_gtos_p*size_gtos_q,size_gtos_q*size_gtos_p);
-                h2eJ_SSSS(index_tmp_p,index_tmp_q)(mp,mq).resize(size_gtos_p*size_gtos_p,size_gtos_q*size_gtos_q);
-                h2eK_SSSS(index_tmp_p,index_tmp_q)(mp,mq).resize(size_gtos_p*size_gtos_q,size_gtos_q*size_gtos_p);
-            }
+            int index_tmp_p = (l_p > 0) ? (1 - (2*l_p+1 - twojj_p)/2) : 0;
+            int index_tmp_q = (l_q > 0) ? (1 - (2*l_q+1 - twojj_q)/2) : 0;
 
             for(int tmp = LmaxJ; tmp >= 0; tmp -= 2)
             {
-                array_angular_J[tmp][index_tmp_p][index_tmp_q].resize(twojj_p + 1,twojj_q + 1);
-                for(int mp = 0; mp < twojj_p + 1; mp++)
+                double tmp_d = 0.0;
                 for(int mq = 0; mq < twojj_q + 1; mq++)
-                    array_angular_J[tmp][index_tmp_p][index_tmp_q](mp,mq) = int2e_get_angular(l_p, 2*mp-twojj_p, sym_ap, l_p, 2*mp-twojj_p, sym_ap, l_q, 2*mq-twojj_q, sym_aq, l_q, 2*mq-twojj_q, sym_aq, tmp);
+                {
+                    tmp_d += int2e_get_angular_J(l_p, twojj_p, sym_ap, l_q, 2*mq-twojj_q, sym_aq, tmp);
+                }
+                tmp_d /= (twojj_q + 1);
+                array_angular_J[tmp][index_tmp_p][index_tmp_q] = tmp_d;
             }
+            
             for(int tmp = LmaxK; tmp >= 0; tmp -= 2)
             {
-                array_angular_K[tmp][index_tmp_p][index_tmp_q].resize(twojj_p + 1,twojj_q + 1);
-                for(int mp = 0; mp < twojj_p + 1; mp++)
+                double tmp_d = 0.0;
                 for(int mq = 0; mq < twojj_q + 1; mq++)
-                    array_angular_K[tmp][index_tmp_p][index_tmp_q](mp,mq) = int2e_get_angular(l_p, 2*mp-twojj_p, sym_ap, l_q, 2*mq-twojj_q, sym_aq, l_q, 2*mq-twojj_q, sym_aq, l_p, 2*mp-twojj_p, sym_ap, tmp);
+                {
+                    tmp_d += int2e_get_angular_K(l_p, twojj_p, sym_ap, l_q, 2*mq-twojj_q, sym_aq, tmp);
+                }
+                tmp_d /= (twojj_q + 1);
+                array_angular_K[tmp][index_tmp_p][index_tmp_q] = tmp_d;
             }
         }
+        EndTime = clock();
+        time_a += (EndTime - StartTime)/(double)CLOCKS_PER_SEC;
 
-        for(int ii = 0; ii < size_gtos_p; ii++)
-        for(int jj = 0; jj < size_gtos_p; jj++)
-        for(int kk = 0; kk < size_gtos_q; kk++)
-        for(int ll = 0; ll < size_gtos_q; ll++)
+        StartTime = clock();
+        #pragma omp parallel  for
+        for(int tt = 0; tt < size_gtos_p*size_gtos_p*size_gtos_q*size_gtos_q; tt++)
         {
+            int e1J = tt/(size_gtos_q*size_gtos_q);
+            int e2J = tt - e1J*(size_gtos_q*size_gtos_q);
+            int ii = e1J/size_gtos_p, jj = e1J - ii*size_gtos_p;
+            int kk = e2J/size_gtos_q, ll = e2J - kk*size_gtos_q;
+            int e1K = ii*size_gtos_q+ll, e2K = kk*size_gtos_p+jj;
+            MatrixXd radial_2e_list_J[LmaxJ+1], radial_2e_list_K[LmaxK+1];
             double a_i_J = shell_list(pshell).exp_a(ii), a_j_J = shell_list(pshell).exp_a(jj), a_k_J = shell_list(qshell).exp_a(kk), a_l_J = shell_list(qshell).exp_a(ll);
             double a_i_K = shell_list(pshell).exp_a(ii), a_j_K = shell_list(qshell).exp_a(ll), a_k_K = shell_list(qshell).exp_a(kk), a_l_K = shell_list(pshell).exp_a(jj);
 
@@ -1069,6 +1365,8 @@ void INT_SPH::get_h2e_JK_direct(int2eJK& LLLL, int2eJK& SSLL, int2eJK& SSSS, con
             for(int twojj_p = abs(2*l_p-1); twojj_p <= 2*l_p+1; twojj_p = twojj_p + 2)
             for(int twojj_q = abs(2*l_q-1); twojj_q <= 2*l_q+1; twojj_q = twojj_q + 2)
             {
+                int index_tmp_p = (l_p > 0) ? (1 - (2*l_p+1 - twojj_p)/2) : 0;
+                int index_tmp_q = (l_q > 0) ? (1 - (2*l_q+1 - twojj_q)/2) : 0;
                 int sym_ap = twojj_p - 2*l_p, sym_aq = twojj_q - 2*l_q;
                 double k_p = -(twojj_p+1.0)*sym_ap/2.0, k_q = -(twojj_q+1.0)*sym_aq/2.0;
                 double norm_J = shell_list(pshell).norm(ii) * shell_list(pshell).norm(jj) * shell_list(qshell).norm(kk) * shell_list(qshell).norm(ll), norm_K = shell_list(pshell).norm(ii) * shell_list(qshell).norm(ll) * shell_list(qshell).norm(kk) * shell_list(pshell).norm(jj);
@@ -1076,197 +1374,133 @@ void INT_SPH::get_h2e_JK_direct(int2eJK& LLLL, int2eJK& SSLL, int2eJK& SSSS, con
 
                 for(int tmp = LmaxJ; tmp >= 0; tmp -= 2)
                 {
-                    array_radial_J_LLLL[tmp][ii][jj][kk][ll] = radial_2e_list_J[tmp](0,0) / norm_J;
-                    array_radial_J_SSLL[tmp][ii][jj][kk][ll] = 4.0*a1*a2 * radial_2e_list_J[tmp](1,0);
-                    array_radial_J_SSSS[tmp][ii][jj][kk][ll] = 4*a1*a2*4*a3*a4 * radial_2e_list_J[tmp](1,1);
+                    array_radial_J_LLLL[tmp][e1J][e2J][index_tmp_p][index_tmp_q] = radial_2e_list_J[tmp](0,0) / norm_J;
+                    array_radial_J_SSLL[tmp][e1J][e2J][index_tmp_p][index_tmp_q] = 4.0*a1*a2 * radial_2e_list_J[tmp](1,0);
+                    array_radial_J_SSSS[tmp][e1J][e2J][index_tmp_p][index_tmp_q] = 4*a1*a2*4*a3*a4 * radial_2e_list_J[tmp](1,1);
                     if(spinFree)
                     {
                         double l12 = l_p*l_p + l_p*(l_p+1)/2 + l_p*(l_p+1)/2 - tmp*(tmp+1)/2, l34 = l_q*l_q + l_q*(l_q+1)/2 + l_q*(l_q+1)/2 - tmp*(tmp+1)/2;
                         if(l_p != 0)
                         {
-                            array_radial_J_SSLL[tmp][ii][jj][kk][ll] += l12 * radial_2e_list_J[tmp](2,0) - (2.0*a1*l_p+2.0*a2*l_p) * radial_2e_list_J[tmp](0,0);
+                            array_radial_J_SSLL[tmp][e1J][e2J][index_tmp_p][index_tmp_q] += l12 * radial_2e_list_J[tmp](2,0) - (2.0*a1*l_p+2.0*a2*l_p) * radial_2e_list_J[tmp](0,0);
                             if(l_q != 0)
-                                array_radial_J_SSSS[tmp][ii][jj][kk][ll] += l12*l34 * radial_2e_list_J[tmp](2,2) - (2*a1*l_p+2*a2*l_p)*l34 * radial_2e_list_J[tmp](0,2) + 4*a1*a2*l34 * radial_2e_list_J[tmp](1,2) - l12*(2*a3*l_q+2*a4*l_q) * radial_2e_list_J[tmp](2,0) + (2*a1*l_p+2*a2*l_p)*(2*a3*l_q+2*a4*l_q) * radial_2e_list_J[tmp](0,0) - 4*a1*a2*(2*a3*l_q+2*a4*l_q) * radial_2e_list_J[tmp](1,0) + l12*4*a3*a4 * radial_2e_list_J[tmp](2,1) - (2*a1*l_p+2*a2*l_p)*4*a3*a4 * radial_2e_list_J[tmp](0,1);
+                                array_radial_J_SSSS[tmp][e1J][e2J][index_tmp_p][index_tmp_q] += l12*l34 * radial_2e_list_J[tmp](2,2) - (2*a1*l_p+2*a2*l_p)*l34 * radial_2e_list_J[tmp](0,2) + 4*a1*a2*l34 * radial_2e_list_J[tmp](1,2) - l12*(2*a3*l_q+2*a4*l_q) * radial_2e_list_J[tmp](2,0) + (2*a1*l_p+2*a2*l_p)*(2*a3*l_q+2*a4*l_q) * radial_2e_list_J[tmp](0,0) - 4*a1*a2*(2*a3*l_q+2*a4*l_q) * radial_2e_list_J[tmp](1,0) + l12*4*a3*a4 * radial_2e_list_J[tmp](2,1) - (2*a1*l_p+2*a2*l_p)*4*a3*a4 * radial_2e_list_J[tmp](0,1);
                             else
-                                array_radial_J_SSSS[tmp][ii][jj][kk][ll] += l12*4*a3*a4 * radial_2e_list_J[tmp](2,1) - (2*a1*l_p+2*a2*l_p)*4*a3*a4 * radial_2e_list_J[tmp](0,1);
+                                array_radial_J_SSSS[tmp][e1J][e2J][index_tmp_p][index_tmp_q] += l12*4*a3*a4 * radial_2e_list_J[tmp](2,1) - (2*a1*l_p+2*a2*l_p)*4*a3*a4 * radial_2e_list_J[tmp](0,1);
                         }
                         else
                         {
                             if(l_q != 0)
-                                array_radial_J_SSSS[tmp][ii][jj][kk][ll] += 4*a1*a2*l34 * radial_2e_list_J[tmp](1,2) - 4*a1*a2*(2*a3*l_q+2*a4*l_q) * radial_2e_list_J[tmp](1,0);
+                                array_radial_J_SSSS[tmp][e1J][e2J][index_tmp_p][index_tmp_q] += 4*a1*a2*l34 * radial_2e_list_J[tmp](1,2) - 4*a1*a2*(2*a3*l_q+2*a4*l_q) * radial_2e_list_J[tmp](1,0);
                         }
                     }
                     else
                     {    
                         if(l_p != 0)
                         {
-                            array_radial_J_SSLL[tmp][ii][jj][kk][ll] += lk1*lk2 * radial_2e_list_J[tmp](2,0) - (2.0*a1*lk2+2.0*a2*lk1) * radial_2e_list_J[tmp](0,0);
+                            array_radial_J_SSLL[tmp][e1J][e2J][index_tmp_p][index_tmp_q] += lk1*lk2 * radial_2e_list_J[tmp](2,0) - (2.0*a1*lk2+2.0*a2*lk1) * radial_2e_list_J[tmp](0,0);
                             if(l_q != 0)
-                                array_radial_J_SSSS[tmp][ii][jj][kk][ll] += lk1*lk2*lk3*lk4 * radial_2e_list_J[tmp](2,2) - (2*a1*lk2+2*a2*lk1)*lk3*lk4 * radial_2e_list_J[tmp](0,2) + 4*a1*a2*lk3*lk4 * radial_2e_list_J[tmp](1,2) - lk1*lk2*(2*a3*lk4+2*a4*lk3) * radial_2e_list_J[tmp](2,0) + (2*a1*lk2+2*a2*lk1)*(2*a3*lk4+2*a4*lk3) * radial_2e_list_J[tmp](0,0) - 4*a1*a2*(2*a3*lk4+2*a4*lk3) * radial_2e_list_J[tmp](1,0) + lk1*lk2*4*a3*a4 * radial_2e_list_J[tmp](2,1) - (2*a1*lk2+2*a2*lk1)*4*a3*a4 * radial_2e_list_J[tmp](0,1);
+                                array_radial_J_SSSS[tmp][e1J][e2J][index_tmp_p][index_tmp_q] += lk1*lk2*lk3*lk4 * radial_2e_list_J[tmp](2,2) - (2*a1*lk2+2*a2*lk1)*lk3*lk4 * radial_2e_list_J[tmp](0,2) + 4*a1*a2*lk3*lk4 * radial_2e_list_J[tmp](1,2) - lk1*lk2*(2*a3*lk4+2*a4*lk3) * radial_2e_list_J[tmp](2,0) + (2*a1*lk2+2*a2*lk1)*(2*a3*lk4+2*a4*lk3) * radial_2e_list_J[tmp](0,0) - 4*a1*a2*(2*a3*lk4+2*a4*lk3) * radial_2e_list_J[tmp](1,0) + lk1*lk2*4*a3*a4 * radial_2e_list_J[tmp](2,1) - (2*a1*lk2+2*a2*lk1)*4*a3*a4 * radial_2e_list_J[tmp](0,1);
                             else
-                                array_radial_J_SSSS[tmp][ii][jj][kk][ll] += lk1*lk2*4*a3*a4 * radial_2e_list_J[tmp](2,1) - (2*a1*lk2+2*a2*lk1)*4*a3*a4 * radial_2e_list_J[tmp](0,1);
+                                array_radial_J_SSSS[tmp][e1J][e2J][index_tmp_p][index_tmp_q] += lk1*lk2*4*a3*a4 * radial_2e_list_J[tmp](2,1) - (2*a1*lk2+2*a2*lk1)*4*a3*a4 * radial_2e_list_J[tmp](0,1);
                         }
                         else
                         {
                             if(l_q != 0)
-                                array_radial_J_SSSS[tmp][ii][jj][kk][ll] += 4*a1*a2*lk3*lk4 * radial_2e_list_J[tmp](1,2) - 4*a1*a2*(2*a3*lk4+2*a4*lk3) * radial_2e_list_J[tmp](1,0);
+                                array_radial_J_SSSS[tmp][e1J][e2J][index_tmp_p][index_tmp_q] += 4*a1*a2*lk3*lk4 * radial_2e_list_J[tmp](1,2) - 4*a1*a2*(2*a3*lk4+2*a4*lk3) * radial_2e_list_J[tmp](1,0);
                         }
                     }
-                    array_radial_J_SSLL[tmp][ii][jj][kk][ll] /= norm_J*4.0*pow(speedOfLight,2);
-                    array_radial_J_SSSS[tmp][ii][jj][kk][ll] /= norm_J*16.0*pow(speedOfLight,4);
+                    array_radial_J_SSLL[tmp][e1J][e2J][index_tmp_p][index_tmp_q] /= norm_J*4.0*pow(speedOfLight,2);
+                    array_radial_J_SSSS[tmp][e1J][e2J][index_tmp_p][index_tmp_q] /= norm_J*16.0*pow(speedOfLight,4);
                 }
                 lk2 = 1+l_q+k_q; lk4 = 1+l_p+k_p; 
                 a2 = shell_list(qshell).exp_a(ll); a4 = shell_list(pshell).exp_a(jj);
                 for(int tmp = LmaxK; tmp >= 0; tmp -= 2)
                 {
-                    array_radial_K_LLLL[tmp][ii][ll][kk][jj] = radial_2e_list_K[tmp](0,0) / norm_K;
-                    array_radial_K_SSLL[tmp][ii][ll][kk][jj] = 4.0*a1*a2 * radial_2e_list_K[tmp](1,0);
-                    array_radial_K_SSSS[tmp][ii][ll][kk][jj] = 4*a1*a2*4*a3*a4 * radial_2e_list_K[tmp](1,1);
+                    array_radial_K_LLLL[tmp][e1K][e2K][index_tmp_p][index_tmp_q] = radial_2e_list_K[tmp](0,0) / norm_K;
+                    array_radial_K_SSLL[tmp][e1K][e2K][index_tmp_p][index_tmp_q] = 4.0*a1*a2 * radial_2e_list_K[tmp](1,0);
+                    array_radial_K_SSSS[tmp][e1K][e2K][index_tmp_p][index_tmp_q] = 4*a1*a2*4*a3*a4 * radial_2e_list_K[tmp](1,1);
                     if(spinFree)
                     {
                         double l12 = l_p*l_q + l_p*(l_p+1)/2 + l_q*(l_q+1)/2 - tmp*(tmp+1)/2, l34 = l_q*l_p + l_q*(l_q+1)/2 + l_p*(l_p+1)/2 - tmp*(tmp+1)/2;
                         if(l_p != 0 && l_q != 0)
                         {
-                            array_radial_K_SSLL[tmp][ii][ll][kk][jj] += l12 * radial_2e_list_K[tmp](2,0) - (2.0*a1*l_q+2.0*a2*l_p) * radial_2e_list_K[tmp](0,0);
-                            array_radial_K_SSSS[tmp][ii][ll][kk][jj] += l12*l34 * radial_2e_list_K[tmp](2,2) - (2*a1*l_q+2*a2*l_p)*l34 * radial_2e_list_K[tmp](0,2) + 4*a1*a2*l34 * radial_2e_list_K[tmp](1,2) - l12*(2*a3*l_p+2*a4*l_q) * radial_2e_list_K[tmp](2,0) + (2*a1*l_q+2*a2*l_p)*(2*a3*l_p+2*a4*l_q) * radial_2e_list_K[tmp](0,0) - 4*a1*a2*(2*a3*l_p+2*a4*l_q) * radial_2e_list_K[tmp](1,0) + l12*4*a3*a4 * radial_2e_list_K[tmp](2,1) - (2*a1*l_q+2*a2*l_p)*4*a3*a4 * radial_2e_list_K[tmp](0,1);
+                            array_radial_K_SSLL[tmp][e1K][e2K][index_tmp_p][index_tmp_q] += l12 * radial_2e_list_K[tmp](2,0) - (2.0*a1*l_q+2.0*a2*l_p) * radial_2e_list_K[tmp](0,0);
+                            array_radial_K_SSSS[tmp][e1K][e2K][index_tmp_p][index_tmp_q] += l12*l34 * radial_2e_list_K[tmp](2,2) - (2*a1*l_q+2*a2*l_p)*l34 * radial_2e_list_K[tmp](0,2) + 4*a1*a2*l34 * radial_2e_list_K[tmp](1,2) - l12*(2*a3*l_p+2*a4*l_q) * radial_2e_list_K[tmp](2,0) + (2*a1*l_q+2*a2*l_p)*(2*a3*l_p+2*a4*l_q) * radial_2e_list_K[tmp](0,0) - 4*a1*a2*(2*a3*l_p+2*a4*l_q) * radial_2e_list_K[tmp](1,0) + l12*4*a3*a4 * radial_2e_list_K[tmp](2,1) - (2*a1*l_q+2*a2*l_p)*4*a3*a4 * radial_2e_list_K[tmp](0,1);
                         }
                         else if(l_p != 0 || l_q != 0)
                         {
-                            array_radial_K_SSLL[tmp][ii][ll][kk][jj] += - (2.0*a1*l_q+2.0*a2*l_p) * radial_2e_list_K[tmp](0,0);
-                            array_radial_K_SSSS[tmp][ii][ll][kk][jj] += (2*a1*l_q+2*a2*l_p)*(2*a3*l_p+2*a4*l_q) * radial_2e_list_K[tmp](0,0) - 4*a1*a2*(2*a3*l_p+2*a4*l_q) * radial_2e_list_K[tmp](1,0) - (2*a1*l_q+2*a2*l_p)*4*a3*a4 * radial_2e_list_K[tmp](0,1);
+                            array_radial_K_SSLL[tmp][e1K][e2K][index_tmp_p][index_tmp_q] += - (2.0*a1*l_q+2.0*a2*l_p) * radial_2e_list_K[tmp](0,0);
+                            array_radial_K_SSSS[tmp][e1K][e2K][index_tmp_p][index_tmp_q] += (2*a1*l_q+2*a2*l_p)*(2*a3*l_p+2*a4*l_q) * radial_2e_list_K[tmp](0,0) - 4*a1*a2*(2*a3*l_p+2*a4*l_q) * radial_2e_list_K[tmp](1,0) - (2*a1*l_q+2*a2*l_p)*4*a3*a4 * radial_2e_list_K[tmp](0,1);
                         }
                     }
                     else
                     {
                         if(l_p != 0 && l_q != 0)
                         {
-                            array_radial_K_SSLL[tmp][ii][ll][kk][jj] += lk1*lk2 * radial_2e_list_K[tmp](2,0) - (2.0*a1*lk2+2.0*a2*lk1) * radial_2e_list_K[tmp](0,0);
-                            array_radial_K_SSSS[tmp][ii][ll][kk][jj] += lk1*lk2*lk3*lk4 * radial_2e_list_K[tmp](2,2) - (2*a1*lk2+2*a2*lk1)*lk3*lk4 * radial_2e_list_K[tmp](0,2) + 4*a1*a2*lk3*lk4 * radial_2e_list_K[tmp](1,2) - lk1*lk2*(2*a3*lk4+2*a4*lk3) * radial_2e_list_K[tmp](2,0) + (2*a1*lk2+2*a2*lk1)*(2*a3*lk4+2*a4*lk3) * radial_2e_list_K[tmp](0,0) - 4*a1*a2*(2*a3*lk4+2*a4*lk3) * radial_2e_list_K[tmp](1,0) + lk1*lk2*4*a3*a4 * radial_2e_list_K[tmp](2,1) - (2*a1*lk2+2*a2*lk1)*4*a3*a4 * radial_2e_list_K[tmp](0,1);
+                            array_radial_K_SSLL[tmp][e1K][e2K][index_tmp_p][index_tmp_q] += lk1*lk2 * radial_2e_list_K[tmp](2,0) - (2.0*a1*lk2+2.0*a2*lk1) * radial_2e_list_K[tmp](0,0);
+                            array_radial_K_SSSS[tmp][e1K][e2K][index_tmp_p][index_tmp_q] += lk1*lk2*lk3*lk4 * radial_2e_list_K[tmp](2,2) - (2*a1*lk2+2*a2*lk1)*lk3*lk4 * radial_2e_list_K[tmp](0,2) + 4*a1*a2*lk3*lk4 * radial_2e_list_K[tmp](1,2) - lk1*lk2*(2*a3*lk4+2*a4*lk3) * radial_2e_list_K[tmp](2,0) + (2*a1*lk2+2*a2*lk1)*(2*a3*lk4+2*a4*lk3) * radial_2e_list_K[tmp](0,0) - 4*a1*a2*(2*a3*lk4+2*a4*lk3) * radial_2e_list_K[tmp](1,0) + lk1*lk2*4*a3*a4 * radial_2e_list_K[tmp](2,1) - (2*a1*lk2+2*a2*lk1)*4*a3*a4 * radial_2e_list_K[tmp](0,1);
                         }
                         else if(l_p != 0 || l_q != 0)
                         {
-                            array_radial_K_SSLL[tmp][ii][ll][kk][jj] += - (2.0*a1*lk2+2.0*a2*lk1) * radial_2e_list_K[tmp](0,0);
-                            array_radial_K_SSSS[tmp][ii][ll][kk][jj] += (2*a1*lk2+2*a2*lk1)*(2*a3*lk4+2*a4*lk3) * radial_2e_list_K[tmp](0,0) - 4*a1*a2*(2*a3*lk4+2*a4*lk3) * radial_2e_list_K[tmp](1,0) - (2*a1*lk2+2*a2*lk1)*4*a3*a4 * radial_2e_list_K[tmp](0,1);
+                            array_radial_K_SSLL[tmp][e1K][e2K][index_tmp_p][index_tmp_q] += - (2.0*a1*lk2+2.0*a2*lk1) * radial_2e_list_K[tmp](0,0);
+                            array_radial_K_SSSS[tmp][e1K][e2K][index_tmp_p][index_tmp_q] += (2*a1*lk2+2*a2*lk1)*(2*a3*lk4+2*a4*lk3) * radial_2e_list_K[tmp](0,0) - 4*a1*a2*(2*a3*lk4+2*a4*lk3) * radial_2e_list_K[tmp](1,0) - (2*a1*lk2+2*a2*lk1)*4*a3*a4 * radial_2e_list_K[tmp](0,1);
                         }
                     }
-                    array_radial_K_SSLL[tmp][ii][ll][kk][jj] /= norm_K*4.0*pow(speedOfLight,2);
-                    array_radial_K_SSSS[tmp][ii][ll][kk][jj] /= norm_K*16.0*pow(speedOfLight,4);
+                    array_radial_K_SSLL[tmp][e1K][e2K][index_tmp_p][index_tmp_q] /= norm_K*4.0*pow(speedOfLight,2);
+                    array_radial_K_SSSS[tmp][e1K][e2K][index_tmp_p][index_tmp_q] /= norm_K*16.0*pow(speedOfLight,4);
                 }
+            }
+        }
+        EndTime = clock();
+        time_r += (EndTime - StartTime)/(double)CLOCKS_PER_SEC;
 
-                int index_tmp_p = 1 - (2*l_p+1 - twojj_p)/2;
-                if(l_p == 0) index_tmp_p = 0;
-                int index_tmp_q = 1 - (2*l_q+1 - twojj_q)/2;
-                if(l_q == 0) index_tmp_q = 0;
-                for(int mp = 0; mp < twojj_p + 1; mp++)
-                for(int mq = 0; mq < twojj_q + 1; mq++)
+        StartTime = clock();
+        int l_p_cycle = (l_p == 0) ? 1 : 2, l_q_cycle = (l_q == 0) ? 1 : 2;
+        for(int int_tmp2_p = 0; int_tmp2_p < l_p_cycle; int_tmp2_p++)
+        for(int int_tmp2_q = 0; int_tmp2_q < l_q_cycle; int_tmp2_q++)
+        {
+            LLLL.J(int_tmp1_p+int_tmp2_p, int_tmp1_q+int_tmp2_q).resize(size_gtos_p*size_gtos_p,size_gtos_q*size_gtos_q);
+            LLLL.K(int_tmp1_p+int_tmp2_p, int_tmp1_q+int_tmp2_q).resize(size_gtos_p*size_gtos_q,size_gtos_q*size_gtos_p);
+            SSLL.J(int_tmp1_p+int_tmp2_p, int_tmp1_q+int_tmp2_q).resize(size_gtos_p*size_gtos_p,size_gtos_q*size_gtos_q);
+            SSLL.K(int_tmp1_p+int_tmp2_p, int_tmp1_q+int_tmp2_q).resize(size_gtos_p*size_gtos_q,size_gtos_q*size_gtos_p);
+            SSSS.J(int_tmp1_p+int_tmp2_p, int_tmp1_q+int_tmp2_q).resize(size_gtos_p*size_gtos_p,size_gtos_q*size_gtos_q);
+            SSSS.K(int_tmp1_p+int_tmp2_p, int_tmp1_q+int_tmp2_q).resize(size_gtos_p*size_gtos_q,size_gtos_q*size_gtos_p);
+            #pragma omp parallel  for
+            for(int tt = 0; tt < size_gtos_p*size_gtos_p*size_gtos_q*size_gtos_q; tt++)
+            {
+                int e1J = tt/(size_gtos_q*size_gtos_q);
+                int e2J = tt - e1J*(size_gtos_q*size_gtos_q);
+                int e1K = tt/(size_gtos_p*size_gtos_q);
+                int e2K = tt - e1K*(size_gtos_p*size_gtos_q);
+                LLLL.J(int_tmp1_p+int_tmp2_p, int_tmp1_q+int_tmp2_q)(e1J,e2J) = 0.0;
+                LLLL.K(int_tmp1_p+int_tmp2_p, int_tmp1_q+int_tmp2_q)(e1K,e2K) = 0.0;
+                SSLL.J(int_tmp1_p+int_tmp2_p, int_tmp1_q+int_tmp2_q)(e1J,e2J) = 0.0;
+                SSLL.K(int_tmp1_p+int_tmp2_p, int_tmp1_q+int_tmp2_q)(e1K,e2K) = 0.0;
+                SSSS.J(int_tmp1_p+int_tmp2_p, int_tmp1_q+int_tmp2_q)(e1J,e2J) = 0.0;
+                SSSS.K(int_tmp1_p+int_tmp2_p, int_tmp1_q+int_tmp2_q)(e1K,e2K) = 0.0;
+                for(int tmp = LmaxJ; tmp >= 0; tmp = tmp - 2)
                 {
-                    int e1J = ii*size_gtos_p+jj, e2J = kk*size_gtos_q+ll;
-                    int e1K = ii*size_gtos_q+ll, e2K = kk*size_gtos_p+jj;
-                    h2eJ_LLLL(index_tmp_p,index_tmp_q)(mp,mq)(e1J,e2J) = 0.0;
-                    h2eK_LLLL(index_tmp_p,index_tmp_q)(mp,mq)(e1K,e2K) = 0.0;
-                    h2eJ_SSLL(index_tmp_p,index_tmp_q)(mp,mq)(e1J,e2J) = 0.0;
-                    h2eK_SSLL(index_tmp_p,index_tmp_q)(mp,mq)(e1K,e2K) = 0.0;
-                    h2eJ_SSSS(index_tmp_p,index_tmp_q)(mp,mq)(e1J,e2J) = 0.0;
-                    h2eK_SSSS(index_tmp_p,index_tmp_q)(mp,mq)(e1K,e2K) = 0.0;
-                    for(int tmp = LmaxJ; tmp >= 0; tmp = tmp - 2)
-                    {
-                        h2eJ_LLLL(index_tmp_p,index_tmp_q)(mp,mq)(e1J,e2J) += array_radial_J_LLLL[tmp][ii][jj][kk][ll] * array_angular_J[tmp][index_tmp_p][index_tmp_q](mp,mq);
-                        h2eJ_SSLL(index_tmp_p,index_tmp_q)(mp,mq)(e1J,e2J) += array_radial_J_SSLL[tmp][ii][jj][kk][ll] * array_angular_J[tmp][index_tmp_p][index_tmp_q](mp,mq);
-                        h2eJ_SSSS(index_tmp_p,index_tmp_q)(mp,mq)(e1J,e2J) += array_radial_J_SSSS[tmp][ii][jj][kk][ll] * array_angular_J[tmp][index_tmp_p][index_tmp_q](mp,mq);
-                    }
-                    for(int tmp = LmaxK; tmp >= 0; tmp = tmp - 2)
-                    {
-                        h2eK_LLLL(index_tmp_p,index_tmp_q)(mp,mq)(e1K,e2K) += array_radial_K_LLLL[tmp][ii][ll][kk][jj] * array_angular_K[tmp][index_tmp_p][index_tmp_q](mp,mq);
-                        h2eK_SSLL(index_tmp_p,index_tmp_q)(mp,mq)(e1K,e2K) += array_radial_K_SSLL[tmp][ii][ll][kk][jj] * array_angular_K[tmp][index_tmp_p][index_tmp_q](mp,mq);
-                        h2eK_SSSS(index_tmp_p,index_tmp_q)(mp,mq)(e1K,e2K) += array_radial_K_SSSS[tmp][ii][ll][kk][jj] * array_angular_K[tmp][index_tmp_p][index_tmp_q](mp,mq);
-                    }
+                    LLLL.J(int_tmp1_p+int_tmp2_p, int_tmp1_q+int_tmp2_q)(e1J,e2J) += array_radial_J_LLLL[tmp][e1J][e2J][int_tmp2_p][int_tmp2_q] * array_angular_J[tmp][int_tmp2_p][int_tmp2_q];
+                    SSLL.J(int_tmp1_p+int_tmp2_p, int_tmp1_q+int_tmp2_q)(e1J,e2J) += array_radial_J_SSLL[tmp][e1J][e2J][int_tmp2_p][int_tmp2_q] * array_angular_J[tmp][int_tmp2_p][int_tmp2_q];
+                    SSSS.J(int_tmp1_p+int_tmp2_p, int_tmp1_q+int_tmp2_q)(e1J,e2J) += array_radial_J_SSSS[tmp][e1J][e2J][int_tmp2_p][int_tmp2_q] * array_angular_J[tmp][int_tmp2_p][int_tmp2_q];
+                }
+                for(int tmp = LmaxK; tmp >= 0; tmp = tmp - 2)
+                {
+                    LLLL.K(int_tmp1_p+int_tmp2_p, int_tmp1_q+int_tmp2_q)(e1K,e2K) += array_radial_K_LLLL[tmp][e1K][e2K][int_tmp2_p][int_tmp2_q] * array_angular_K[tmp][int_tmp2_p][int_tmp2_q];
+                    SSLL.K(int_tmp1_p+int_tmp2_p, int_tmp1_q+int_tmp2_q)(e1K,e2K) += array_radial_K_SSLL[tmp][e1K][e2K][int_tmp2_p][int_tmp2_q] * array_angular_K[tmp][int_tmp2_p][int_tmp2_q];
+                    SSSS.K(int_tmp1_p+int_tmp2_p, int_tmp1_q+int_tmp2_q)(e1K,e2K) += array_radial_K_SSSS[tmp][e1K][e2K][int_tmp2_p][int_tmp2_q] * array_angular_K[tmp][int_tmp2_p][int_tmp2_q];
                 }
             }
         }
-        int int_tmp2_p = 0, int_tmp2_q = 0;
-        for(int ii = 0; ii < irrep_list(int_tmp1_p+int_tmp2_p).two_j + 1; ii++)
-        for(int jj = 0; jj < irrep_list(int_tmp1_q+int_tmp2_q).two_j + 1; jj++)
-        {
-            LLLL.J(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eJ_LLLL(0,0)(ii,jj);
-            LLLL.K(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eK_LLLL(0,0)(ii,jj);
-            SSLL.J(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eJ_SSLL(0,0)(ii,jj);
-            SSLL.K(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eK_SSLL(0,0)(ii,jj);
-            SSSS.J(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eJ_SSSS(0,0)(ii,jj);
-            SSSS.K(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eK_SSSS(0,0)(ii,jj);
-        }
-        if(l_p != 0 && l_q == 0)
-        {
-            int_tmp2_p += irrep_list(int_tmp1_p+int_tmp2_p).two_j + 1;
-            for(int ii = 0; ii < irrep_list(int_tmp1_p+int_tmp2_p).two_j + 1; ii++)
-            for(int jj = 0; jj < irrep_list(int_tmp1_q+int_tmp2_q).two_j + 1; jj++)
-            {
-                LLLL.J(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eJ_LLLL(1,0)(ii,jj);
-                LLLL.K(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eK_LLLL(1,0)(ii,jj);
-                SSLL.J(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eJ_SSLL(1,0)(ii,jj);
-                SSLL.K(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eK_SSLL(1,0)(ii,jj);
-                SSSS.J(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eJ_SSSS(1,0)(ii,jj);
-                SSSS.K(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eK_SSSS(1,0)(ii,jj);
-            }
-        }
-        else if(l_q != 0 && l_p == 0)
-        {
-            int_tmp2_q += irrep_list(int_tmp1_q+int_tmp2_q).two_j + 1;
-            for(int ii = 0; ii < irrep_list(int_tmp1_p+int_tmp2_p).two_j + 1; ii++)
-            for(int jj = 0; jj < irrep_list(int_tmp1_q+int_tmp2_q).two_j + 1; jj++)
-            {
-                LLLL.J(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eJ_LLLL(0,1)(ii,jj);
-                LLLL.K(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eK_LLLL(0,1)(ii,jj);
-                SSLL.J(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eJ_SSLL(0,1)(ii,jj);
-                SSLL.K(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eK_SSLL(0,1)(ii,jj);
-                SSSS.J(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eJ_SSSS(0,1)(ii,jj);
-                SSSS.K(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eK_SSSS(0,1)(ii,jj);
-            }
-            
-        }
-        else if(l_p != 0 && l_q != 0)
-        {
-            int int_tmp3_p = irrep_list(int_tmp1_p+int_tmp2_p).two_j + 1;
-            int int_tmp3_q = irrep_list(int_tmp1_q+int_tmp2_q).two_j + 1;
-            int_tmp2_p += int_tmp3_p;
-            for(int ii = 0; ii < irrep_list(int_tmp1_p+int_tmp2_p).two_j + 1; ii++)
-            for(int jj = 0; jj < irrep_list(int_tmp1_q+int_tmp2_q).two_j + 1; jj++)
-            {
-                LLLL.J(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eJ_LLLL(1,0)(ii,jj);
-                LLLL.K(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eK_LLLL(1,0)(ii,jj);
-                SSLL.J(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eJ_SSLL(1,0)(ii,jj);
-                SSLL.K(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eK_SSLL(1,0)(ii,jj);
-                SSSS.J(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eJ_SSSS(1,0)(ii,jj);
-                SSSS.K(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eK_SSSS(1,0)(ii,jj);
-            }
-            int_tmp2_p -= int_tmp3_p;
-            int_tmp2_q += int_tmp3_q;
-            for(int ii = 0; ii < irrep_list(int_tmp1_p+int_tmp2_p).two_j + 1; ii++)
-            for(int jj = 0; jj < irrep_list(int_tmp1_q+int_tmp2_q).two_j + 1; jj++)
-            {
-                LLLL.J(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eJ_LLLL(0,1)(ii,jj);
-                LLLL.K(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eK_LLLL(0,1)(ii,jj);
-                SSLL.J(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eJ_SSLL(0,1)(ii,jj);
-                SSLL.K(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eK_SSLL(0,1)(ii,jj);
-                SSSS.J(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eJ_SSSS(0,1)(ii,jj);
-                SSSS.K(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eK_SSSS(0,1)(ii,jj);
-            }
-            int_tmp2_p += int_tmp3_p;
-            for(int ii = 0; ii < irrep_list(int_tmp1_p+int_tmp2_p).two_j + 1; ii++)
-            for(int jj = 0; jj < irrep_list(int_tmp1_q+int_tmp2_q).two_j + 1; jj++)
-            {
-                LLLL.J(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eJ_LLLL(1,1)(ii,jj);
-                LLLL.K(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eK_LLLL(1,1)(ii,jj);
-                SSLL.J(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eJ_SSLL(1,1)(ii,jj);
-                SSLL.K(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eK_SSLL(1,1)(ii,jj);
-                SSSS.J(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eJ_SSSS(1,1)(ii,jj);
-                SSSS.K(int_tmp1_p+int_tmp2_p + ii, int_tmp1_q+int_tmp2_q + jj) = h2eK_SSSS(1,1)(ii,jj);
-            }
-        }
-        int_tmp1_q += 4*l_q+2;
+        EndTime = clock();
+        time_c += (EndTime - StartTime)/(double)CLOCKS_PER_SEC;
+        int_tmp1_q += (l_q == 0) ? 1 : 2;
     }
-    int_tmp1_p += 4*l_p+2;
+    int_tmp1_p += (l_p == 0) ? 1 : 2;
     }
 
+    cout << time_a << "\t" << time_r << "\t" << time_c <<endl;
     return ;
 }
 

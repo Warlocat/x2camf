@@ -31,7 +31,6 @@ int main()
     DHF_SPH scf4c(intor,"input",spinFree,twoC,withGaunt,true);
     scf4c.runSCF(twoC);
 
-
     return 0;
 }
 
