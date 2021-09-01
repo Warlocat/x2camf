@@ -54,6 +54,7 @@ public:
     void get_h2e_JK_direct(int2eJK& LLLL, int2eJK& SSLL, int2eJK& SSSS, const int& occMaxL = -1, const bool& spinFree = false);
     void get_h2eSD_JK_direct(int2eJK& SSLL, int2eJK& SSSS, const int& occMaxL = -1);
     int2eJK get_h2e_JK_gaunt(const string& intType, const int& occMaxL = -1) const;
+    int2eJK get_h2e_JK_gaunt_compact(const string& intType, const int& occMaxL = -1) const;
     void get_h2e_JK_gaunt_direct(int2eJK& LSLS, int2eJK& LSSL, const int& occMaxL = -1, const bool& spinFree = false);
     void get_h2eSD_JK_gaunt_direct(int2eJK& LSLS, int2eJK& LSSL, const int& occMaxL = -1);
     

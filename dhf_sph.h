@@ -39,7 +39,7 @@ public:
     vVectorXd ene_orb;
     VectorXd ene_orb_total;
 
-    DHF_SPH(INT_SPH& int_sph_, const string& filename, const bool& spinFree = false, const bool& sfx2c = false, const bool& with_gaunt_ = false, const bool& allInt = false);
+    DHF_SPH(INT_SPH& int_sph_, const string& filename, const bool& spinFree = false, const bool& twoC = false, const bool& with_gaunt_ = false, const bool& allInt = false);
     virtual ~DHF_SPH();
     virtual void runSCF(const bool& twoC = false, vMatrixXd* initialGuess = NULL);
     void renormalize_small();

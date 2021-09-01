@@ -11,7 +11,7 @@ using namespace std;
 using namespace Eigen;
 
 
-DHF_SPH::DHF_SPH(INT_SPH& int_sph_, const string& filename, const bool& spinFree, const bool& sfx2c, const bool& with_gaunt_, const bool& allInt):
+DHF_SPH::DHF_SPH(INT_SPH& int_sph_, const string& filename, const bool& spinFree, const bool& twoC, const bool& with_gaunt_, const bool& allInt):
 irrep_list(int_sph_.irrep_list), with_gaunt(with_gaunt_), shell_list(int_sph_.shell_list)
 {
     cout << "Initializing Dirac-HF for " << int_sph_.atomName << " atom." << endl;
@@ -41,8 +41,8 @@ irrep_list(int_sph_.irrep_list), with_gaunt(with_gaunt_), shell_list(int_sph_.sh
         compact2all(tmp_i) = ir;
         tmp_i++;
     }
-    cout << all2compact.transpose() << endl;
-    cout << compact2all.transpose() << endl;
+    // cout << all2compact.transpose() << endl;
+    // cout << compact2all.transpose() << endl;
 
     nelec = 0.0;
     cout << "Occupation number vector:" << endl;
@@ -62,7 +62,7 @@ irrep_list(int_sph_.irrep_list), with_gaunt(with_gaunt_), shell_list(int_sph_.sh
     cout << "Highest occupied irrep: " << occMax_irrep << endl;
     cout << "Total number of electrons: " << nelec << endl << endl;
 
-    // Calculate the maximum memory cost for 2e integrals
+    // Calculate the approximate maximum memory cost for SCF-amfi integrals
     double numberOfDouble = 0;
     for(int ir = 0; ir < irrep_list.size(); ir+=irrep_list(ir).two_j+1)
     for(int jr = 0; jr < irrep_list.size(); jr+=irrep_list(jr).two_j+1)
@@ -85,14 +85,14 @@ irrep_list(int_sph_.irrep_list), with_gaunt(with_gaunt_), shell_list(int_sph_.sh
     cout << "1e-integral finished in " << (EndTime - StartTime) / (double)CLOCKS_PER_SEC << " seconds." << endl;
 
     StartTime = clock();
-    if(sfx2c)
+    if(twoC)
         h2eLLLL_JK = int_sph_.get_h2e_JK_compact("LLLL",irrep_list(occMax_irrep-1).l);
     else
         int_sph_.get_h2e_JK_direct(h2eLLLL_JK,h2eSSLL_JK,h2eSSSS_JK,irrep_list(occMax_irrep-1).l, spinFree);
     EndTime = clock();
     cout << "2e-integral finished in " << (EndTime - StartTime) / (double)CLOCKS_PER_SEC << " seconds." << endl; 
 
-    if(with_gaunt && !sfx2c)
+    if(with_gaunt && !twoC)
     {
         StartTime = clock();
         //Always calculate all Gaunt integrals for amfi integrals
@@ -100,7 +100,7 @@ irrep_list(int_sph_.irrep_list), with_gaunt(with_gaunt_), shell_list(int_sph_.sh
         EndTime = clock();
         cout << "2e-integral-Gaunt finished in " << (EndTime - StartTime) / (double)CLOCKS_PER_SEC << " seconds." << endl << endl; 
     }
-    symmetrize_h2e(sfx2c);
+    symmetrize_h2e(twoC);
 
     fock_4c.resize(occMax_irrep);
     h1e_4c.resize(occMax_irrep);
@@ -111,7 +111,7 @@ irrep_list(int_sph_.irrep_list), with_gaunt(with_gaunt_), shell_list(int_sph_.sh
     ene_orb.resize(occMax_irrep);
     x2cXXX.resize(Nirrep);
     x2cRRR.resize(Nirrep);
-    if(!sfx2c)
+    if(!twoC)
     {
         /*
             overlap_4c = [[S, 0], [0, T/2c^2]]
@@ -207,10 +207,10 @@ void DHF_SPH::symmetrize_h2e(const bool& twoC)
         }
         if(with_gaunt)
         {
-            for(int ir = 0; ir < occMax_irrep; ir++)
-            for(int jr = 0; jr < occMax_irrep; jr++)
+            for(int ir = 0; ir < occMax_irrep_compact; ir++)
+            for(int jr = 0; jr < occMax_irrep_compact; jr++)
             {
-                int size_i = irrep_list(ir).size, size_j = irrep_list(jr).size;
+                int size_i = irrep_list(compact2all(ir)).size, size_j = irrep_list(compact2all(jr)).size;
                 MatrixXd tmpJ1 = gauntLSLS_JK.J(ir,jr);
                 for(int nn = 0; nn < size_i; nn++)
                 for(int mm = 0; mm < size_i; mm++)
@@ -221,27 +221,6 @@ void DHF_SPH::symmetrize_h2e(const bool& twoC)
                     tmpJ1(enm,ers) = gauntLSLS_JK.J(ir,jr)(enm,ers) - gauntLSLS_JK.K(jr,ir)(erm,ens);
                 }
                 gauntLSLS_JK.J(ir,jr) = tmpJ1;
-            }
-            for(int ir = 0; ir < occMax_irrep; ir++)
-            for(int jr = 0; jr < occMax_irrep; jr += irrep_list(jr).two_j+1)
-            {
-                double twojP1 = irrep_list(jr).two_j+1;
-                MatrixXd tmpJ1 = gauntLSLS_JK.J(ir,jr), tmpJ2 = gauntLSSL_JK.J(ir,jr), tmpK2 = gauntLSSL_JK.K(ir,jr);
-                for(int kk = 1; kk < irrep_list(jr).two_j+1; kk++)
-                {
-                    tmpJ1 += gauntLSLS_JK.J(ir,jr+kk);
-                    tmpJ2 += gauntLSSL_JK.J(ir,jr+kk);
-                    tmpK2 += gauntLSSL_JK.K(ir,jr+kk);
-                }
-                tmpJ1 = tmpJ1 / twojP1;
-                tmpJ2 = tmpJ2 / twojP1;
-                tmpK2 = tmpK2 / twojP1;
-                for(int kk = 0; kk < irrep_list(jr).two_j+1; kk++)
-                {
-                    gauntLSLS_JK.J(ir,jr+kk) = tmpJ1;
-                    gauntLSSL_JK.J(ir,jr+kk) = tmpJ2;
-                    gauntLSSL_JK.K(ir,jr+kk) = tmpK2;
-                }
             }
         }
     }
