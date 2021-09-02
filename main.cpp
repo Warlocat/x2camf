@@ -74,13 +74,13 @@ int main()
         INT_SPH intor(atomListUnique[ii],basisListUnique[ii]);
         if(amfiMethod[0])
         {
-            DHF_SPH_CA scfer(intor, "ZMAT", amfiMethod[1], amfiMethod[2], amfiMethod[3]);
+            DHF_SPH_CA scfer(intor, "ZMAT", amfiMethod[1], amfiMethod[2], amfiMethod[3],true);
             scfer.runSCF(amfiMethod[2]);
             amfiUnique.push_back(Rotate::unite_irrep(scfer.get_amfi_unc_ca(intor,amfiMethod[2]), intor.irrep_list));
         }
         else
         {
-            DHF_SPH scfer(intor, "ZMAT", amfiMethod[1], amfiMethod[2], amfiMethod[3]);
+            DHF_SPH scfer(intor, "ZMAT", amfiMethod[1], amfiMethod[2], amfiMethod[3],true);
             scfer.runSCF(amfiMethod[2]);
             //amfiUnique.push_back(Rotate::unite_irrep(scfer.x2c2ePCC(),intor.irrep_list));
             amfiUnique.push_back(Rotate::unite_irrep(scfer.get_amfi_unc(intor,amfiMethod[2]), intor.irrep_list));
@@ -123,12 +123,10 @@ int main()
     }
 
     int sizeAllReal = 2*sizeAll2;
-    for(int ii = 0; ii < sizeAll2; ii++)
-        cout << amfiAll[ii].dr <<endl << amfiAll[ii].di<< endl;
     //F_INTERFACE::rfile_("X2CMFSOM_CFOUR",tmp,&sizeAllReal);
     //F_INTERFACE::prvecr_(tmp,&sizeAllReal);
     F_INTERFACE::wfile_("X2CMFSOM",(double*)amfiAll,&sizeAllReal);
-    F_INTERFACE::prvecr_((double*)amfiAll,&sizeAllReal);
+    //F_INTERFACE::prvecr_((double*)amfiAll,&sizeAllReal);
 
     
 
@@ -180,7 +178,7 @@ void readZMAT(const string& filename, vector<string>& atoms, vector<string>& bas
             if(found != string::npos)
             {
                 string tmp_s = flags.substr(found+6,flags.size()-6);
-                if(tmp_s != "SPECIAL")
+                if(tmp_s.substr(0,7) != "SPECIAL")
                 {
                     for(int ii = 0; ii < atoms.size(); ii++)
                     {
