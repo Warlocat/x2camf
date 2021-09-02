@@ -173,17 +173,19 @@ void DHF_SPH::symmetrize_h2e(const bool& twoC)
         for(int ir = 0; ir < occMax_irrep_compact; ir++)
         for(int jr = 0; jr < occMax_irrep_compact; jr++)
         {
-            int size_i = round(sqrt(h2eLLLL_JK.J(ir,jr).rows())), size_j = round(sqrt(h2eLLLL_JK.J(ir,jr).cols()));
-            auto tmpJ = h2eLLLL_JK.J(ir,jr);
+            int size_i = irrep_list(compact2all(ir)).size, size_j = irrep_list(compact2all(jr)).size;
+            double tmpJ[size_i*size_i][size_j*size_j];
             for(int mm = 0; mm < size_i; mm++)
             for(int nn = 0; nn < size_i; nn++)
             for(int ss = 0; ss < size_j; ss++)
             for(int rr = 0; rr < size_j; rr++)
             {
                 int emn = mm*size_i+nn, esr = ss*size_j+rr, emr = mm*size_j+rr, esn = ss*size_i+nn;
-                tmpJ(emn,esr) = h2eLLLL_JK.J(ir,jr)(emn,esr) - h2eLLLL_JK.K(ir,jr)(emr,esn);
+                tmpJ[emn][esr] = h2eLLLL_JK.J[ir][jr][emn][esr] - h2eLLLL_JK.K[ir][jr][emr][esn];
             }
-            h2eLLLL_JK.J(ir,jr) = tmpJ;
+            for(int ii = 0; ii < size_i*size_i; ii++)
+            for(int jj = 0; jj < size_j*size_j; jj++)
+                h2eLLLL_JK.J[ir][jr][ii][jj] = tmpJ[ii][jj];
         }
     }
     else
@@ -192,18 +194,22 @@ void DHF_SPH::symmetrize_h2e(const bool& twoC)
         for(int jr = 0; jr < occMax_irrep_compact; jr++)
         {
             int size_i = irrep_list(compact2all(ir)).size, size_j = irrep_list(compact2all(jr)).size;
-            MatrixXd tmpJ1 = h2eLLLL_JK.J(ir,jr), tmpJ2 = h2eSSSS_JK.J(ir,jr);
+            double tmpJ1[size_i*size_i][size_j*size_j], tmpJ2[size_i*size_i][size_j*size_j];
             for(int mm = 0; mm < size_i; mm++)
             for(int nn = 0; nn < size_i; nn++)
             for(int ss = 0; ss < size_j; ss++)
             for(int rr = 0; rr < size_j; rr++)
             {
                 int emn = mm*size_i+nn, esr = ss*size_j+rr, emr = mm*size_j+rr, esn = ss*size_i+nn;
-                tmpJ1(emn,esr) = h2eLLLL_JK.J(ir,jr)(emn,esr) - h2eLLLL_JK.K(ir,jr)(emr,esn);
-                tmpJ2(emn,esr) = h2eSSSS_JK.J(ir,jr)(emn,esr) - h2eSSSS_JK.K(ir,jr)(emr,esn);
+                tmpJ1[emn][esr] = h2eLLLL_JK.J[ir][jr][emn][esr] - h2eLLLL_JK.K[ir][jr][emr][esn];
+                tmpJ2[emn][esr] = h2eSSSS_JK.J[ir][jr][emn][esr] - h2eSSSS_JK.K[ir][jr][emr][esn];
             }
-            h2eLLLL_JK.J(ir,jr) = tmpJ1;
-            h2eSSSS_JK.J(ir,jr) = tmpJ2;
+            for(int ii = 0; ii < size_i*size_i; ii++)
+            for(int jj = 0; jj < size_j*size_j; jj++)
+            {
+                h2eLLLL_JK.J[ir][jr][ii][jj] = tmpJ1[ii][jj];
+                h2eSSSS_JK.J[ir][jr][ii][jj] = tmpJ2[ii][jj];
+            }
         }
         if(with_gaunt)
         {
@@ -211,16 +217,18 @@ void DHF_SPH::symmetrize_h2e(const bool& twoC)
             for(int jr = 0; jr < occMax_irrep_compact; jr++)
             {
                 int size_i = irrep_list(compact2all(ir)).size, size_j = irrep_list(compact2all(jr)).size;
-                MatrixXd tmpJ1 = gauntLSLS_JK.J(ir,jr);
+                double tmpJ1[size_i*size_i][size_j*size_j];;
                 for(int nn = 0; nn < size_i; nn++)
                 for(int mm = 0; mm < size_i; mm++)
                 for(int rr = 0; rr < size_j; rr++)
                 for(int ss = 0; ss < size_j; ss++)
                 {
                     int enm = nn*size_i+mm, ers = rr*size_j+ss, erm = rr*size_i+mm, ens = nn*size_j+ss;
-                    tmpJ1(enm,ers) = gauntLSLS_JK.J(ir,jr)(enm,ers) - gauntLSLS_JK.K(jr,ir)(erm,ens);
+                    tmpJ1[enm][ers] = gauntLSLS_JK.J[ir][jr][enm][ers] - gauntLSLS_JK.K[jr][ir][erm][ens];
                 }
-                gauntLSLS_JK.J(ir,jr) = tmpJ1;
+                for(int ii = 0; ii < size_i*size_i; ii++)
+                for(int jj = 0; jj < size_j*size_j; jj++)
+                    gauntLSLS_JK.J[ir][jr][ii][jj] = tmpJ1[ii][jj];
             }
         }
     }
@@ -458,15 +466,15 @@ void DHF_SPH::renormalize_small()
         for(int jj = 0; jj < sizej*sizej; jj++)
         {
             int a = ii / sizei, b = ii - a * sizei, c = jj / sizej, d = jj - c * sizej;
-            h2eSSLL_JK.J(ir,jr)(ii,jj) /= norm_s(ir)(a) * norm_s(ir)(b);
-            h2eSSSS_JK.J(ir,jr)(ii,jj) /= norm_s(ir)(a) * norm_s(ir)(b) * norm_s(jr)(c) * norm_s(jr)(d);
+            h2eSSLL_JK.J[ir][jr][ii][jj] /= norm_s(ir)(a) * norm_s(ir)(b);
+            h2eSSSS_JK.J[ir][jr][ii][jj] /= norm_s(ir)(a) * norm_s(ir)(b) * norm_s(jr)(c) * norm_s(jr)(d);
         }
         for(int ii = 0; ii < sizei*sizej; ii++)
         for(int jj = 0; jj < sizej*sizei; jj++)
         {
             int a = ii / sizej, b = ii - a * sizej, c = jj / sizei, d = jj - c * sizei;
-            h2eSSLL_JK.K(ir,jr)(ii,jj) /= norm_s(ir)(a) * norm_s(jr)(b);
-            h2eSSSS_JK.K(ir,jr)(ii,jj) /= norm_s(ir)(a) * norm_s(jr)(b) * norm_s(jr)(c) * norm_s(ir)(d);
+            h2eSSLL_JK.K[ir][jr][ii][jj] /= norm_s(ir)(a) * norm_s(jr)(b);
+            h2eSSSS_JK.K[ir][jr][ii][jj] /= norm_s(ir)(a) * norm_s(jr)(b) * norm_s(jr)(c) * norm_s(ir)(d);
         }
     }
 
@@ -548,24 +556,24 @@ void DHF_SPH::evaluateFock(MatrixXd& fock, const bool& twoC, const vMatrixXd& de
                 for(int rr = 0; rr < size_tmp2; rr++)
                 {
                     int emn = mm*size+nn, esr = ss*size_tmp2+rr, emr = mm*size_tmp2+rr, esn = ss*size+nn;
-                    fock(mm,nn) += twojP1*den(Jirrep)(ss,rr) * h2eLLLL_JK.J(ir,jr)(emn,esr) + twojP1*den(Jirrep)(size_tmp2+ss,size_tmp2+rr) * h2eSSLL_JK.J(jr,ir)(esr,emn);
-                    fock(mm+size,nn) -= twojP1*den(Jirrep)(ss,size_tmp2+rr) * h2eSSLL_JK.K(ir,jr)(emr,esn);
+                    fock(mm,nn) += twojP1*den(Jirrep)(ss,rr) * h2eLLLL_JK.J[ir][jr][emn][esr] + twojP1*den(Jirrep)(size_tmp2+ss,size_tmp2+rr) * h2eSSLL_JK.J[jr][ir][esr][emn];
+                    fock(mm+size,nn) -= twojP1*den(Jirrep)(ss,size_tmp2+rr) * h2eSSLL_JK.K[ir][jr][emr][esn];
                     if(mm != nn) 
                     {
                         int enr = nn*size_tmp2+rr, esm = ss*size+mm;
-                        fock(nn+size,mm) -= twojP1*den(Jirrep)(ss,size_tmp2+rr) * h2eSSLL_JK.K(ir,jr)(enr,esm);
+                        fock(nn+size,mm) -= twojP1*den(Jirrep)(ss,size_tmp2+rr) * h2eSSLL_JK.K[ir][jr][enr][esm];
                     }
-                    fock(mm+size,nn+size) += twojP1*den(Jirrep)(size_tmp2+ss,size_tmp2+rr) * h2eSSSS_JK.J(ir,jr)(emn,esr) + twojP1*den(Jirrep)(ss,rr) * h2eSSLL_JK.J(ir,jr)(emn,esr);
+                    fock(mm+size,nn+size) += twojP1*den(Jirrep)(size_tmp2+ss,size_tmp2+rr) * h2eSSSS_JK.J[ir][jr][emn][esr] + twojP1*den(Jirrep)(ss,rr) * h2eSSLL_JK.J[ir][jr][emn][esr];
                     if(with_gaunt)
                     {
                         int enm = nn*size+mm, ers = rr*size_tmp2+ss, erm = rr*size+mm, ens = nn*size_tmp2+ss;
-                        fock(mm,nn) -= twojP1*den(Jirrep)(size_tmp2+ss,size_tmp2+rr) * gauntLSSL_JK.K(ir,jr)(emr,esn);
-                        fock(mm+size,nn+size) -= twojP1*den(Jirrep)(ss,rr) * gauntLSSL_JK.K(jr,ir)(esn,emr);
-                        fock(mm+size,nn) += twojP1*den(Jirrep)(size_tmp2+ss,rr)*gauntLSLS_JK.J(ir,jr)(enm,ers) + twojP1*den(Jirrep)(ss,size_tmp2+rr) * gauntLSSL_JK.J(jr,ir)(esr,emn);
+                        fock(mm,nn) -= twojP1*den(Jirrep)(size_tmp2+ss,size_tmp2+rr) * gauntLSSL_JK.K[ir][jr][emr][esn];
+                        fock(mm+size,nn+size) -= twojP1*den(Jirrep)(ss,rr) * gauntLSSL_JK.K[jr][ir][esn][emr];
+                        fock(mm+size,nn) += twojP1*den(Jirrep)(size_tmp2+ss,rr)*gauntLSLS_JK.J[ir][jr][enm][ers] + twojP1*den(Jirrep)(ss,size_tmp2+rr) * gauntLSSL_JK.J[jr][ir][esr][emn];
                         if(mm != nn) 
                         {
                             int ern = rr*size+nn, ems = mm*size_tmp2+ss;
-                            fock(nn+size,mm) += twojP1*den(Jirrep)(size_tmp2+ss,rr)*gauntLSLS_JK.J(ir,jr)(emn,ers) + twojP1*den(Jirrep)(ss,size_tmp2+rr) * gauntLSSL_JK.J(jr,ir)(esr,enm);
+                            fock(nn+size,mm) += twojP1*den(Jirrep)(size_tmp2+ss,rr)*gauntLSLS_JK.J[ir][jr][emn][ers] + twojP1*den(Jirrep)(ss,size_tmp2+rr) * gauntLSSL_JK.J[jr][ir][esr][enm];
                         }
                     }
                 }
@@ -593,7 +601,7 @@ void DHF_SPH::evaluateFock(MatrixXd& fock, const bool& twoC, const vMatrixXd& de
                 for(int rr = 0; rr < size_tmp2; rr++)
                 {
                     int emn = mm*size+nn, esr = ss*size_tmp2+rr, emr = mm*size_tmp2+rr, esn = ss*size+nn;
-                    fock(mm,nn) += twojP1*den(Jirrep)(ss,rr) * h2eLLLL_JK.J(ir,jr)(emn,esr);
+                    fock(mm,nn) += twojP1*den(Jirrep)(ss,rr) * h2eLLLL_JK.J[ir][jr][emn][esr];
                 }
             }
             fock(nn,mm) = fock(mm,nn);
@@ -888,24 +896,24 @@ vMatrixXd DHF_SPH::get_amfi_unc(const int2eJK& h2eSSLL_SD, const int2eJK& h2eSSS
                 for(int rr = 0; rr < size_tmp2; rr++)
                 {
                     int emn = mm*size_tmp+nn, esr = ss*size_tmp2+rr, emr = mm*size_tmp2+rr, esn = ss*size_tmp+nn;
-                    SO_4c(mm,nn) += density_(jr)(size_tmp2+ss,size_tmp2+rr) * h2eSSLL_SD.J(jr,ir)(esr,emn);
-                    SO_4c(mm+size_tmp,nn) -= density_(jr)(ss,size_tmp2+rr) * h2eSSLL_SD.K(ir,jr)(emr,esn);
+                    SO_4c(mm,nn) += density_(jr)(size_tmp2+ss,size_tmp2+rr) * h2eSSLL_SD.J[jr][ir][esr][emn];
+                    SO_4c(mm+size_tmp,nn) -= density_(jr)(ss,size_tmp2+rr) * h2eSSLL_SD.K[ir][jr][emr][esn];
                     if(mm != nn) 
                     {
                         int enr = nn*size_tmp2+rr, esm = ss*size_tmp+mm;
-                        SO_4c(nn+size_tmp,mm) -= density_(jr)(ss,size_tmp2+rr) * h2eSSLL_SD.K(ir,jr)(enr,esm);
+                        SO_4c(nn+size_tmp,mm) -= density_(jr)(ss,size_tmp2+rr) * h2eSSLL_SD.K[ir][jr][enr][esm];
                     }
-                    SO_4c(mm+size_tmp,nn+size_tmp) += density_(jr)(size_tmp2+ss,size_tmp2+rr) * (h2eSSSS_SD.J(ir,jr)(emn,esr) - h2eSSSS_SD.K(ir,jr)(emr,esn)) + density_(jr)(ss,rr) * h2eSSLL_SD.J(ir,jr)(emn,esr);
+                    SO_4c(mm+size_tmp,nn+size_tmp) += density_(jr)(size_tmp2+ss,size_tmp2+rr) * h2eSSSS_SD.J[ir][jr][emn][esr] + density_(jr)(ss,rr) * h2eSSLL_SD.J[ir][jr][emn][esr];
                     if(amfi_with_gaunt)
                     {
                         int enm = nn*size_tmp+mm, ers = rr*size_tmp2+ss, erm = rr*size_tmp+mm, ens = nn*size_tmp2+ss;
-                        SO_4c(mm,nn) -= density_(jr)(size_tmp2+ss,size_tmp2+rr) * gauntLSSL_JK.K(ir,jr)(emr,esn);
-                        SO_4c(mm+size_tmp,nn+size_tmp) -= density_(jr)(ss,rr) * gauntLSSL_JK.K(jr,ir)(esn,emr);
-                        SO_4c(mm+size_tmp,nn) += density_(jr)(size_tmp2+ss,rr)*(gauntLSLS_JK.J(ir,jr)(enm,ers) - gauntLSLS_JK.K(jr,ir)(erm,ens)) + density_(jr)(ss,size_tmp2+rr) * gauntLSSL_JK.J(jr,ir)(esr,emn);
+                        SO_4c(mm,nn) -= density_(jr)(size_tmp2+ss,size_tmp2+rr) * gauntLSSL_JK.K[ir][jr][emr][esn];
+                        SO_4c(mm+size_tmp,nn+size_tmp) -= density_(jr)(ss,rr) * gauntLSSL_JK.K[jr][ir][esn][emr];
+                        SO_4c(mm+size_tmp,nn) += density_(jr)(size_tmp2+ss,rr)*gauntLSLS_JK.J[ir][jr][enm][ers] + density_(jr)(ss,size_tmp2+rr) * gauntLSSL_JK.J[jr][ir][esr][emn];
                         if(mm != nn) 
                         {
                             int ern = rr*size_tmp+nn, ems = mm*size_tmp2+ss;
-                            SO_4c(nn+size_tmp,mm) += density_(jr)(size_tmp2+ss,rr)*(gauntLSLS_JK.J(ir,jr)(emn,ers) - gauntLSLS_JK.K(jr,ir)(ern,ems)) + density_(jr)(ss,size_tmp2+rr) * gauntLSSL_JK.J(jr,ir)(esr,enm);
+                            SO_4c(nn+size_tmp,mm) += density_(jr)(size_tmp2+ss,rr)*gauntLSLS_JK.J[ir][jr][emn][ers] + density_(jr)(ss,size_tmp2+rr) * gauntLSSL_JK.J[jr][ir][esr][enm];
                         }
                     }
                 }
@@ -949,24 +957,24 @@ vMatrixXd DHF_SPH::get_amfi_unc(const int2eJK& h2eSSLL_SD, const int2eJK& h2eSSS
                             for(int rr = 0; rr < size_tmp2; rr++)
                             {
                                 int emn = mm*size_tmp+nn, esr = ss*size_tmp2+rr, emr = mm*size_tmp2+rr, esn = ss*size_tmp+nn;
-                                fock_tmp(mm,nn) += density_(jr)(ss,rr) * (h2eLLLL_JK.J(ir,jr)(emn,esr) - h2eLLLL_JK.K(ir,jr)(emr,esn)) + density_(jr)(size_tmp2+ss,size_tmp2+rr) * h2eSSLL_JK.J(jr,ir)(esr,emn);
-                                fock_tmp(mm+size_tmp,nn) -= density_(jr)(ss,size_tmp2+rr) * h2eSSLL_JK.K(ir,jr)(emr,esn);
+                                fock_tmp(mm,nn) += density_(jr)(ss,rr) * h2eLLLL_JK.J[ir][jr][emn][esr] + density_(jr)(size_tmp2+ss,size_tmp2+rr) * h2eSSLL_JK.J[jr][ir][esr][emn];
+                                fock_tmp(mm+size_tmp,nn) -= density_(jr)(ss,size_tmp2+rr) * h2eSSLL_JK.K[ir][jr][emr][esn];
                                 if(mm != nn) 
                                 {
                                     int enr = nn*size_tmp2+rr, esm = ss*size_tmp+mm;
-                                    fock_tmp(nn+size_tmp,mm) -= density_(jr)(ss,size_tmp2+rr) * h2eSSLL_JK.K(ir,jr)(enr,esm);
+                                    fock_tmp(nn+size_tmp,mm) -= density_(jr)(ss,size_tmp2+rr) * h2eSSLL_JK.K[ir][jr][enr][esm];
                                 }
-                                fock_tmp(mm+size_tmp,nn+size_tmp) += density_(jr)(size_tmp2+ss,size_tmp2+rr) * (h2eSSSS_JK.J(ir,jr)(emn,esr) - h2eSSSS_JK.K(ir,jr)(emr,esn)) + density_(jr)(ss,rr) * h2eSSLL_JK.J(ir,jr)(emn,esr);
+                                fock_tmp(mm+size_tmp,nn+size_tmp) += density_(jr)(size_tmp2+ss,size_tmp2+rr) * h2eSSSS_JK.J[ir][jr][emn][esr] + density_(jr)(ss,rr) * h2eSSLL_JK.J[ir][jr][emn][esr];
                                 if(with_gaunt)
                                 {
                                     int enm = nn*size_tmp+mm, ers = rr*size_tmp2+ss, erm = rr*size_tmp+mm, ens = nn*size_tmp2+ss;
-                                    fock_tmp(mm,nn) -= density_(jr)(size_tmp2+ss,size_tmp2+rr) * gauntLSSL_JK.K(ir,jr)(emr,esn);
-                                    fock_tmp(mm+size_tmp,nn+size_tmp) -= density_(jr)(ss,rr) * gauntLSSL_JK.K(jr,ir)(esn,emr);
-                                    fock_tmp(mm+size_tmp,nn) += density_(jr)(size_tmp2+ss,rr)*(gauntLSLS_JK.J(ir,jr)(enm,ers) - gauntLSLS_JK.K(jr,ir)(erm,ens)) + density_(jr)(ss,size_tmp2+rr) * gauntLSSL_JK.J(jr,ir)(esr,emn);
+                                    fock_tmp(mm,nn) -= density_(jr)(size_tmp2+ss,size_tmp2+rr) * gauntLSSL_JK.K[ir][jr][emr][esn];
+                                    fock_tmp(mm+size_tmp,nn+size_tmp) -= density_(jr)(ss,rr) * gauntLSSL_JK.K[jr][ir][esn][emr];
+                                    fock_tmp(mm+size_tmp,nn) += density_(jr)(size_tmp2+ss,rr)*gauntLSLS_JK.J[ir][jr][enm][ers] + density_(jr)(ss,size_tmp2+rr) * gauntLSSL_JK.J[jr][ir][esr][emn];
                                     if(mm != nn) 
                                     {
                                         int ern = rr*size_tmp+nn, ems = mm*size_tmp2+ss;
-                                        fock_tmp(nn+size_tmp,mm) += density_(jr)(size_tmp2+ss,rr)*(gauntLSLS_JK.J(ir,jr)(emn,ers) - gauntLSLS_JK.K(jr,ir)(ern,ems)) + density_(jr)(ss,size_tmp2+rr) * gauntLSSL_JK.J(jr,ir)(esr,enm);
+                                        fock_tmp(nn+size_tmp,mm) += density_(jr)(size_tmp2+ss,rr)*gauntLSLS_JK.J[ir][jr][emn][ers] + density_(jr)(ss,size_tmp2+rr) * gauntLSSL_JK.J[jr][ir][esr][enm];
                                     }
                                 }
                             }
@@ -1073,24 +1081,24 @@ vMatrixXd DHF_SPH::get_amfi_unc_2c(const int2eJK& h2eSSLL_SD, const int2eJK& h2e
                 for(int rr = 0; rr < size_tmp2; rr++)
                 {
                     int emn = mm*size_tmp+nn, esr = ss*size_tmp2+rr, emr = mm*size_tmp2+rr, esn = ss*size_tmp+nn;
-                    SO_4c(mm,nn) += density_tmp(jr)(size_tmp2+ss,size_tmp2+rr) * h2eSSLL_SD.J(jr,ir)(esr,emn);
-                    SO_4c(mm+size_tmp,nn) -= density_tmp(jr)(ss,size_tmp2+rr) * h2eSSLL_SD.K(ir,jr)(emr,esn);
+                    SO_4c(mm,nn) += density_tmp(jr)(size_tmp2+ss,size_tmp2+rr) * h2eSSLL_SD.J[jr][ir][esr][emn];
+                    SO_4c(mm+size_tmp,nn) -= density_tmp(jr)(ss,size_tmp2+rr) * h2eSSLL_SD.K[ir][jr][emr][esn];
                     if(mm != nn) 
                     {
                         int enr = nn*size_tmp2+rr, esm = ss*size_tmp+mm;
-                        SO_4c(nn+size_tmp,mm) -= density_tmp(jr)(ss,size_tmp2+rr) * h2eSSLL_SD.K(ir,jr)(enr,esm);
+                        SO_4c(nn+size_tmp,mm) -= density_tmp(jr)(ss,size_tmp2+rr) * h2eSSLL_SD.K[ir][jr][enr][esm];
                     }
-                    SO_4c(mm+size_tmp,nn+size_tmp) += density_tmp(jr)(size_tmp2+ss,size_tmp2+rr) * (h2eSSSS_SD.J(ir,jr)(emn,esr) - h2eSSSS_SD.K(ir,jr)(emr,esn)) + density_tmp(jr)(ss,rr) * h2eSSLL_SD.J(ir,jr)(emn,esr);
+                    SO_4c(mm+size_tmp,nn+size_tmp) += density_tmp(jr)(size_tmp2+ss,size_tmp2+rr) * h2eSSSS_SD.J[ir][jr][emn][esr] + density_tmp(jr)(ss,rr) * h2eSSLL_SD.J[ir][jr][emn][esr];
                     if(amfi_with_gaunt)
                     {
                         int enm = nn*size_tmp+mm, ers = rr*size_tmp2+ss, erm = rr*size_tmp+mm, ens = nn*size_tmp2+ss;
-                        SO_4c(mm,nn) -= density_tmp(jr)(size_tmp2+ss,size_tmp2+rr) * gauntLSSL_JK.K(ir,jr)(emr,esn);
-                        SO_4c(mm+size_tmp,nn+size_tmp) -= density_tmp(jr)(ss,rr) * gauntLSSL_JK.K(jr,ir)(esn,emr);
-                        SO_4c(mm+size_tmp,nn) += density_tmp(jr)(size_tmp2+ss,rr)*(gauntLSLS_JK.J(ir,jr)(enm,ers) - gauntLSLS_JK.K(jr,ir)(erm,ens)) + density_tmp(jr)(ss,size_tmp2+rr) * gauntLSSL_JK.J(jr,ir)(esr,emn);
+                        SO_4c(mm,nn) -= density_tmp(jr)(size_tmp2+ss,size_tmp2+rr) * gauntLSSL_JK.K[ir][jr][emr][esn];
+                        SO_4c(mm+size_tmp,nn+size_tmp) -= density_tmp(jr)(ss,rr) * gauntLSSL_JK.K[jr][ir][esn][emr];
+                        SO_4c(mm+size_tmp,nn) += density_tmp(jr)(size_tmp2+ss,rr)*gauntLSLS_JK.J[ir][jr][enm][ers] + density_tmp(jr)(ss,size_tmp2+rr) * gauntLSSL_JK.J[jr][ir][esr][emn];
                         if(mm != nn) 
                         {
                             int ern = rr*size_tmp+nn, ems = mm*size_tmp2+ss;
-                            SO_4c(nn+size_tmp,mm) += density_tmp(jr)(size_tmp2+ss,rr)*(gauntLSLS_JK.J(ir,jr)(emn,ers) - gauntLSLS_JK.K(jr,ir)(ern,ems)) + density_tmp(jr)(ss,size_tmp2+rr) * gauntLSSL_JK.J(jr,ir)(esr,enm);
+                            SO_4c(nn+size_tmp,mm) += density_tmp(jr)(size_tmp2+ss,rr)*gauntLSLS_JK.J[ir][jr][emn][ers] + density_tmp(jr)(ss,size_tmp2+rr) * gauntLSSL_JK.J[jr][ir][esr][enm];
                         }
                     }
                 }

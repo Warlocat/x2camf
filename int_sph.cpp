@@ -504,8 +504,13 @@ int2eJK INT_SPH::get_h2e_JK(const string& intType, const int& occMaxL) const
     }
     
     int2eJK int_2e_JK;
-    int_2e_JK.J.resize(Nirrep, Nirrep);
-    int_2e_JK.K.resize(Nirrep, Nirrep);
+    int_2e_JK.J = new double***[Nirrep];
+    int_2e_JK.K = new double***[Nirrep];
+    for(int ii = 0; ii < Nirrep; ii++)
+    {
+        int_2e_JK.J[ii] = new double**[Nirrep];
+        int_2e_JK.K[ii] = new double**[Nirrep];
+    }
     
     int int_tmp1_p = 0;
     for(int pshell = 0; pshell < occMaxShell; pshell++)
@@ -829,8 +834,12 @@ int2eJK INT_SPH::get_h2e_JK(const string& intType, const int& occMaxL) const
             for(int mp = 0; mp < irrep_list(int_tmp1_p+add_p).two_j + 1; mp++)
             for(int mq = 0; mq < irrep_list(int_tmp1_q+add_q).two_j + 1; mq++)
             {
-                int_2e_JK.J(int_tmp1_p+add_p + mp, int_tmp1_q + add_q + mq).resize(size_gtos_p*size_gtos_p,size_gtos_q*size_gtos_q);
-                int_2e_JK.K(int_tmp1_p+add_p + mp, int_tmp1_q + add_q + mq).resize(size_gtos_p*size_gtos_q,size_gtos_q*size_gtos_p);
+                int_2e_JK.J[int_tmp1_p+add_p + mp][int_tmp1_q + add_q + mq] = new double*[size_gtos_p*size_gtos_p];
+                for(int iii = 0; iii < size_gtos_p*size_gtos_p; iii++)
+                    int_2e_JK.J[int_tmp1_p+add_p + mp][int_tmp1_q + add_q + mq][iii] = new double[size_gtos_q*size_gtos_q];
+                int_2e_JK.K[int_tmp1_p+add_p + mp][int_tmp1_q + add_q + mq] = new double*[size_gtos_p*size_gtos_q];
+                for(int iii = 0; iii < size_gtos_p*size_gtos_q; iii++)
+                    int_2e_JK.K[int_tmp1_p+add_p + mp][int_tmp1_q + add_q + mq][iii] = new double[size_gtos_q*size_gtos_p];
                 #pragma omp parallel  for
                 for(int tt = 0; tt < size_gtos_p*size_gtos_p*size_gtos_q*size_gtos_q; tt++)
                 {
@@ -838,12 +847,12 @@ int2eJK INT_SPH::get_h2e_JK(const string& intType, const int& occMaxL) const
                     int e2J = tt - e1J*(size_gtos_q*size_gtos_q);
                     int e1K = tt/(size_gtos_p*size_gtos_q);
                     int e2K = tt - e1K*(size_gtos_p*size_gtos_q);
-                    int_2e_JK.J(int_tmp1_p+add_p + mp, int_tmp1_q+add_q + mq)(e1J,e2J) = 0.0;
-                    int_2e_JK.K(int_tmp1_p+add_p + mp, int_tmp1_q+add_q + mq)(e1K,e2K) = 0.0;
+                    int_2e_JK.J[int_tmp1_p+add_p + mp][int_tmp1_q+add_q + mq][e1J][e2J] = 0.0;
+                    int_2e_JK.K[int_tmp1_p+add_p + mp][int_tmp1_q+add_q + mq][e1K][e2K] = 0.0;
                     for(int tmp = LmaxJ; tmp >= 0; tmp = tmp - 2)
-                        int_2e_JK.J(int_tmp1_p+add_p + mp, int_tmp1_q+add_q + mq)(e1J,e2J) += array_radial_J[tmp][e1J][e2J][int_tmp2_p][int_tmp2_q] * array_angular_J[tmp][int_tmp2_p][int_tmp2_q](mp,mq);
+                        int_2e_JK.J[int_tmp1_p+add_p + mp][int_tmp1_q+add_q + mq][e1J][e2J] += array_radial_J[tmp][e1J][e2J][int_tmp2_p][int_tmp2_q] * array_angular_J[tmp][int_tmp2_p][int_tmp2_q](mp,mq);
                     for(int tmp = LmaxK; tmp >= 0; tmp = tmp - 2)
-                        int_2e_JK.K(int_tmp1_p+add_p + mp, int_tmp1_q+add_q + mq)(e1K,e2K) += array_radial_K[tmp][e1K][e2K][int_tmp2_p][int_tmp2_q] * array_angular_K[tmp][int_tmp2_p][int_tmp2_q](mp,mq);
+                        int_2e_JK.K[int_tmp1_p+add_p + mp][int_tmp1_q+add_q + mq][e1K][e2K] += array_radial_K[tmp][e1K][e2K][int_tmp2_p][int_tmp2_q] * array_angular_K[tmp][int_tmp2_p][int_tmp2_q](mp,mq);
                 }
             }
         }
@@ -879,8 +888,13 @@ int2eJK INT_SPH::get_h2e_JK_compact(const string& intType, const int& occMaxL) c
     }
     
     int2eJK int_2e_JK;
-    int_2e_JK.J.resize(Nirrep_compact, Nirrep_compact);
-    int_2e_JK.K.resize(Nirrep_compact, Nirrep_compact);
+    int_2e_JK.J = new double***[Nirrep_compact];
+    int_2e_JK.K = new double***[Nirrep_compact];
+    for(int ii = 0; ii < Nirrep_compact; ii++)
+    {
+        int_2e_JK.J[ii] = new double**[Nirrep_compact];
+        int_2e_JK.K[ii] = new double**[Nirrep_compact];
+    }
     
     int int_tmp1_p = 0;
     for(int pshell = 0; pshell < occMaxShell; pshell++)
@@ -1202,8 +1216,12 @@ int2eJK INT_SPH::get_h2e_JK_compact(const string& intType, const int& occMaxL) c
         for(int int_tmp2_p = 0; int_tmp2_p < l_p_cycle; int_tmp2_p++)
         for(int int_tmp2_q = 0; int_tmp2_q < l_q_cycle; int_tmp2_q++)
         {
-            int_2e_JK.J(int_tmp1_p+int_tmp2_p, int_tmp1_q+int_tmp2_q).resize(size_gtos_p*size_gtos_p,size_gtos_q*size_gtos_q);
-            int_2e_JK.K(int_tmp1_p+int_tmp2_p, int_tmp1_q+int_tmp2_q).resize(size_gtos_p*size_gtos_q,size_gtos_q*size_gtos_p);
+            int_2e_JK.J[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q] = new double*[size_gtos_p*size_gtos_p];
+            for(int iii = 0; iii < size_gtos_p*size_gtos_p; iii++)
+                int_2e_JK.J[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q][iii] = new double[size_gtos_q*size_gtos_q];
+            int_2e_JK.K[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q] = new double*[size_gtos_p*size_gtos_q];
+            for(int iii = 0; iii < size_gtos_p*size_gtos_q; iii++)
+                int_2e_JK.K[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q][iii] = new double[size_gtos_p*size_gtos_q];
             #pragma omp parallel  for
             for(int tt = 0; tt < size_gtos_p*size_gtos_p*size_gtos_q*size_gtos_q; tt++)
             {
@@ -1211,12 +1229,12 @@ int2eJK INT_SPH::get_h2e_JK_compact(const string& intType, const int& occMaxL) c
                 int e2J = tt - e1J*(size_gtos_q*size_gtos_q);
                 int e1K = tt/(size_gtos_p*size_gtos_q);
                 int e2K = tt - e1K*(size_gtos_p*size_gtos_q);
-                int_2e_JK.J(int_tmp1_p+int_tmp2_p, int_tmp1_q+int_tmp2_q)(e1J,e2J) = 0.0;
-                int_2e_JK.K(int_tmp1_p+int_tmp2_p, int_tmp1_q+int_tmp2_q)(e1K,e2K) = 0.0;
+                int_2e_JK.J[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q][e1J][e2J] = 0.0;
+                int_2e_JK.K[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q][e1K][e2K] = 0.0;
                 for(int tmp = LmaxJ; tmp >= 0; tmp = tmp - 2)
-                    int_2e_JK.J(int_tmp1_p+int_tmp2_p, int_tmp1_q+int_tmp2_q)(e1J,e2J) += array_radial_J[tmp][e1J][e2J][int_tmp2_p][int_tmp2_q] * array_angular_J[tmp][int_tmp2_p][int_tmp2_q];
+                    int_2e_JK.J[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q][e1J][e2J] += array_radial_J[tmp][e1J][e2J][int_tmp2_p][int_tmp2_q] * array_angular_J[tmp][int_tmp2_p][int_tmp2_q];
                 for(int tmp = LmaxK; tmp >= 0; tmp = tmp - 2)
-                    int_2e_JK.K(int_tmp1_p+int_tmp2_p, int_tmp1_q+int_tmp2_q)(e1K,e2K) += array_radial_K[tmp][e1K][e2K][int_tmp2_p][int_tmp2_q] * array_angular_K[tmp][int_tmp2_p][int_tmp2_q];
+                    int_2e_JK.K[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q][e1K][e2K] += array_radial_K[tmp][e1K][e2K][int_tmp2_p][int_tmp2_q] * array_angular_K[tmp][int_tmp2_p][int_tmp2_q];
             }
         }
         EndTime = clock();
@@ -1254,12 +1272,21 @@ void INT_SPH::get_h2e_JK_direct(int2eJK& LLLL, int2eJK& SSLL, int2eJK& SSSS, con
         else Nirrep_compact += 2;
     }
 
-    LLLL.J.resize(Nirrep_compact, Nirrep_compact);
-    LLLL.K.resize(Nirrep_compact, Nirrep_compact);
-    SSLL.J.resize(Nirrep_compact, Nirrep_compact);
-    SSLL.K.resize(Nirrep_compact, Nirrep_compact);
-    SSSS.J.resize(Nirrep_compact, Nirrep_compact);
-    SSSS.K.resize(Nirrep_compact, Nirrep_compact);
+    LLLL.J = new double***[Nirrep_compact];
+    LLLL.K = new double***[Nirrep_compact];
+    SSLL.J = new double***[Nirrep_compact];
+    SSLL.K = new double***[Nirrep_compact];
+    SSSS.J = new double***[Nirrep_compact];
+    SSSS.K = new double***[Nirrep_compact];
+    for(int ii = 0; ii < Nirrep_compact; ii++)
+    {
+        LLLL.J[ii] = new double**[Nirrep_compact];
+        LLLL.K[ii] = new double**[Nirrep_compact];
+        SSLL.J[ii] = new double**[Nirrep_compact];
+        SSLL.K[ii] = new double**[Nirrep_compact];
+        SSSS.J[ii] = new double**[Nirrep_compact];
+        SSSS.K[ii] = new double**[Nirrep_compact];
+    }
 
     int int_tmp1_p = 0;
     for(int pshell = 0; pshell < occMaxShell; pshell++)
@@ -1460,12 +1487,24 @@ void INT_SPH::get_h2e_JK_direct(int2eJK& LLLL, int2eJK& SSLL, int2eJK& SSSS, con
         for(int int_tmp2_p = 0; int_tmp2_p < l_p_cycle; int_tmp2_p++)
         for(int int_tmp2_q = 0; int_tmp2_q < l_q_cycle; int_tmp2_q++)
         {
-            LLLL.J(int_tmp1_p+int_tmp2_p, int_tmp1_q+int_tmp2_q).resize(size_gtos_p*size_gtos_p,size_gtos_q*size_gtos_q);
-            LLLL.K(int_tmp1_p+int_tmp2_p, int_tmp1_q+int_tmp2_q).resize(size_gtos_p*size_gtos_q,size_gtos_q*size_gtos_p);
-            SSLL.J(int_tmp1_p+int_tmp2_p, int_tmp1_q+int_tmp2_q).resize(size_gtos_p*size_gtos_p,size_gtos_q*size_gtos_q);
-            SSLL.K(int_tmp1_p+int_tmp2_p, int_tmp1_q+int_tmp2_q).resize(size_gtos_p*size_gtos_q,size_gtos_q*size_gtos_p);
-            SSSS.J(int_tmp1_p+int_tmp2_p, int_tmp1_q+int_tmp2_q).resize(size_gtos_p*size_gtos_p,size_gtos_q*size_gtos_q);
-            SSSS.K(int_tmp1_p+int_tmp2_p, int_tmp1_q+int_tmp2_q).resize(size_gtos_p*size_gtos_q,size_gtos_q*size_gtos_p);
+            LLLL.J[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q] = new double*[size_gtos_p*size_gtos_p];
+            LLLL.K[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q] = new double*[size_gtos_p*size_gtos_q];
+            SSLL.J[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q] = new double*[size_gtos_p*size_gtos_p];
+            SSLL.K[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q] = new double*[size_gtos_p*size_gtos_q];
+            SSSS.J[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q] = new double*[size_gtos_p*size_gtos_p];
+            SSSS.K[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q] = new double*[size_gtos_p*size_gtos_q];
+            for(int iii = 0; iii < size_gtos_p*size_gtos_p; iii++)
+            {
+                LLLL.J[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q][iii] = new double[size_gtos_q*size_gtos_q];
+                SSLL.J[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q][iii] = new double[size_gtos_q*size_gtos_q];
+                SSSS.J[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q][iii] = new double[size_gtos_q*size_gtos_q];
+            }
+            for(int iii = 0; iii < size_gtos_p*size_gtos_q; iii++)
+            {
+                LLLL.K[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q][iii] = new double[size_gtos_q*size_gtos_p];
+                SSLL.K[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q][iii] = new double[size_gtos_q*size_gtos_p];
+                SSSS.K[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q][iii] = new double[size_gtos_q*size_gtos_p];
+            }
             #pragma omp parallel  for
             for(int tt = 0; tt < size_gtos_p*size_gtos_p*size_gtos_q*size_gtos_q; tt++)
             {
@@ -1473,23 +1512,23 @@ void INT_SPH::get_h2e_JK_direct(int2eJK& LLLL, int2eJK& SSLL, int2eJK& SSSS, con
                 int e2J = tt - e1J*(size_gtos_q*size_gtos_q);
                 int e1K = tt/(size_gtos_p*size_gtos_q);
                 int e2K = tt - e1K*(size_gtos_p*size_gtos_q);
-                LLLL.J(int_tmp1_p+int_tmp2_p, int_tmp1_q+int_tmp2_q)(e1J,e2J) = 0.0;
-                LLLL.K(int_tmp1_p+int_tmp2_p, int_tmp1_q+int_tmp2_q)(e1K,e2K) = 0.0;
-                SSLL.J(int_tmp1_p+int_tmp2_p, int_tmp1_q+int_tmp2_q)(e1J,e2J) = 0.0;
-                SSLL.K(int_tmp1_p+int_tmp2_p, int_tmp1_q+int_tmp2_q)(e1K,e2K) = 0.0;
-                SSSS.J(int_tmp1_p+int_tmp2_p, int_tmp1_q+int_tmp2_q)(e1J,e2J) = 0.0;
-                SSSS.K(int_tmp1_p+int_tmp2_p, int_tmp1_q+int_tmp2_q)(e1K,e2K) = 0.0;
+                LLLL.J[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q][e1J][e2J] = 0.0;
+                LLLL.K[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q][e1K][e2K] = 0.0;
+                SSLL.J[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q][e1J][e2J] = 0.0;
+                SSLL.K[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q][e1K][e2K] = 0.0;
+                SSSS.J[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q][e1J][e2J] = 0.0;
+                SSSS.K[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q][e1K][e2K] = 0.0;
                 for(int tmp = LmaxJ; tmp >= 0; tmp = tmp - 2)
                 {
-                    LLLL.J(int_tmp1_p+int_tmp2_p, int_tmp1_q+int_tmp2_q)(e1J,e2J) += array_radial_J_LLLL[tmp][e1J][e2J][int_tmp2_p][int_tmp2_q] * array_angular_J[tmp][int_tmp2_p][int_tmp2_q];
-                    SSLL.J(int_tmp1_p+int_tmp2_p, int_tmp1_q+int_tmp2_q)(e1J,e2J) += array_radial_J_SSLL[tmp][e1J][e2J][int_tmp2_p][int_tmp2_q] * array_angular_J[tmp][int_tmp2_p][int_tmp2_q];
-                    SSSS.J(int_tmp1_p+int_tmp2_p, int_tmp1_q+int_tmp2_q)(e1J,e2J) += array_radial_J_SSSS[tmp][e1J][e2J][int_tmp2_p][int_tmp2_q] * array_angular_J[tmp][int_tmp2_p][int_tmp2_q];
+                    LLLL.J[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q][e1J][e2J] += array_radial_J_LLLL[tmp][e1J][e2J][int_tmp2_p][int_tmp2_q] * array_angular_J[tmp][int_tmp2_p][int_tmp2_q];
+                    SSLL.J[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q][e1J][e2J] += array_radial_J_SSLL[tmp][e1J][e2J][int_tmp2_p][int_tmp2_q] * array_angular_J[tmp][int_tmp2_p][int_tmp2_q];
+                    SSSS.J[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q][e1J][e2J] += array_radial_J_SSSS[tmp][e1J][e2J][int_tmp2_p][int_tmp2_q] * array_angular_J[tmp][int_tmp2_p][int_tmp2_q];
                 }
                 for(int tmp = LmaxK; tmp >= 0; tmp = tmp - 2)
                 {
-                    LLLL.K(int_tmp1_p+int_tmp2_p, int_tmp1_q+int_tmp2_q)(e1K,e2K) += array_radial_K_LLLL[tmp][e1K][e2K][int_tmp2_p][int_tmp2_q] * array_angular_K[tmp][int_tmp2_p][int_tmp2_q];
-                    SSLL.K(int_tmp1_p+int_tmp2_p, int_tmp1_q+int_tmp2_q)(e1K,e2K) += array_radial_K_SSLL[tmp][e1K][e2K][int_tmp2_p][int_tmp2_q] * array_angular_K[tmp][int_tmp2_p][int_tmp2_q];
-                    SSSS.K(int_tmp1_p+int_tmp2_p, int_tmp1_q+int_tmp2_q)(e1K,e2K) += array_radial_K_SSSS[tmp][e1K][e2K][int_tmp2_p][int_tmp2_q] * array_angular_K[tmp][int_tmp2_p][int_tmp2_q];
+                    LLLL.K[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q][e1K][e2K] += array_radial_K_LLLL[tmp][e1K][e2K][int_tmp2_p][int_tmp2_q] * array_angular_K[tmp][int_tmp2_p][int_tmp2_q];
+                    SSLL.K[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q][e1K][e2K] += array_radial_K_SSLL[tmp][e1K][e2K][int_tmp2_p][int_tmp2_q] * array_angular_K[tmp][int_tmp2_p][int_tmp2_q];
+                    SSSS.K[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q][e1K][e2K] += array_radial_K_SSSS[tmp][e1K][e2K][int_tmp2_p][int_tmp2_q] * array_angular_K[tmp][int_tmp2_p][int_tmp2_q];
                 }
             }
         }

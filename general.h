@@ -113,11 +113,11 @@ struct irrep_jm
     int l, two_j, two_mj, size;
 };
 /*
-    Coulomb and exchange integral
+    Coulomb and exchange integral in [Iirrep][Jirrep][eij][ekl]
 */
 struct int2eJK
 {
-    mMatrixXd J, K;
+    double ****J, ****K;
 };
 
 /* factorial and double factorial functions */

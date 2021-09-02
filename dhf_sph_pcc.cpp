@@ -258,13 +258,13 @@ vMatrixXd DHF_SPH::x2c2ePCC_density()
                 {
                     int eij=ii*size_i+jj, ekl=kk*size_j+ll, eil=ii*size_j+ll, ekj=kk*size_i+jj;
                     if(kk == ll)
-                        // solve_A(tmp_int_i+ii*(ii+1)/2+jj, tmp_int_j+kk*(kk+1)/2+ll) = h2eLLLL_JK.J(ir,jr)(eij,ekl);
-                        solve_A(tmp_int_i+ii*(ii+1)/2+jj, tmp_int_j+kk*(kk+1)/2+ll) = h2eLLLL_JK.J(ir,jr)(eij,ekl) - h2eLLLL_JK.K(ir,jr)(eil,ekj);
+                        // solve_A(tmp_int_i+ii*(ii+1)/2+jj, tmp_int_j+kk*(kk+1)/2+ll) = h2eLLLL_JK.J[ir][jr](eij,ekl);
+                        solve_A(tmp_int_i+ii*(ii+1)/2+jj, tmp_int_j+kk*(kk+1)/2+ll) = h2eLLLL_JK.J[ir][jr][eij][ekl];
                     else
                     {
                         int elk=ll*size_j+kk, eik=ii*size_j+kk, elj=ll*size_i+jj;
-                        // solve_A(tmp_int_i+ii*(ii+1)/2+jj, tmp_int_j+kk*(kk+1)/2+ll) = h2eLLLL_JK.J(ir,jr)(eij,ekl) + h2eLLLL_JK.J(ir,jr)(eij,elk);
-                        solve_A(tmp_int_i+ii*(ii+1)/2+jj, tmp_int_j+kk*(kk+1)/2+ll) = h2eLLLL_JK.J(ir,jr)(eij,ekl) - h2eLLLL_JK.K(ir,jr)(eil,ekj) + h2eLLLL_JK.J(ir,jr)(eij,elk) - h2eLLLL_JK.K(ir,jr)(eik,elj);
+                        // solve_A(tmp_int_i+ii*(ii+1)/2+jj, tmp_int_j+kk*(kk+1)/2+ll) = h2eLLLL_JK.J[ir][jr](eij,ekl) + h2eLLLL_JK.J[ir][jr](eij,elk);
+                        solve_A(tmp_int_i+ii*(ii+1)/2+jj, tmp_int_j+kk*(kk+1)/2+ll) = h2eLLLL_JK.J[ir][jr][eij][ekl] + h2eLLLL_JK.J[ir][jr][eij][elk];
                     }
                 }
                 tmp_int_j += size_j*(size_j+1)/2;
@@ -302,133 +302,70 @@ vMatrixXd DHF_SPH::x2c2ePCC_density()
 */
 void DHF_SPH::evaluateFock_2e(MatrixXd& fock, const bool& twoC, const vMatrixXd& den, const int& size, const int& Iirrep)
 {
-    if(!twoC)
-    {
-        fock.resize(size*2,size*2);
-        #pragma omp parallel  for
-        for(int mm = 0; mm < size; mm++)
-        for(int nn = 0; nn <= mm; nn++)
-        {
-            fock(mm,nn) = 0.0;
-            fock(mm+size,nn) = 0.0;
-            if(mm != nn) fock(nn+size,mm) = 0.0;
-            fock(mm+size,nn+size) = 0.0;
-            for(int jr = 0; jr < occMax_irrep; jr++)
-            {
-                int size_tmp2 = irrep_list(jr).size;
-                for(int ss = 0; ss < size_tmp2; ss++)
-                for(int rr = 0; rr < size_tmp2; rr++)
-                {
-                    int emn = mm*size+nn, esr = ss*size_tmp2+rr, emr = mm*size_tmp2+rr, esn = ss*size+nn;
-                    fock(mm,nn) += den(jr)(ss,rr) * (h2eLLLL_JK.J(Iirrep,jr)(emn,esr) - h2eLLLL_JK.K(Iirrep,jr)(emr,esn)) + den(jr)(size_tmp2+ss,size_tmp2+rr) * h2eSSLL_JK.J(jr,Iirrep)(esr,emn);
-                    fock(mm+size,nn) -= den(jr)(ss,size_tmp2+rr) * h2eSSLL_JK.K(Iirrep,jr)(emr,esn);
-                    if(mm != nn) 
-                    {
-                        int enr = nn*size_tmp2+rr, esm = ss*size+mm;
-                        fock(nn+size,mm) -= den(jr)(ss,size_tmp2+rr) * h2eSSLL_JK.K(Iirrep,jr)(enr,esm);
-                    }
-                    fock(mm+size,nn+size) += den(jr)(size_tmp2+ss,size_tmp2+rr) * (h2eSSSS_JK.J(Iirrep,jr)(emn,esr) - h2eSSSS_JK.K(Iirrep,jr)(emr,esn)) + den(jr)(ss,rr) * h2eSSLL_JK.J(Iirrep,jr)(emn,esr);
-                    if(with_gaunt)
-                    {
-                        int enm = nn*size+mm, ers = rr*size_tmp2+ss, erm = rr*size+mm, ens = nn*size_tmp2+ss;
-                        fock(mm,nn) -= den(jr)(size_tmp2+ss,size_tmp2+rr) * gauntLSSL_JK.K(Iirrep,jr)(emr,esn);
-                        fock(mm+size,nn+size) -= den(jr)(ss,rr) * gauntLSSL_JK.K(jr,Iirrep)(esn,emr);
-                        fock(mm+size,nn) += den(jr)(size_tmp2+ss,rr)*(gauntLSLS_JK.J(Iirrep,jr)(enm,ers) - gauntLSLS_JK.K(jr,Iirrep)(erm,ens)) + den(jr)(ss,size_tmp2+rr) * gauntLSSL_JK.J(jr,Iirrep)(esr,emn);
-                        if(mm != nn) 
-                        {
-                            int ern = rr*size+nn, ems = mm*size_tmp2+ss;
-                            fock(nn+size,mm) += den(jr)(size_tmp2+ss,rr)*(gauntLSLS_JK.J(Iirrep,jr)(emn,ers) - gauntLSLS_JK.K(jr,Iirrep)(ern,ems)) + den(jr)(ss,size_tmp2+rr) * gauntLSSL_JK.J(jr,Iirrep)(esr,enm);
-                        }
-                    }
-                }
-            }
-            fock(nn,mm) = fock(mm,nn);
-            fock(nn+size,mm+size) = fock(mm+size,nn+size);
-            fock(nn,mm+size) = fock(mm+size,nn);
-            fock(mm,nn+size) = fock(nn+size,mm);
-        }
-    }
-    else
-    {
-        fock.resize(size,size);
-        #pragma omp parallel  for
-        for(int mm = 0; mm < size; mm++)
-        for(int nn = 0; nn <= mm; nn++)
-        {
-            fock(mm,nn) = 0.0;
-            for(int jr = 0; jr < occMax_irrep; jr++)
-            {
-                int size_tmp2 = irrep_list(jr).size;
-                for(int ss = 0; ss < size_tmp2; ss++)
-                for(int rr = 0; rr < size_tmp2; rr++)
-                {
-                    int emn = mm*size+nn, esr = ss*size_tmp2+rr, emr = mm*size_tmp2+rr, esn = ss*size+nn;
-                    fock(mm,nn) += den(jr)(ss,rr) * (h2eLLLL_JK.J(Iirrep,jr)(emn,esr) - h2eLLLL_JK.K(Iirrep,jr)(emr,esn));
-                }
-            }
-            fock(nn,mm) = fock(mm,nn);
-        }
-    }
+    evaluateFock(fock,twoC,den,size,Iirrep);
+    fock = fock - h1e_4c(Iirrep);
 }
 void DHF_SPH::evaluateFock_J(MatrixXd& fock, const bool& twoC, const vMatrixXd& den, const int& size, const int& Iirrep)
 {
-    if(!twoC)
-    {
-        fock.resize(size*2,size*2);
-        #pragma omp parallel  for
-        for(int mm = 0; mm < size; mm++)
-        for(int nn = 0; nn <= mm; nn++)
-        {
-            fock(mm,nn) = 0.0;
-            fock(mm+size,nn) = 0.0;
-            if(mm != nn) fock(nn+size,mm) = 0.0;
-            fock(mm+size,nn+size) = 0.0;
-            for(int jr = 0; jr < occMax_irrep; jr++)
-            {
-                int size_tmp2 = irrep_list(jr).size;
-                for(int ss = 0; ss < size_tmp2; ss++)
-                for(int rr = 0; rr < size_tmp2; rr++)
-                {
-                    int emn = mm*size+nn, esr = ss*size_tmp2+rr, emr = mm*size_tmp2+rr, esn = ss*size+nn;
-                    fock(mm,nn) += den(jr)(ss,rr) * (h2eLLLL_JK.J(Iirrep,jr)(emn,esr)) + den(jr)(size_tmp2+ss,size_tmp2+rr) * h2eSSLL_JK.J(jr,Iirrep)(esr,emn);
-                    fock(mm+size,nn+size) += den(jr)(size_tmp2+ss,size_tmp2+rr) * (h2eSSSS_JK.J(Iirrep,jr)(emn,esr)) + den(jr)(ss,rr) * h2eSSLL_JK.J(Iirrep,jr)(emn,esr);
-                    if(with_gaunt)
-                    {
-                        int enm = nn*size+mm, ers = rr*size_tmp2+ss, erm = rr*size+mm, ens = nn*size_tmp2+ss;
-                        fock(mm+size,nn) += den(jr)(size_tmp2+ss,rr)*(gauntLSLS_JK.J(Iirrep,jr)(enm,ers)) + den(jr)(ss,size_tmp2+rr) * gauntLSSL_JK.J(jr,Iirrep)(esr,emn);
-                        if(mm != nn) 
-                        {
-                            int ern = rr*size+nn, ems = mm*size_tmp2+ss;
-                            fock(nn+size,mm) += den(jr)(size_tmp2+ss,rr)*(gauntLSLS_JK.J(Iirrep,jr)(emn,ers)) + den(jr)(ss,size_tmp2+rr) * gauntLSSL_JK.J(jr,Iirrep)(esr,enm);
-                        }
-                    }
-                }
-            }
-            fock(nn,mm) = fock(mm,nn);
-            fock(nn+size,mm+size) = fock(mm+size,nn+size);
-            fock(nn,mm+size) = fock(mm+size,nn);
-            fock(mm,nn+size) = fock(nn+size,mm);
-        }
-    }
-    else
-    {
-        fock.resize(size,size);
-        #pragma omp parallel  for
-        for(int mm = 0; mm < size; mm++)
-        for(int nn = 0; nn <= mm; nn++)
-        {
-            fock(mm,nn) = 0.0;
-            for(int jr = 0; jr < occMax_irrep; jr++)
-            {
-                int size_tmp2 = irrep_list(jr).size;
-                for(int ss = 0; ss < size_tmp2; ss++)
-                for(int rr = 0; rr < size_tmp2; rr++)
-                {
-                    int emn = mm*size+nn, esr = ss*size_tmp2+rr, emr = mm*size_tmp2+rr, esn = ss*size+nn;
-                    fock(mm,nn) += den(jr)(ss,rr) * (h2eLLLL_JK.J(Iirrep,jr)(emn,esr));
-                }
-            }
-            fock(nn,mm) = fock(mm,nn);
-        }
-    }
+    cout << "evaluateFock_J is closed now" << endl;
+    exit(99);
+    // if(!twoC)
+    // {
+    //     fock.resize(size*2,size*2);
+    //     #pragma omp parallel  for
+    //     for(int mm = 0; mm < size; mm++)
+    //     for(int nn = 0; nn <= mm; nn++)
+    //     {
+    //         fock(mm,nn) = 0.0;
+    //         fock(mm+size,nn) = 0.0;
+    //         if(mm != nn) fock(nn+size,mm) = 0.0;
+    //         fock(mm+size,nn+size) = 0.0;
+    //         for(int jr = 0; jr < occMax_irrep; jr++)
+    //         {
+    //             int size_tmp2 = irrep_list(jr).size;
+    //             for(int ss = 0; ss < size_tmp2; ss++)
+    //             for(int rr = 0; rr < size_tmp2; rr++)
+    //             {
+    //                 int emn = mm*size+nn, esr = ss*size_tmp2+rr, emr = mm*size_tmp2+rr, esn = ss*size+nn;
+    //                 fock(mm,nn) += den(jr)(ss,rr) * (h2eLLLL_JK.J(Iirrep,jr)(emn,esr)) + den(jr)(size_tmp2+ss,size_tmp2+rr) * h2eSSLL_JK.J(jr,Iirrep)(esr,emn);
+    //                 fock(mm+size,nn+size) += den(jr)(size_tmp2+ss,size_tmp2+rr) * (h2eSSSS_JK.J(Iirrep,jr)(emn,esr)) + den(jr)(ss,rr) * h2eSSLL_JK.J(Iirrep,jr)(emn,esr);
+    //                 if(with_gaunt)
+    //                 {
+    //                     int enm = nn*size+mm, ers = rr*size_tmp2+ss, erm = rr*size+mm, ens = nn*size_tmp2+ss;
+    //                     fock(mm+size,nn) += den(jr)(size_tmp2+ss,rr)*(gauntLSLS_JK.J(Iirrep,jr)(enm,ers)) + den(jr)(ss,size_tmp2+rr) * gauntLSSL_JK.J(jr,Iirrep)(esr,emn);
+    //                     if(mm != nn) 
+    //                     {
+    //                         int ern = rr*size+nn, ems = mm*size_tmp2+ss;
+    //                         fock(nn+size,mm) += den(jr)(size_tmp2+ss,rr)*(gauntLSLS_JK.J(Iirrep,jr)(emn,ers)) + den(jr)(ss,size_tmp2+rr) * gauntLSSL_JK.J(jr,Iirrep)(esr,enm);
+    //                     }
+    //                 }
+    //             }
+    //         }
+    //         fock(nn,mm) = fock(mm,nn);
+    //         fock(nn+size,mm+size) = fock(mm+size,nn+size);
+    //         fock(nn,mm+size) = fock(mm+size,nn);
+    //         fock(mm,nn+size) = fock(nn+size,mm);
+    //     }
+    // }
+    // else
+    // {
+    //     fock.resize(size,size);
+    //     #pragma omp parallel  for
+    //     for(int mm = 0; mm < size; mm++)
+    //     for(int nn = 0; nn <= mm; nn++)
+    //     {
+    //         fock(mm,nn) = 0.0;
+    //         for(int jr = 0; jr < occMax_irrep; jr++)
+    //         {
+    //             int size_tmp2 = irrep_list(jr).size;
+    //             for(int ss = 0; ss < size_tmp2; ss++)
+    //             for(int rr = 0; rr < size_tmp2; rr++)
+    //             {
+    //                 int emn = mm*size+nn, esr = ss*size_tmp2+rr, emr = mm*size_tmp2+rr, esn = ss*size+nn;
+    //                 fock(mm,nn) += den(jr)(ss,rr) * (h2eLLLL_JK.J(Iirrep,jr)(emn,esr));
+    //             }
+    //         }
+    //         fock(nn,mm) = fock(mm,nn);
+    //     }
+    // }
 }
