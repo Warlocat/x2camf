@@ -74,15 +74,13 @@ int main()
         INT_SPH intor(atomListUnique[ii],basisListUnique[ii]);
         if(amfiMethod[0])
         {
-            cout << "Average of configuration SCF amfi is suppressed for testing purpose." << endl;
-            exit(99);
             DHF_SPH_CA scfer(intor, "ZMAT", amfiMethod[1], amfiMethod[2], amfiMethod[3]);
             scfer.runSCF(amfiMethod[2]);
             amfiUnique.push_back(Rotate::unite_irrep(scfer.get_amfi_unc_ca(intor,amfiMethod[2]), intor.irrep_list));
         }
         else
         {
-            DHF_SPH scfer(intor, "ZMAT", amfiMethod[1], amfiMethod[2], amfiMethod[3], true);
+            DHF_SPH scfer(intor, "ZMAT", amfiMethod[1], amfiMethod[2], amfiMethod[3]);
             scfer.runSCF(amfiMethod[2]);
             //amfiUnique.push_back(Rotate::unite_irrep(scfer.x2c2ePCC(),intor.irrep_list));
             amfiUnique.push_back(Rotate::unite_irrep(scfer.get_amfi_unc(intor,amfiMethod[2]), intor.irrep_list));
@@ -125,7 +123,8 @@ int main()
     }
 
     int sizeAllReal = 2*sizeAll2;
-    double tmp[sizeAllReal];
+    for(int ii = 0; ii < sizeAll2; ii++)
+        cout << amfiAll[ii].dr <<endl << amfiAll[ii].di<< endl;
     //F_INTERFACE::rfile_("X2CMFSOM_CFOUR",tmp,&sizeAllReal);
     //F_INTERFACE::prvecr_(tmp,&sizeAllReal);
     F_INTERFACE::wfile_("X2CMFSOM",(double*)amfiAll,&sizeAllReal);

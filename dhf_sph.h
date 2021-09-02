@@ -11,7 +11,7 @@ class DHF_SPH
 {
 protected:
     Matrix<intShell, Dynamic, 1> shell_list;
-    int size_basis_spinor, Nirrep, occMax_irrep, occMax_irrep_compact;
+    int size_basis_spinor, Nirrep, Nirrep_compact, occMax_irrep, occMax_irrep_compact;
     Matrix<irrep_jm, Dynamic, 1> irrep_list;
     VectorXi all2compact,compact2all;
     vMatrixXd overlap, kinetic, WWW, Vnuc;
@@ -43,7 +43,10 @@ public:
     virtual ~DHF_SPH();
     virtual void runSCF(const bool& twoC = false, vMatrixXd* initialGuess = NULL);
     void renormalize_small();
+    /* Symmetrize h2e in J - K form */
     void symmetrize_h2e(const bool& twoC = false);
+    void symmetrize_JK(int2eJK& h2e, const int& Ncompact);
+    void symmetrize_JK_gaunt(int2eJK& h2e, const int& Ncompact);
     /* Read occupation numbers */
     void readOCC(const string& filename, const string& atomName);
     /* Evaluate amfi SOC integrals */

@@ -26,9 +26,9 @@ int main()
 {
     readInput("input");
     INT_SPH intor(atomName, basisSet);
-    bool twoC = false, spinFree = false, withGaunt=false;
+    bool twoC = false, spinFree = false, withGaunt=true;
 
-    DHF_SPH scf4c(intor,"input",spinFree,twoC,withGaunt,true);
+    DHF_SPH_CA scf4c(intor,"input",spinFree,twoC,withGaunt,true);
     scf4c.runSCF(twoC);
 
     return 0;

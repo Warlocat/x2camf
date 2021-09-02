@@ -5,6 +5,7 @@
 *.xyz
 *test/*
 cfour*/*
+dirac*/*
 h2e*
 h1e*
 input
