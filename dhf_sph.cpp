@@ -1009,6 +1009,7 @@ vMatrixXd DHF_SPH::get_amfi_unc(const int2eJK& h2eSSLL_SD, const int2eJK& h2eSSS
         amfi_unc(ir) = x2cRRR(ir).transpose() * amfi_unc(ir) * x2cRRR(ir);
     }
 
+    X_calculated = true;
     return amfi_unc;
 }
 
@@ -1120,6 +1121,7 @@ vMatrixXd DHF_SPH::get_amfi_unc_2c(const int2eJK& h2eSSLL_SD, const int2eJK& h2e
         amfi_unc(ir) = x2cRRR(ir).transpose() * amfi_unc(ir) * x2cRRR(ir);
     }
 
+    X_calculated = true;
     return amfi_unc;
 }
 
@@ -1184,6 +1186,16 @@ vMatrixXd DHF_SPH::get_density()
 vVectorXd DHF_SPH::get_occNumber()
 {
     return occNumber;
+}
+vMatrixXd DHF_SPH::get_X()
+{
+    if(X_calculated)
+        return x2cXXX;
+    else
+    {
+        cout << "ERROR: get_X was called before X matrices calculated!" << endl;
+        exit(99);
+    }
 }
 /*
     Set private variable

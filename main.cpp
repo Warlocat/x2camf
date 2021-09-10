@@ -68,26 +68,32 @@ int main()
     if(amfiMethod[3])   method = method + "with Gaunt";
     cout << "amfi Method input: " << method << endl;
 
-    vector<MatrixXcd> amfiUnique;
+    vector<MatrixXcd> amfiUnique, XUnique;
     for(int ii = 0; ii < atomListUnique.size(); ii++)
     {
         INT_SPH intor(atomListUnique[ii],basisListUnique[ii]);
         if(amfiMethod[0])
         {
+            /* Average of configuration */
             DHF_SPH_CA scfer(intor, "ZMAT", amfiMethod[1], amfiMethod[2], amfiMethod[3],true);
             scfer.runSCF(amfiMethod[2]);
             amfiUnique.push_back(Rotate::unite_irrep(scfer.get_amfi_unc_ca(intor,amfiMethod[2]), intor.irrep_list));
+            XUnique.push_back(Rotate::unite_irrep(scfer.get_X(), intor.irrep_list));
         }
         else
         {
+            /* Fractional occupation */
             DHF_SPH scfer(intor, "ZMAT", amfiMethod[1], amfiMethod[2], amfiMethod[3],true);
             scfer.runSCF(amfiMethod[2]);
-            //amfiUnique.push_back(Rotate::unite_irrep(scfer.x2c2ePCC(),intor.irrep_list));
+            // amfiUnique.push_back(Rotate::unite_irrep(scfer.x2c2ePCC(),intor.irrep_list));
             amfiUnique.push_back(Rotate::unite_irrep(scfer.get_amfi_unc(intor,amfiMethod[2]), intor.irrep_list));
+            XUnique.push_back(Rotate::unite_irrep(scfer.get_X(), intor.irrep_list));
         }
         MatrixXcd tmp = Rotate::jspinor2cfour_interface_old(intor.irrep_list);
         amfiUnique[ii] = tmp.adjoint() * amfiUnique[ii] * tmp;
         amfiUnique[ii] = Rotate::separate2mCompact(amfiUnique[ii],intor.irrep_list);
+        XUnique[ii] = tmp.adjoint() * XUnique[ii] * tmp;
+        XUnique[ii] = Rotate::separate2mCompact(XUnique[ii],intor.irrep_list);
     }
 
     int sizeAll = 0, int_tmp = 0;
@@ -96,11 +102,13 @@ int main()
         sizeAll += amfiUnique[indexList[ii]].rows();
     }
     int sizeAll2 = sizeAll*sizeAll, sizeHalf = sizeAll/2;
-    F_INTERFACE::f_dcomplex amfiAll[sizeAll*sizeAll];
+    F_INTERFACE::f_dcomplex amfiAll[sizeAll*sizeAll], XAll[sizeAll*sizeAll];
     for(int ii = 0; ii < sizeAll2; ii++)
     {
         amfiAll[ii].dr = 0.0;
         amfiAll[ii].di = 0.0;
+        XAll[ii].dr = 0.0;
+        XAll[ii].di = 0.0;
     }
     for(int ii = 0; ii < atomList.size(); ii++)
     {
@@ -118,15 +126,29 @@ int main()
             amfiAll[(int_tmp+mm)*sizeAll + int_tmp+nn+sizeHalf].di = amfiUnique[indexList[ii]](size_tmp_half+nn,mm).imag();
             amfiAll[(int_tmp+mm+sizeHalf)*sizeAll + int_tmp+nn+sizeHalf].dr = amfiUnique[indexList[ii]](size_tmp_half+nn,size_tmp_half+mm).real();
             amfiAll[(int_tmp+mm+sizeHalf)*sizeAll + int_tmp+nn+sizeHalf].di = amfiUnique[indexList[ii]](size_tmp_half+nn,size_tmp_half+mm).imag();
+
+            XAll[(int_tmp+mm)*sizeAll + int_tmp+nn].dr = XUnique[indexList[ii]](nn,mm).real();
+            XAll[(int_tmp+mm)*sizeAll + int_tmp+nn].di = XUnique[indexList[ii]](nn,mm).imag();
+            XAll[(int_tmp+mm+sizeHalf)*sizeAll + int_tmp+nn].dr = XUnique[indexList[ii]](nn,size_tmp_half+mm).real();
+            XAll[(int_tmp+mm+sizeHalf)*sizeAll + int_tmp+nn].di = XUnique[indexList[ii]](nn,size_tmp_half+mm).imag();
+            XAll[(int_tmp+mm)*sizeAll + int_tmp+nn+sizeHalf].dr = XUnique[indexList[ii]](size_tmp_half+nn,mm).real();
+            XAll[(int_tmp+mm)*sizeAll + int_tmp+nn+sizeHalf].di = XUnique[indexList[ii]](size_tmp_half+nn,mm).imag();
+            XAll[(int_tmp+mm+sizeHalf)*sizeAll + int_tmp+nn+sizeHalf].dr = XUnique[indexList[ii]](size_tmp_half+nn,size_tmp_half+mm).real();
+            XAll[(int_tmp+mm+sizeHalf)*sizeAll + int_tmp+nn+sizeHalf].di = XUnique[indexList[ii]](size_tmp_half+nn,size_tmp_half+mm).imag();
         }
         int_tmp += amfiUnique[indexList[ii]].rows()/2;
     }
 
     int sizeAllReal = 2*sizeAll2;
+    // for(int ii = 0; ii < sizeAll2; ii++)
+    // {
+    //     amfiAll[ii].dr = 0.0;
+    //     amfiAll[ii].di = 0.0;
+    // }
     //F_INTERFACE::rfile_("X2CMFSOM_CFOUR",tmp,&sizeAllReal);
     //F_INTERFACE::prvecr_(tmp,&sizeAllReal);
     F_INTERFACE::wfile_("X2CMFSOM",(double*)amfiAll,&sizeAllReal);
-    //F_INTERFACE::prvecr_((double*)amfiAll,&sizeAllReal);
+    F_INTERFACE::wfile_("X2CATMXM",(double*)XAll,&sizeAllReal);
 
     
 

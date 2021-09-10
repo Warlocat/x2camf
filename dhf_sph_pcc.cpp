@@ -35,7 +35,6 @@ vMatrixXd DHF_SPH::x2c2ePCC(vMatrixXd* coeff2c)
         RRR(ir) = X2C::get_R(overlap_4c(ir),XXX(ir));
         densityCore_4c(ir) = evaluateDensity_spinor(coeff(ir), occNumberCore(ir), false);
         
-        // fock_4c_2e(ir) = fock_4c(ir) - h1e_4c(ir);
         h1e_x2c2e(ir) = X2C::transform_4c_2c(h1e_4c(ir), XXX(ir), RRR(ir));
         fock_x2c2e(ir) = X2C::transform_4c_2c(fock_4c(ir), XXX(ir), RRR(ir));
         if(coeff2c == NULL)
@@ -51,76 +50,17 @@ vMatrixXd DHF_SPH::x2c2ePCC(vMatrixXd* coeff2c)
         RRR_1e(ir) = X2C::get_R(overlap(ir),kinetic(ir),XXX_1e(ir));
         h1e_x2c1e(ir) = X2C::evaluate_h1e_x2c(overlap(ir),kinetic(ir),WWW(ir),Vnuc(ir),XXX_1e(ir),RRR_1e(ir));
     }    
-    
+
     for(int ir = 0; ir < occMax_irrep; ir++)
     {
         int size_nr = density_2c(ir).rows();
-        // evaluateFock_J(fock_4c_2e(ir),false,density,irrep_list(ir).size,ir);
-        // evaluateFock_J(JK_x2c2c(ir),true,density_2c,irrep_list(ir).size,ir);
         evaluateFock_2e(fock_4c_2e(ir),false,density,irrep_list(ir).size,ir);
         evaluateFock_2e(JK_x2c2c(ir),true,density_2c,irrep_list(ir).size,ir);
-        //evaluateFock_2e(fock_4c_2e(ir),false,densityCore_4c,irrep_list(ir).size,ir);
-        //evaluateFock_2e(JK_x2c2c(ir),true,densityCore_2c,irrep_list(ir).size,ir);
         fock_x2c2e_2e(ir) = X2C::transform_4c_2c(fock_4c_2e(ir), XXX(ir), RRR(ir));
-
-        density_pcc(ir).resize(size_nr,size_nr);
-        for(int ii = 0; ii < size_nr; ii++)
-        for(int jj = 0; jj < size_nr; jj++)
-        {
-            density_pcc(ir)(ii,jj) = density(ir)(ii,jj);
-        }
     }
     for(int ir = 0; ir < occMax_irrep; ir++)
     {  
-        fock_pcc(ir) = fock_x2c2e_2e(ir) - JK_x2c2c(ir) + h1e_x2c2e(ir) - h1e_x2c1e(ir);
-        // for(int ii = 0; ii < fock_pcc(ir).rows(); ii++)
-        // {
-        //     // if(abs(fock_pcc(ir)(ii,ii)) < 1e-3)
-        //     if(shell_list(irrep_list(ir).l).exp_a(ii) < 0.1)
-        //     {
-        //         cout << "Drop correction for # " << ii << " in " << ir << "'s irrep." <<  endl;
-        //         for(int jj = 0; jj < fock_pcc(ir).rows(); jj++)
-        //         {
-        //             fock_pcc(ir)(ii,jj) = 0.0;
-        //             fock_pcc(ir)(jj,ii) = 0.0;
-        //         }
-        //     }
-        // }
-        // fock_pcc(ir) = fock_4c_2e(ir).block(0,0,fock_4c_2e(ir).rows()/2,fock_4c_2e(ir).cols()/2) - JK_x2c2c(ir);
-        //fock_pcc(ir) = fock_4c_2e(ir).block(0,0,fock_4c_2e(ir).rows()/2,fock_4c_2e(ir).cols()/2) - JK_x2c2c(ir);
-        //fock_pcc(ir) = fock_x2c2e_2e(ir) - fock_4c_2e(ir).block(0,0,fock_4c_2e(ir).rows()/2,fock_4c_2e(ir).cols()/2);
-        //fock_pcc(ir) = JK_x2c2c(ir);
-        //fock_pcc(ir) = h1e_x2c1e(ir);
-
-	    //fock_pcc_mo(ir) = coeff_2c(ir).adjoint() * fock_pcc(ir) * coeff_2c(ir);
-        //cout << fock_pcc_mo(ir) << endl<< endl;
-        //for(int ii = 0; ii < fock_pcc_mo(ir).rows(); ii++)
-        //{
-        //    if(occNumberCore(ir).rows() > 0 && (ir == 0 || ir == 1))
-        //    {
-        //        if(abs(occNumberCore(ir)(ii)) < 1e-4)
-        //        {
-        //            for(int jj = 0; jj < fock_pcc_mo(ir).rows(); jj++)
-        //            for(int kk = 1; kk < fock_pcc_mo(ir).rows(); kk++)
-        //            {
-        //                fock_pcc_mo(ir)(kk,jj) = 0.0;
-        //                fock_pcc_mo(ir)(jj,kk) = 0.0;
-        //            }
-        //        }
-        //    }
-        //   else
-        //    {
-        //        for(int jj = 0; jj < fock_pcc_mo(ir).rows(); jj++)
-        //        for(int kk = 0; kk < fock_pcc_mo(ir).rows(); kk++)
-        //        {
-        //            fock_pcc_mo(ir)(kk,jj) = 0.0;
-        //            fock_pcc_mo(ir)(jj,kk) = 0.0;
-        //        }
-        //    }
-        // 
-        //}
-        //cout << fock_pcc_mo(ir) << endl<< endl;
-        //fock_pcc(ir) = coeff_2c(ir).adjoint().inverse() * fock_pcc_mo(ir) * coeff_2c(ir).inverse();
+        fock_pcc(ir) = fock_x2c2e_2e(ir) - JK_x2c2c(ir);// + h1e_x2c2e(ir) - h1e_x2c1e(ir);
     }
 
 
@@ -302,8 +242,78 @@ vMatrixXd DHF_SPH::x2c2ePCC_density()
 */
 void DHF_SPH::evaluateFock_2e(MatrixXd& fock, const bool& twoC, const vMatrixXd& den, const int& size, const int& Iirrep)
 {
-    evaluateFock(fock,twoC,den,size,Iirrep);
-    fock = fock - h1e_4c(Iirrep);
+    int ir = all2compact(Iirrep);
+    if(!twoC)
+    {
+        fock.resize(size*2,size*2);
+        #pragma omp parallel  for
+        for(int mm = 0; mm < size; mm++)
+        for(int nn = 0; nn <= mm; nn++)
+        {
+            fock(mm,nn) = 0.0;
+            fock(mm+size,nn) = 0.0;
+            if(mm != nn) fock(nn+size,mm) = 0.0;
+            fock(mm+size,nn+size) = 0.0;
+            for(int jr = 0; jr < occMax_irrep_compact; jr++)
+            {
+                int Jirrep = compact2all(jr);
+                double twojP1 = irrep_list(Jirrep).two_j+1;
+                int size_tmp2 = irrep_list(Jirrep).size;
+                for(int ss = 0; ss < size_tmp2; ss++)
+                for(int rr = 0; rr < size_tmp2; rr++)
+                {
+                    int emn = mm*size+nn, esr = ss*size_tmp2+rr, emr = mm*size_tmp2+rr, esn = ss*size+nn;
+                    fock(mm,nn) += twojP1*den(Jirrep)(ss,rr) * h2eLLLL_JK.J[ir][jr][emn][esr] + twojP1*den(Jirrep)(size_tmp2+ss,size_tmp2+rr) * h2eSSLL_JK.J[jr][ir][esr][emn];
+                    fock(mm+size,nn) -= twojP1*den(Jirrep)(ss,size_tmp2+rr) * h2eSSLL_JK.K[ir][jr][emr][esn];
+                    if(mm != nn) 
+                    {
+                        int enr = nn*size_tmp2+rr, esm = ss*size+mm;
+                        fock(nn+size,mm) -= twojP1*den(Jirrep)(ss,size_tmp2+rr) * h2eSSLL_JK.K[ir][jr][enr][esm];
+                    }
+                    fock(mm+size,nn+size) += twojP1*den(Jirrep)(size_tmp2+ss,size_tmp2+rr) * h2eSSSS_JK.J[ir][jr][emn][esr] + twojP1*den(Jirrep)(ss,rr) * h2eSSLL_JK.J[ir][jr][emn][esr];
+                    if(with_gaunt)
+                    {
+                        int enm = nn*size+mm, ers = rr*size_tmp2+ss, erm = rr*size+mm, ens = nn*size_tmp2+ss;
+                        fock(mm,nn) -= twojP1*den(Jirrep)(size_tmp2+ss,size_tmp2+rr) * gauntLSSL_JK.K[ir][jr][emr][esn];
+                        fock(mm+size,nn+size) -= twojP1*den(Jirrep)(ss,rr) * gauntLSSL_JK.K[jr][ir][esn][emr];
+                        fock(mm+size,nn) += twojP1*den(Jirrep)(size_tmp2+ss,rr)*gauntLSLS_JK.J[ir][jr][enm][ers] + twojP1*den(Jirrep)(ss,size_tmp2+rr) * gauntLSSL_JK.J[jr][ir][esr][emn];
+                        if(mm != nn) 
+                        {
+                            int ern = rr*size+nn, ems = mm*size_tmp2+ss;
+                            fock(nn+size,mm) += twojP1*den(Jirrep)(size_tmp2+ss,rr)*gauntLSLS_JK.J[ir][jr][emn][ers] + twojP1*den(Jirrep)(ss,size_tmp2+rr) * gauntLSSL_JK.J[jr][ir][esr][enm];
+                        }
+                    }
+                }
+            }
+            fock(nn,mm) = fock(mm,nn);
+            fock(nn+size,mm+size) = fock(mm+size,nn+size);
+            fock(nn,mm+size) = fock(mm+size,nn);
+            fock(mm,nn+size) = fock(nn+size,mm);
+        }
+    }
+    else
+    {
+        fock.resize(size,size);
+        #pragma omp parallel  for
+        for(int mm = 0; mm < size; mm++)
+        for(int nn = 0; nn <= mm; nn++)
+        {
+            fock(mm,nn) = 0.0;
+            for(int jr = 0; jr < occMax_irrep_compact; jr++)
+            {
+                int Jirrep = compact2all(jr);
+                double twojP1 = irrep_list(Jirrep).two_j+1;
+                int size_tmp2 = irrep_list(Jirrep).size;
+                for(int ss = 0; ss < size_tmp2; ss++)
+                for(int rr = 0; rr < size_tmp2; rr++)
+                {
+                    int emn = mm*size+nn, esr = ss*size_tmp2+rr, emr = mm*size_tmp2+rr, esn = ss*size+nn;
+                    fock(mm,nn) += twojP1*den(Jirrep)(ss,rr) * h2eLLLL_JK.J[ir][jr][emn][esr];
+                }
+            }
+            fock(nn,mm) = fock(mm,nn);
+        }
+    }
 }
 void DHF_SPH::evaluateFock_J(MatrixXd& fock, const bool& twoC, const vMatrixXd& den, const int& size, const int& Iirrep)
 {

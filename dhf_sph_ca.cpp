@@ -730,6 +730,7 @@ vMatrixXd DHF_SPH_CA::get_amfi_unc_ca_2c(const int2eJK& h2eSSLL_SD, const int2eJ
         amfi_unc(ir) = x2cRRR(ir).transpose() * amfi_unc(ir) * x2cRRR(ir);
     }
 
+    X_calculated = true;
     return amfi_unc;
 }
 

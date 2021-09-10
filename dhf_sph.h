@@ -20,7 +20,7 @@ protected:
     vVectorXd norm_s;
     vVectorXd occNumber, occNumberCore;
     double d_density, nelec;
-    bool converged = false, renormalizedSmall = false, with_gaunt = false;
+    bool converged = false, renormalizedSmall = false, with_gaunt = false, X_calculated = false;
     
     /* evaluate density martix */
     MatrixXd evaluateDensity_spinor(const MatrixXd& coeff_, const VectorXd& occNumber_, const bool& twoC = false);
@@ -74,6 +74,7 @@ public:
     vMatrixXd get_overlap_4c();
     vMatrixXd get_density();
     vVectorXd get_occNumber();
+    vMatrixXd get_X();
     void set_h1e_4c(const vMatrixXd& inputM);
 };
 
