@@ -75,6 +75,7 @@ public:
     vMatrixXd get_density();
     vVectorXd get_occNumber();
     vMatrixXd get_X();
+    vMatrixXd get_X_normalized();
     void set_h1e_4c(const vMatrixXd& inputM);
 };
 

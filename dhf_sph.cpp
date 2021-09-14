@@ -1197,6 +1197,36 @@ vMatrixXd DHF_SPH::get_X()
         exit(99);
     }
 }
+vMatrixXd DHF_SPH::get_X_normalized()
+{
+    /*
+        return X_tilde = CS_tilde CL_tilde^-1 = (T/2c2)^{1/2} XXX S^{-1/2}
+        where C_tilde = S^{1/2} C  
+    */   
+    if(X_calculated)
+    {
+        vMatrixXd X_tilde(occMax_irrep);
+        for(int ir = 0; ir < occMax_irrep; ir++)
+        {
+            int size = irrep_list(ir).size;
+            MatrixXd tmp1(size,size),tmp2(size,size);
+            for(int ii = 0; ii < size; ii++)
+            for(int jj = 0; jj < size; jj++)
+            {
+                tmp1(ii,jj) = overlap_half_i_4c(ir)(ii,jj);
+                tmp2(ii,jj) = overlap_half_i_4c(ir)(size+ii,size+jj);
+            }
+            tmp2 = tmp2.inverse();
+            X_tilde(ir) = tmp2*x2cXXX(ir)*tmp1;
+        }
+        return X_tilde;
+    }
+    else
+    {
+        cout << "ERROR: get_X was called before X matrices calculated!" << endl;
+        exit(99);
+    }
+}
 /*
     Set private variable
 */
