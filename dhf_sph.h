@@ -41,8 +41,12 @@ public:
 
     DHF_SPH(INT_SPH& int_sph_, const string& filename, const bool& spinFree = false, const bool& twoC = false, const bool& with_gaunt_ = false, const bool& allInt = false);
     virtual ~DHF_SPH();
-    virtual void runSCF(const bool& twoC = false, vMatrixXd* initialGuess = NULL);
+    
+    virtual void runSCF(const bool& twoC = false, const bool& renormSmall = true, vMatrixXd* initialGuess = NULL);
+
+    /* Renormalized small component s.t. the overlap is 1.0 */
     void renormalize_small();
+    void renormalize_h2e(int2eJK& h2e, const string& intType);
     /* Symmetrize h2e in J - K form */
     void symmetrize_h2e(const bool& twoC = false);
     void symmetrize_JK(int2eJK& h2e, const int& Ncompact);

@@ -322,6 +322,22 @@ int2eJK INT_SPH::get_h2e_JK_gaunt(const string& intType, const int& occMaxL) con
                             array_radial_J[tmp][e1J][e2J][index_tmp_p][index_tmp_q] -= 2.0*a2*lk3 * radial_2e_list_J[tmp](2,0);
                         array_radial_J[tmp][e1J][e2J][index_tmp_p][index_tmp_q] /= -1.0 * norm_J * 4.0 * pow(speedOfLight,2);
                     }
+                    else if(intType == "LSLS_SF")
+                    {
+                        
+                    }
+                    else if(intType == "LSSL_SF")
+                    {
+                        
+                    }
+                    else if(intType == "LSLS_SD")
+                    {
+                        
+                    }
+                    else if(intType == "LSSL_SD")
+                    {
+                        
+                    }
                     else
                     {
                         cout << "ERROR: Unkonwn intType in get_h2e_JK_gaunt." << endl;
@@ -351,6 +367,22 @@ int2eJK INT_SPH::get_h2e_JK_gaunt(const string& intType, const int& occMaxL) con
                             array_radial_K[tmp][e1K][e2K][index_tmp_p][index_tmp_q] += lk2*lk3 * radial_2e_list_K[tmp](3,0) 
                                     - 2.0*a3*lk2 * radial_2e_list_K[tmp](1,0) - 2.0*a2*lk3 * radial_2e_list_K[tmp](2,0);
                         array_radial_K[tmp][e1K][e2K][index_tmp_p][index_tmp_q] /= -1.0 * norm_K * 4.0 * pow(speedOfLight,2);
+                    }
+                    else if(intType == "LSLS_SF")
+                    {
+                        
+                    }
+                    else if(intType == "LSSL_SF")
+                    {
+                        
+                    }
+                    else if(intType == "LSLS_SD")
+                    {
+                        
+                    }
+                    else if(intType == "LSSL_SD")
+                    {
+                        
                     }
                     else
                     {

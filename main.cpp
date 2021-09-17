@@ -13,18 +13,19 @@
 using namespace Eigen;
 using namespace std;
 
-void readZMAT(const string& filename, vector<string>& atoms, vector<string>& basis, vector<bool>& amfiMethod);
+void readZMAT(const string& filename, vector<string>& atoms, vector<string>& basis, vector<bool>& amfiMethod, double& SCFconv);
 string removeSpaces(const string& flags);
 vector<string> splitSrting(const string& flags, const char& targetChar);
 
 int main()
 {
+    double amfiSCFconv = 1e-8;
     vector<bool> amfiMethod;
     vector<string> atomList, basisList;
     vector<string> atomListUnique, basisListUnique;
     vector<int> indexList;
     
-    readZMAT("ZMAT", atomList, basisList, amfiMethod);
+    readZMAT("ZMAT", atomList, basisList, amfiMethod, amfiSCFconv);
     // special treatment of PCVXZ and PWCVXZ basis
     for(int ii = 0; ii < basisList.size(); ii++)
     {
@@ -76,6 +77,7 @@ int main()
         {
             /* Average of configuration */
             DHF_SPH_CA scfer(intor, "ZMAT", amfiMethod[1], amfiMethod[2], amfiMethod[3],true);
+            scfer.convControl = amfiSCFconv;
             scfer.runSCF(amfiMethod[2]);
             amfiUnique.push_back(Rotate::unite_irrep(scfer.get_amfi_unc_ca(intor,amfiMethod[2]), intor.irrep_list));
             XUnique.push_back(Rotate::unite_irrep(scfer.get_X(), intor.irrep_list));
@@ -84,6 +86,7 @@ int main()
         {
             /* Fractional occupation */
             DHF_SPH scfer(intor, "ZMAT", amfiMethod[1], amfiMethod[2], amfiMethod[3],true);
+            scfer.convControl = amfiSCFconv;
             scfer.runSCF(amfiMethod[2]);
             // amfiUnique.push_back(Rotate::unite_irrep(scfer.x2c2ePCC(),intor.irrep_list));
             amfiUnique.push_back(Rotate::unite_irrep(scfer.get_amfi_unc(intor,amfiMethod[2]), intor.irrep_list));
@@ -117,7 +120,7 @@ int main()
         for(int nn = 0; nn < size_tmp_half; nn++)
         {
             // transpose for Fortran interface
-	        // separate alpha and beta
+            // separate alpha and beta
             amfiAll[(int_tmp+mm)*sizeAll + int_tmp+nn].dr = amfiUnique[indexList[ii]](nn,mm).real();
             amfiAll[(int_tmp+mm)*sizeAll + int_tmp+nn].di = amfiUnique[indexList[ii]](nn,mm).imag();
             amfiAll[(int_tmp+mm+sizeHalf)*sizeAll + int_tmp+nn].dr = amfiUnique[indexList[ii]](nn,size_tmp_half+mm).real();
@@ -140,11 +143,6 @@ int main()
     }
 
     int sizeAllReal = 2*sizeAll2;
-    // for(int ii = 0; ii < sizeAll2; ii++)
-    // {
-    //     amfiAll[ii].dr = 0.0;
-    //     amfiAll[ii].di = 0.0;
-    // }
     //F_INTERFACE::rfile_("X2CMFSOM_CFOUR",tmp,&sizeAllReal);
     //F_INTERFACE::prvecr_(tmp,&sizeAllReal);
     F_INTERFACE::wfile_("X2CMFSOM",(double*)amfiAll,&sizeAllReal);
@@ -157,7 +155,7 @@ int main()
 
 
 
-void readZMAT(const string& filename, vector<string>& atoms, vector<string>& basis, vector<bool>& amfiMethod)
+void readZMAT(const string& filename, vector<string>& atoms, vector<string>& basis, vector<bool>& amfiMethod, double& SCFconv)
 {
     bool readAtom = true, readBasis = true;
     ifstream ifs;
@@ -218,9 +216,9 @@ void readZMAT(const string& filename, vector<string>& atoms, vector<string>& bas
         while (!ifs.eof() && readBasis)
         {
             getline(ifs,flags);
-	    size_t found = flags.find(":");
+            size_t found = flags.find(":");
             if(found != string::npos)
-	    {
+            {
                 flags = removeSpaces(flags);
                 basis.push_back(flags);
                 for(int ii = 1; ii < atoms.size(); ii++)
@@ -229,8 +227,8 @@ void readZMAT(const string& filename, vector<string>& atoms, vector<string>& bas
                     flags = removeSpaces(flags);
                     basis.push_back(flags);
                 }
-		break;
-	    }
+                break;
+            }
         }
         while (!ifs.eof())
         {
@@ -249,6 +247,10 @@ void readZMAT(const string& filename, vector<string>& atoms, vector<string>& bas
                     amfiMethod.push_back(tmp);
                 }
                 break;
+            }
+            else if(flags == "%atmconv")
+            {
+                ifs >> SCFconv;
             }
         }
         if(amfiMethod.size() == 0)

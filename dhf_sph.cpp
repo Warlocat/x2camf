@@ -42,8 +42,6 @@ irrep_list(int_sph_.irrep_list), with_gaunt(with_gaunt_), shell_list(int_sph_.sh
         compact2all(tmp_i) = ir;
         tmp_i++;
     }
-    // cout << all2compact.transpose() << endl;
-    // cout << compact2all.transpose() << endl;
 
     nelec = 0.0;
     cout << "Occupation number vector:" << endl;
@@ -283,13 +281,18 @@ MatrixXd DHF_SPH::evaluateErrorDIIS(const MatrixXd& den_old, const MatrixXd& den
 /*
     SCF procedure for 4-c and 2-c calculation
 */
-void DHF_SPH::runSCF(const bool& twoC, vMatrixXd* initialGuess)
+void DHF_SPH::runSCF(const bool& twoC, const bool& renormSmall, vMatrixXd* initialGuess)
 {
+    if(renormSmall)
+    {
+        renormalize_small();
+    }
     vector<MatrixXd> error4DIIS[occMax_irrep], fock4DIIS[occMax_irrep];
     StartTime = clock();
     cout << endl;
     if(twoC) cout << "Start SFX2C-1e Hartree-Fock iterations..." << endl;
     else cout << "Start Dirac Hartree-Fock iterations..." << endl;
+    cout << "with SCF convergence = " << convControl << endl;
     cout << endl;
     vMatrixXd newDen;
     if(initialGuess == NULL)
@@ -443,6 +446,9 @@ void DHF_SPH::renormalize_small()
             norm_s(ii)(jj) = sqrt(kinetic(ii)(jj,jj) / 2.0 / speedOfLight / speedOfLight);
         }
     }
+    cout << "Renormalizing small component...." << endl;
+    cout << "overlap_4c, h1e_4c, overlap_half_i_4c," << endl
+            << "and all h2e will be renormalized." << endl << endl; 
     for(int ii = 0; ii < occMax_irrep; ii++)
     {
         int size_tmp = irrep_list(ii).size;
@@ -456,29 +462,91 @@ void DHF_SPH::renormalize_small()
         }
         overlap_half_i_4c(ii) = matrix_half_inverse(overlap_4c(ii));
     }
-    for(int ir = 0; ir < occMax_irrep; ir++)
-    for(int jr = 0; jr < occMax_irrep; jr++)
+    for(int ir = 0; ir < occMax_irrep_compact; ir++)
+    for(int jr = 0; jr < occMax_irrep_compact; jr++)
     {
-        int sizei = irrep_list(ir).size, sizej = irrep_list(jr).size;
+        int Iirrep = compact2all(ir), Jirrep = compact2all(jr);
+        int sizei = irrep_list(Iirrep).size, sizej = irrep_list(Jirrep).size;
         for(int ii = 0; ii < sizei*sizei; ii++)
         for(int jj = 0; jj < sizej*sizej; jj++)
         {
             int a = ii / sizei, b = ii - a * sizei, c = jj / sizej, d = jj - c * sizej;
-            h2eSSLL_JK.J[ir][jr][ii][jj] /= norm_s(ir)(a) * norm_s(ir)(b);
-            h2eSSSS_JK.J[ir][jr][ii][jj] /= norm_s(ir)(a) * norm_s(ir)(b) * norm_s(jr)(c) * norm_s(jr)(d);
+            h2eSSLL_JK.J[ir][jr][ii][jj] /= norm_s(Iirrep)(a) * norm_s(Iirrep)(b);
+            h2eSSSS_JK.J[ir][jr][ii][jj] /= norm_s(Iirrep)(a) * norm_s(Iirrep)(b) * norm_s(Jirrep)(c) * norm_s(Jirrep)(d);
         }
         for(int ii = 0; ii < sizei*sizej; ii++)
         for(int jj = 0; jj < sizej*sizei; jj++)
         {
             int a = ii / sizej, b = ii - a * sizej, c = jj / sizei, d = jj - c * sizei;
-            h2eSSLL_JK.K[ir][jr][ii][jj] /= norm_s(ir)(a) * norm_s(jr)(b);
-            h2eSSSS_JK.K[ir][jr][ii][jj] /= norm_s(ir)(a) * norm_s(jr)(b) * norm_s(jr)(c) * norm_s(ir)(d);
+            h2eSSLL_JK.K[ir][jr][ii][jj] /= norm_s(Iirrep)(a) * norm_s(Jirrep)(b);
+            h2eSSSS_JK.K[ir][jr][ii][jj] /= norm_s(Iirrep)(a) * norm_s(Jirrep)(b) * norm_s(Jirrep)(c) * norm_s(Iirrep)(d);
+        }
+        if(with_gaunt)
+        {
+            for(int ii = 0; ii < sizei*sizei; ii++)
+            for(int jj = 0; jj < sizej*sizej; jj++)
+            {
+                int a = ii / sizei, b = ii - a * sizei, c = jj / sizej, d = jj - c * sizej;
+                gauntLSLS_JK.J[ir][jr][ii][jj] /= norm_s(Iirrep)(b) * norm_s(Jirrep)(d);
+                gauntLSSL_JK.J[ir][jr][ii][jj] /= norm_s(Iirrep)(b) * norm_s(Jirrep)(c);
+            }
+            for(int ii = 0; ii < sizei*sizej; ii++)
+            for(int jj = 0; jj < sizej*sizei; jj++)
+            {
+                int a = ii / sizej, b = ii - a * sizej, c = jj / sizei, d = jj - c * sizei;
+                gauntLSLS_JK.K[ir][jr][ii][jj] /= norm_s(Jirrep)(b) * norm_s(Iirrep)(d);
+                gauntLSSL_JK.K[ir][jr][ii][jj] /= norm_s(Jirrep)(b) * norm_s(Jirrep)(c);
+            }
         }
     }
 
     renormalizedSmall = true;
 }
-
+void DHF_SPH::renormalize_h2e(int2eJK& h2eInput, const string& intType)
+{
+    for(int ir = 0; ir < occMax_irrep_compact; ir++)
+    for(int jr = 0; jr < occMax_irrep_compact; jr++)
+    {
+        int Iirrep = compact2all(ir), Jirrep = compact2all(jr);
+        int sizei = irrep_list(Iirrep).size, sizej = irrep_list(Jirrep).size;
+        for(int ii = 0; ii < sizei*sizei; ii++)
+        for(int jj = 0; jj < sizej*sizej; jj++)
+        {
+            int a = ii / sizei, b = ii - a * sizei, c = jj / sizej, d = jj - c * sizej;
+            if(intType == "SSLL")
+                h2eInput.J[ir][jr][ii][jj] /= norm_s(Iirrep)(a) * norm_s(Iirrep)(b);
+            else if(intType == "SSSS")
+                h2eInput.J[ir][jr][ii][jj] /= norm_s(Iirrep)(a) * norm_s(Iirrep)(b) * norm_s(Jirrep)(c) * norm_s(Jirrep)(d);
+            else if(intType == "LSLS")
+                h2eInput.J[ir][jr][ii][jj] /= norm_s(Iirrep)(b) * norm_s(Jirrep)(d);
+            else if(intType == "LSSL")
+                h2eInput.J[ir][jr][ii][jj] /= norm_s(Iirrep)(b) * norm_s(Jirrep)(c);
+            else
+            {
+                cout << "ERROR: Unkown intType in renormalize_h2e" << endl;
+                exit(99);
+            }
+        }
+        for(int ii = 0; ii < sizei*sizej; ii++)
+        for(int jj = 0; jj < sizej*sizei; jj++)
+        {
+            int a = ii / sizej, b = ii - a * sizej, c = jj / sizei, d = jj - c * sizei;
+            if(intType == "SSLL")
+                h2eInput.K[ir][jr][ii][jj] /= norm_s(Iirrep)(a) * norm_s(Jirrep)(b);
+            else if(intType == "SSSS")
+                h2eInput.K[ir][jr][ii][jj] /= norm_s(Iirrep)(a) * norm_s(Jirrep)(b) * norm_s(Jirrep)(c) * norm_s(Iirrep)(d);
+            else if(intType == "LSLS")
+                h2eInput.K[ir][jr][ii][jj] /= norm_s(Jirrep)(b) * norm_s(Iirrep)(d);
+            else if(intType == "LSSL")
+                h2eInput.K[ir][jr][ii][jj] /= norm_s(Jirrep)(b) * norm_s(Jirrep)(c);
+            else
+            {
+                cout << "ERROR: Unkown intType in renormalize_h2e" << endl;
+                exit(99);
+            }
+        }
+    }
+}
 
 /*
     Evaluate density matrix
@@ -808,12 +876,22 @@ vMatrixXd DHF_SPH::get_amfi_unc(INT_SPH& int_sph_, const bool& twoC, const strin
         StartTime = clock();
         int_sph_.get_h2e_JK_gaunt_direct(gauntLSLS_JK,gauntLSSL_JK);
         symmetrize_JK_gaunt(gauntLSLS_JK,Nirrep_compact);
+        if(renormalizedSmall)
+        {
+            renormalize_h2e(gauntLSLS_JK,"LSLS");
+            renormalize_h2e(gauntLSSL_JK,"LSSL");
+        }
         EndTime = clock();
         cout << "2e-integral-Gaunt finished in " << (EndTime - StartTime) / (double)CLOCKS_PER_SEC << " seconds." << endl << endl; 
     }
     int2eJK SSLL_SD, SSSS_SD;
     int_sph_.get_h2eSD_JK_direct(SSLL_SD, SSSS_SD);
     symmetrize_JK(SSSS_SD,Nirrep_compact);
+    if(renormalizedSmall)
+    {
+        renormalize_h2e(SSLL_SD,"SSLL");
+        renormalize_h2e(SSSS_SD,"SSSS");
+    }
     if(twoC)
     {
         return get_amfi_unc_2c(SSLL_SD, SSSS_SD, amfi_with_gaunt_real);
@@ -828,6 +906,11 @@ vMatrixXd DHF_SPH::get_amfi_unc(INT_SPH& int_sph_, const bool& twoC, const strin
             int_sph_.get_h2e_JK_direct(h2eLLLL_JK,h2eSSLL_JK,h2eSSSS_JK);
             symmetrize_JK(h2eLLLL_JK,Nirrep_compact);
             symmetrize_JK(h2eSSSS_JK,Nirrep_compact);
+            if(renormalizedSmall)
+            {
+                renormalize_h2e(h2eSSLL_JK,"SSLL");
+                renormalize_h2e(h2eSSSS_JK,"SSSS");
+            }
             EndTime = clock();
             cout << "Complete 2e-integral finished in " << (EndTime - StartTime) / (double)CLOCKS_PER_SEC << " seconds." << endl << endl; 
         }
@@ -842,11 +925,6 @@ vMatrixXd DHF_SPH::get_amfi_unc(const int2eJK& h2eSSLL_SD, const int2eJK& h2eSSS
         cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << endl;
         cout << "!!  WARNING: Dirac HF did NOT converge  !!" << endl;
         cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << endl;
-    }
-    if(renormalizedSmall)
-    {
-        cout << "ERROR: AMFI integrals cannot be calculated with renormalizedSmall." << endl;
-        exit(99);
     }
     vMatrixXd amfi_unc(Nirrep), h1e_4c_full(Nirrep), overlap_4c_full(Nirrep);
     /*

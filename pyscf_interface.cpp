@@ -84,7 +84,7 @@ int main()
         else
         {
             //DHF_SPH sfx2c1e(intor, "ZMAT", true, true, false, true);
-	    //sfx2c1e.runSCF(true);
+        //sfx2c1e.runSCF(true);
             DHF_SPH scfer(intor, "ZMAT", amfiMethod[1], amfiMethod[2], amfiMethod[3], true);
             scfer.runSCF(amfiMethod[2]);
             auto pcc_unc = scfer.x2c2ePCC();
@@ -262,9 +262,9 @@ void readZMAT(const string& filename, vector<string>& atoms, vector<string>& bas
         while (!ifs.eof() && readBasis)
         {
             getline(ifs,flags);
-	    size_t found = flags.find(":");
+        size_t found = flags.find(":");
             if(found != string::npos)
-	    {
+        {
                 flags = removeSpaces(flags);
                 basis.push_back(flags);
                 for(int ii = 1; ii < atoms.size(); ii++)
@@ -273,8 +273,8 @@ void readZMAT(const string& filename, vector<string>& atoms, vector<string>& bas
                     flags = removeSpaces(flags);
                     basis.push_back(flags);
                 }
-		break;
-	    }
+        break;
+        }
         }
         while (!ifs.eof())
         {

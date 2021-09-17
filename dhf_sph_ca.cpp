@@ -174,8 +174,12 @@ void DHF_SPH_CA::evaluateDensity_ca_irrep(vMatrixXd& den_c, vMatrixXd& den_o, co
 /*
     SCF procedure for 4-c and 2-c calculation
 */
-void DHF_SPH_CA::runSCF(const bool& twoC)
+void DHF_SPH_CA::runSCF(const bool& twoC, const bool& renormSmall)
 {
+    if(renormSmall)
+    {
+        renormalize_small();
+    }
     vector<MatrixXd> error4DIIS_c[occMax_irrep], fock4DIIS_c[occMax_irrep], error4DIIS_o[occMax_irrep], fock4DIIS_o[occMax_irrep];
     vMatrixXd coeff_c(occMax_irrep), coeff_o(occMax_irrep), fock_c(occMax_irrep), fock_o(occMax_irrep);
     StartTime = clock();
@@ -592,12 +596,22 @@ vMatrixXd DHF_SPH_CA::get_amfi_unc_ca(INT_SPH& int_sph_, const bool& twoC, const
         StartTime = clock();
         int_sph_.get_h2e_JK_gaunt_direct(gauntLSLS_JK,gauntLSSL_JK);
         symmetrize_JK_gaunt(gauntLSLS_JK,Nirrep_compact);
+        if(renormalizedSmall)
+        {
+            renormalize_h2e(gauntLSLS_JK,"LSLS");
+            renormalize_h2e(gauntLSSL_JK,"LSSL");
+        }
         EndTime = clock();
         cout << "2e-integral-Gaunt finished in " << (EndTime - StartTime) / (double)CLOCKS_PER_SEC << " seconds." << endl << endl; 
     }
     int2eJK SSLL_SD, SSSS_SD;
     int_sph_.get_h2eSD_JK_direct(SSLL_SD, SSSS_SD);
     symmetrize_JK(SSSS_SD,Nirrep_compact);
+    if(renormalizedSmall)
+    {
+        renormalize_h2e(SSLL_SD,"SSLL");
+        renormalize_h2e(SSSS_SD,"SSSS");
+    }
     if(twoC)
     {
         return get_amfi_unc_ca_2c(SSLL_SD, SSSS_SD, amfi_with_gaunt_real);
@@ -612,6 +626,11 @@ vMatrixXd DHF_SPH_CA::get_amfi_unc_ca(INT_SPH& int_sph_, const bool& twoC, const
             int_sph_.get_h2e_JK_direct(h2eLLLL_JK,h2eSSLL_JK,h2eSSSS_JK);
             symmetrize_JK(h2eLLLL_JK,Nirrep_compact);
             symmetrize_JK(h2eSSSS_JK,Nirrep_compact);
+            if(renormalizedSmall)
+            {
+                renormalize_h2e(h2eSSLL_JK,"SSLL");
+                renormalize_h2e(h2eSSSS_JK,"SSSS");
+            }
             EndTime = clock();
             cout << "Complete 2e-integral finished in " << (EndTime - StartTime) / (double)CLOCKS_PER_SEC << " seconds." << endl << endl; 
         }
