@@ -23,27 +23,57 @@ inline double INT_SPH::int2e_get_threeSH(const int& l1, const int& m1, const int
 
 double INT_SPH::int2e_get_angular_gaunt_LSLS(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& l3, const int& two_m3, const int& s3, const int& l4, const int& two_m4, const int& s4, const int& LL) const
 {
-    double angular = 0.0, tmpx = 0.0, tmpy = 0.0, tmpz = 0.0;
-    double threeJ_p_12 = wigner_3j_zeroM(l1,l2,LL+1), threeJ_m_12 = wigner_3j_zeroM(l1,l2,LL-1), threeJ_p_34 = wigner_3j_zeroM(l3,l4,LL+1), threeJ_m_34 = wigner_3j_zeroM(l3,l4,LL-1);
-    double y1a = s1*sqrt(l1+0.5+s1*two_m1/2.0), y1b = sqrt(l1+0.5-s1*two_m1/2.0), y2a = s2*sqrt(l2+0.5+s2*two_m2/2.0), y2b = sqrt(l2+0.5-s2*two_m2/2.0), y3a = s3*sqrt(l3+0.5+s3*two_m3/2.0), y3b = sqrt(l3+0.5-s3*two_m3/2.0), y4a = s4*sqrt(l4+0.5+s4*two_m4/2.0), y4b = sqrt(l4+0.5-s4*two_m4/2.0);
+    double angular = 0.0;
+    // double threeJ_p_12 = wigner_3j_zeroM(l1,l2,LL+1), threeJ_m_12 = wigner_3j_zeroM(l1,l2,LL-1), threeJ_p_34 = wigner_3j_zeroM(l3,l4,LL+1), threeJ_m_34 = wigner_3j_zeroM(l3,l4,LL-1);
+    // double y1a = s1*sqrt(l1+0.5+s1*two_m1/2.0), y1b = sqrt(l1+0.5-s1*two_m1/2.0), y2a = s2*sqrt(l2+0.5+s2*two_m2/2.0), y2b = sqrt(l2+0.5-s2*two_m2/2.0), y3a = s3*sqrt(l3+0.5+s3*two_m3/2.0), y3b = sqrt(l3+0.5-s3*two_m3/2.0), y4a = s4*sqrt(l4+0.5+s4*two_m4/2.0), y4b = sqrt(l4+0.5-s4*two_m4/2.0);
+    // for(int MM = -LL; MM <= LL; MM++)
+    // {
+    //     Vector3d v12 = int2e_get_angular_gaunt_ssp(l1,two_m1,s1,l2,two_m2,s2,LL,-MM, threeJ_p_12, threeJ_m_12), v34 = int2e_get_angular_gaunt_ssp(l3,two_m3,s3,l4,two_m4,s4,LL,MM, threeJ_p_34, threeJ_m_34);
+    //     angular += pow(-1, MM)*(v12(0)*v34(0) - v12(1)*v34(1) + v12(2)*v34(2));
+    // }
+    // return angular * 4.0*M_PI/(2.0*LL+1.0);
+
+    int l2p = l2+s2, l4p = l4+s4;
     for(int MM = -LL; MM <= LL; MM++)
     {
-        Vector3d v12 = int2e_get_angular_gaunt_ssp(l1,two_m1,s1,l2,two_m2,s2,LL,-MM, threeJ_p_12, threeJ_m_12), v34 = int2e_get_angular_gaunt_ssp(l3,two_m3,s3,l4,two_m4,s4,LL,MM, threeJ_p_34, threeJ_m_34);
-        angular += pow(-1, MM)*(v12(0)*v34(0) - v12(1)*v34(1) + v12(2)*v34(2));
+        double tmp1 = s1*sqrt(l1+0.5+s1*two_m1/2.0)*sqrt(l2p+0.5+s2*two_m2/2.0)*wigner_3j(l1,LL,l2p,(-two_m1+1)/2,-MM,(two_m2+1)/2);
+        double tmp2 = s2*sqrt(l1+0.5-s1*two_m1/2.0)*sqrt(l2p+0.5-s2*two_m2/2.0)*wigner_3j(l1,LL,l2p,(-two_m1-1)/2,-MM,(two_m2-1)/2);
+        double tmp3 = s3*sqrt(l3+0.5+s3*two_m3/2.0)*sqrt(l4p+0.5+s4*two_m4/2.0)*wigner_3j(l3,LL,l4p,(-two_m3+1)/2,MM,(two_m4+1)/2);
+        double tmp4 = s4*sqrt(l3+0.5-s3*two_m3/2.0)*sqrt(l4p+0.5-s4*two_m4/2.0)*wigner_3j(l3,LL,l4p,(-two_m3-1)/2,MM,(two_m4-1)/2);
+        double tmp5 = s1*s2*sqrt(l1+0.5+s1*two_m1/2.0)*sqrt(l2p+0.5-s2*two_m2/2.0)*wigner_3j(l1,LL,l2p,(-two_m1+1)/2,-MM,(two_m2-1)/2);
+        double tmp6 = sqrt(l1+0.5-s1*two_m1/2.0)*sqrt(l2p+0.5+s2*two_m2/2.0)*wigner_3j(l1,LL,l2p,(-two_m1-1)/2,-MM,(two_m2+1)/2);
+        double tmp7 = s3*s4*sqrt(l3+0.5+s3*two_m3/2.0)*sqrt(l4p+0.5-s4*two_m4/2.0)*wigner_3j(l3,LL,l4p,(-two_m3+1)/2,MM,(two_m4-1)/2);
+        double tmp8 = sqrt(l3+0.5-s3*two_m3/2.0)*sqrt(l4p+0.5+s4*two_m4/2.0)*wigner_3j(l3,LL,l4p,(-two_m3-1)/2,MM,(two_m4+1)/2);
+        angular += pow(-1,MM)*(2.0*tmp1*tmp4 + 2.0*tmp2*tmp3 + (-tmp5+tmp6)*(-tmp7+tmp8) );
     }
-    return angular * 4.0*M_PI/(2.0*LL+1.0);
+    return angular * pow(-1,(two_m1+two_m3)/2+1) * wigner_3j_zeroM(l1,LL,l2p)*wigner_3j_zeroM(l3,LL,l4p);
 }
 double INT_SPH::int2e_get_angular_gaunt_LSSL(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& l3, const int& two_m3, const int& s3, const int& l4, const int& two_m4, const int& s4, const int& LL) const
 {
-    double angular = 0.0, tmpx = 0.0, tmpy = 0.0, tmpz = 0.0;
-    double threeJ_p_12 = wigner_3j_zeroM(l1,l2,LL+1), threeJ_m_12 = wigner_3j_zeroM(l1,l2,LL-1), threeJ_p_34 = wigner_3j_zeroM(l3,l4,LL+1), threeJ_m_34 = wigner_3j_zeroM(l3,l4,LL-1);
-    double y1a = s1*sqrt(l1+0.5+s1*two_m1/2.0), y1b = sqrt(l1+0.5-s1*two_m1/2.0), y2a = s2*sqrt(l2+0.5+s2*two_m2/2.0), y2b = sqrt(l2+0.5-s2*two_m2/2.0), y3a = s3*sqrt(l3+0.5+s3*two_m3/2.0), y3b = sqrt(l3+0.5-s3*two_m3/2.0), y4a = s4*sqrt(l4+0.5+s4*two_m4/2.0), y4b = sqrt(l4+0.5-s4*two_m4/2.0);
+    double angular = 0.0;
+    // double threeJ_p_12 = wigner_3j_zeroM(l1,l2,LL+1), threeJ_m_12 = wigner_3j_zeroM(l1,l2,LL-1), threeJ_p_34 = wigner_3j_zeroM(l3,l4,LL+1), threeJ_m_34 = wigner_3j_zeroM(l3,l4,LL-1);
+    // double y1a = s1*sqrt(l1+0.5+s1*two_m1/2.0), y1b = sqrt(l1+0.5-s1*two_m1/2.0), y2a = s2*sqrt(l2+0.5+s2*two_m2/2.0), y2b = sqrt(l2+0.5-s2*two_m2/2.0), y3a = s3*sqrt(l3+0.5+s3*two_m3/2.0), y3b = sqrt(l3+0.5-s3*two_m3/2.0), y4a = s4*sqrt(l4+0.5+s4*two_m4/2.0), y4b = sqrt(l4+0.5-s4*two_m4/2.0);
+    // for(int MM = -LL; MM <= LL; MM++)
+    // {
+    //     Vector3d v12 = int2e_get_angular_gaunt_ssp(l1,two_m1,s1,l2,two_m2,s2,LL,-MM, threeJ_p_12, threeJ_m_12), v34 = int2e_get_angular_gaunt_sps(l3,two_m3,s3,l4,two_m4,s4,LL,MM, threeJ_p_34, threeJ_m_34);
+    //     angular += pow(-1, MM)*(v12(0)*v34(0) - v12(1)*v34(1) + v12(2)*v34(2));
+    // }
+    // return angular * 4.0*M_PI/(2.0*LL+1.0);
+
+    int l2p = l2+s2, l3p = l3+s3;
     for(int MM = -LL; MM <= LL; MM++)
     {
-        Vector3d v12 = int2e_get_angular_gaunt_ssp(l1,two_m1,s1,l2,two_m2,s2,LL,-MM, threeJ_p_12, threeJ_m_12), v34 = int2e_get_angular_gaunt_sps(l3,two_m3,s3,l4,two_m4,s4,LL,MM, threeJ_p_34, threeJ_m_34);
-        angular += pow(-1, MM)*(v12(0)*v34(0) - v12(1)*v34(1) + v12(2)*v34(2));
+        double tmp1 = s1*sqrt(l1+0.5+s1*two_m1/2.0)*sqrt(l2p+0.5+s2*two_m2/2.0)*wigner_3j(l1,LL,l2p,(-two_m1+1)/2,-MM,(two_m2+1)/2);
+        double tmp2 = s2*sqrt(l1+0.5-s1*two_m1/2.0)*sqrt(l2p+0.5-s2*two_m2/2.0)*wigner_3j(l1,LL,l2p,(-two_m1-1)/2,-MM,(two_m2-1)/2);
+        double tmp3 = s3*sqrt(l3p+0.5-s3*two_m3/2.0)*sqrt(l4+0.5-s4*two_m4/2.0)*wigner_3j(l3p,LL,l4,(-two_m3+1)/2,MM,(two_m4+1)/2);
+        double tmp4 = s4*sqrt(l3p+0.5+s3*two_m3/2.0)*sqrt(l4+0.5+s4*two_m4/2.0)*wigner_3j(l3p,LL,l4,(-two_m3-1)/2,MM,(two_m4-1)/2);
+        double tmp5 = s1*s2*sqrt(l1+0.5+s1*two_m1/2.0)*sqrt(l2p+0.5-s2*two_m2/2.0)*wigner_3j(l1,LL,l2p,(-two_m1+1)/2,-MM,(two_m2-1)/2);
+        double tmp6 = sqrt(l1+0.5-s1*two_m1/2.0)*sqrt(l2p+0.5+s2*two_m2/2.0)*wigner_3j(l1,LL,l2p,(-two_m1-1)/2,-MM,(two_m2+1)/2);
+        double tmp7 = s3*s4*sqrt(l3p+0.5-s3*two_m3/2.0)*sqrt(l4+0.5+s4*two_m4/2.0)*wigner_3j(l3p,LL,l4,(-two_m3+1)/2,MM,(two_m4-1)/2);
+        double tmp8 = sqrt(l3p+0.5+s3*two_m3/2.0)*sqrt(l4+0.5-s4*two_m4/2.0)*wigner_3j(l3p,LL,l4,(-two_m3-1)/2,MM,(two_m4+1)/2);
+        angular += pow(-1,MM)*(2.0*tmp1*tmp4 + 2.0*tmp2*tmp3 + (-tmp5+tmp6)*(tmp7-tmp8) );
     }
-    return angular * 4.0*M_PI/(2.0*LL+1.0);
+    return angular * pow(-1,(two_m1+two_m3)/2) * wigner_3j_zeroM(l1,LL,l2p)*wigner_3j_zeroM(l3p,LL,l4);
 }
 Vector3d INT_SPH::int2e_get_angular_gaunt_ssp(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& LL, const int& MM, const double& threeJ_p_12, const double& threeJ_m_12) const
 {

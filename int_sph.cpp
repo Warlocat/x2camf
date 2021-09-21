@@ -357,21 +357,42 @@ double INT_SPH::int2e_get_angular(const int& l1, const int& two_m1, const int& s
 {
     if((l1+l2+LL)%2 || (l3+l4+LL)%2) return 0.0;
 
+    int two_j1 = 2*l1 + s1;
+    int two_j2 = 2*l2 + s2;
+    int two_j3 = 2*l3 + s3;
+    int two_j4 = 2*l4 + s4;
     double angular = 0.0;
     for(int mm = -LL; mm <= LL; mm++)
     {
         if(two_m2 - two_m1 - 2*mm != 0 || two_m4 - two_m3 + 2*mm != 0) continue;
         else
         {
-            angular += pow(-1, mm) 
-            * (pow(-1,(two_m1-1)/2)*s1*s2*sqrt((l1+0.5+s1*two_m1/2.0)*(l2+0.5+s2*two_m2/2.0))*wigner_3j(l1,l2,LL,(1-two_m1)/2,(two_m2-1)/2,-mm)
-            + pow(-1,(two_m1+1)/2)*sqrt((l1+0.5-s1*two_m1/2.0)*(l2+0.5-s2*two_m2/2.0))*wigner_3j(l1,l2,LL,(-1-two_m1)/2,(two_m2+1)/2,-mm)) 
-            * (pow(-1,(two_m3-1)/2)*s3*s4*sqrt((l3+0.5+s3*two_m3/2.0)*(l4+0.5+s4*two_m4/2.0))*wigner_3j(l3,l4,LL,(1-two_m3)/2,(two_m4-1)/2,mm)
-            + pow(-1,(two_m3+1)/2)*sqrt((l3+0.5-s3*two_m3/2.0)*(l4+0.5-s4*two_m4/2.0))*wigner_3j(l3,l4,LL,(-1-two_m3)/2,(two_m4+1)/2,mm));
+            angular += pow(-1, mm) * gsl_sf_coupling_3j(two_j1,2*LL,two_j2,-two_m1,-2*mm,two_m2)
+                                   * gsl_sf_coupling_3j(two_j3,2*LL,two_j4,-two_m3, 2*mm,two_m4);
         }
     }
 
-    return angular * wigner_3j_zeroM(l1, l2, LL) * wigner_3j_zeroM(l3, l4, LL);
+    return pow(-1.0,two_j1+two_j3-(two_m1+two_m3)/2-1) * angular
+            * sqrt((two_j1+1.0)*(two_j2+1.0)*(two_j3+1.0)*(two_j4+1.0))
+            * gsl_sf_coupling_3j(two_j1,2*LL,two_j2,1,0,-1)
+            * gsl_sf_coupling_3j(two_j3,2*LL,two_j4,1,0,-1);
+
+
+    // double angular = 0.0;
+    // for(int mm = -LL; mm <= LL; mm++)
+    // {
+    //     if(two_m2 - two_m1 - 2*mm != 0 || two_m4 - two_m3 + 2*mm != 0) continue;
+    //     else
+    //     {
+    //         angular += pow(-1, mm) 
+    //         * (pow(-1,(two_m1-1)/2)*s1*s2*sqrt((l1+0.5+s1*two_m1/2.0)*(l2+0.5+s2*two_m2/2.0))*wigner_3j(l1,l2,LL,(1-two_m1)/2,(two_m2-1)/2,-mm)
+    //         + pow(-1,(two_m1+1)/2)*sqrt((l1+0.5-s1*two_m1/2.0)*(l2+0.5-s2*two_m2/2.0))*wigner_3j(l1,l2,LL,(-1-two_m1)/2,(two_m2+1)/2,-mm)) 
+    //         * (pow(-1,(two_m3-1)/2)*s3*s4*sqrt((l3+0.5+s3*two_m3/2.0)*(l4+0.5+s4*two_m4/2.0))*wigner_3j(l3,l4,LL,(1-two_m3)/2,(two_m4-1)/2,mm)
+    //         + pow(-1,(two_m3+1)/2)*sqrt((l3+0.5-s3*two_m3/2.0)*(l4+0.5-s4*two_m4/2.0))*wigner_3j(l3,l4,LL,(-1-two_m3)/2,(two_m4+1)/2,mm));
+    //     }
+    // }
+
+    // return angular * wigner_3j_zeroM(l1, l2, LL) * wigner_3j_zeroM(l3, l4, LL);
 }
 double INT_SPH::int2e_get_angular_J(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& LL) const
 {

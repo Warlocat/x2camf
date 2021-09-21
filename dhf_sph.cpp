@@ -606,9 +606,19 @@ void DHF_SPH::evaluateFock(MatrixXd& fock, const bool& twoC, const vMatrixXd& de
     {
         fock.resize(size*2,size*2);
         #pragma omp parallel  for
-        for(int mm = 0; mm < size; mm++)
-        for(int nn = 0; nn <= mm; nn++)
+        for(int NN = 0; NN < size*(size+1)/2; NN++)
         {
+            int tmp_i = int(sqrt(NN*2.0)), mm, nn;
+            if(tmp_i *(tmp_i + 1) / 2 > NN)
+            {
+                mm = tmp_i - 1;
+            }
+            else
+            {
+                mm = tmp_i;
+            }
+            nn = NN - mm*(mm+1)/2;
+            
             fock(mm,nn) = h1e_4c(Iirrep)(mm,nn);
             fock(mm+size,nn) = h1e_4c(Iirrep)(mm+size,nn);
             if(mm != nn) fock(nn+size,mm) = h1e_4c(Iirrep)(nn+size,mm);
@@ -654,9 +664,18 @@ void DHF_SPH::evaluateFock(MatrixXd& fock, const bool& twoC, const vMatrixXd& de
     {
         fock.resize(size,size);
         #pragma omp parallel  for
-        for(int mm = 0; mm < size; mm++)
-        for(int nn = 0; nn <= mm; nn++)
+        for(int NN = 0; NN < size*(size+1)/2; NN++)
         {
+            int tmp_i = int(sqrt(NN*2.0)), mm, nn;
+            if(tmp_i *(tmp_i + 1) / 2 > NN)
+            {
+                mm = tmp_i - 1;
+            }
+            else
+            {
+                mm = tmp_i;
+            }
+            nn = NN - mm*(mm+1)/2;
             fock(mm,nn) = h1e_4c(Iirrep)(mm,nn);
             for(int jr = 0; jr < occMax_irrep_compact; jr++)
             {
