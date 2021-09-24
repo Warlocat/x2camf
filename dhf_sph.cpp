@@ -95,7 +95,13 @@ irrep_list(int_sph_.irrep_list), with_gaunt(with_gaunt_), shell_list(int_sph_.sh
     {
         StartTime = clock();
         //Always calculate all Gaunt integrals for amfi integrals
-        int_sph_.get_h2e_JK_gaunt_direct(gauntLSLS_JK,gauntLSSL_JK);
+        if(spinFree)
+        {
+            gauntLSLS_JK = int_sph_.get_h2e_JK_gauntSF_compact("LSLS");
+            gauntLSSL_JK = int_sph_.get_h2e_JK_gauntSF_compact("LSSL");
+        }
+        else
+            int_sph_.get_h2e_JK_gaunt_direct(gauntLSLS_JK,gauntLSSL_JK);
         EndTime = clock();
         cout << "2e-integral-Gaunt finished in " << (EndTime - StartTime) / (double)CLOCKS_PER_SEC << " seconds." << endl << endl; 
     }

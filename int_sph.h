@@ -31,9 +31,29 @@ protected:
     double int2e_get_angular_J(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& LL) const;
     double int2e_get_angular_gaunt_LSLS(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& l3, const int& two_m3, const int& s3, const int& l4, const int& two_m4, const int& s4, const int& LL) const;
     double int2e_get_angular_gaunt_LSSL(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& l3, const int& two_m3, const int& s3, const int& l4, const int& two_m4, const int& s4, const int& LL) const;
-    double int2e_get_threeSH(const int& l1, const int& m1, const int& l2, const int& m2, const int& l3, const int& m3, const double& threeJ) const;
-    Vector3d int2e_get_angular_gaunt_ssp(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& LL, const int& MM, const double& threeJ_p_12, const double& threeJ_m_12) const;
-    Vector3d int2e_get_angular_gaunt_sps(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& LL, const int& MM, const double& threeJ_p_12, const double& threeJ_m_12) const;
+    void int2e_get_angular_gauntSF_LSLS(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& l3, const int& two_m3, const int& s3, const int& l4, const int& two_m4, const int& s4, const int& LL, double& lsls11, double& lsls12, double& lsls21, double& lsls22);
+    void int2e_get_angular_gauntSF_LSSL(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& l3, const int& two_m3, const int& s3, const int& l4, const int& two_m4, const int& s4, const int& LL, double& lssl11, double& lssl12, double& lssl21, double& lssl22);
+    double int2e_get_angular_gauntSF_p1_LS(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& LL, const int& MM) const;
+    double int2e_get_angular_gauntSF_p2_LS(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& LL, const int& MM) const;
+    double int2e_get_angular_gauntSF_m1_LS(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& LL, const int& MM) const;
+    double int2e_get_angular_gauntSF_m2_LS(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& LL, const int& MM) const;
+    double int2e_get_angular_gauntSF_z1_LS(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& LL, const int& MM) const;
+    double int2e_get_angular_gauntSF_z2_LS(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& LL, const int& MM) const;
+    double int2e_get_angular_gauntSF_p1_SL(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& LL, const int& MM) const;
+    double int2e_get_angular_gauntSF_p2_SL(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& LL, const int& MM) const;
+    double int2e_get_angular_gauntSF_m1_SL(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& LL, const int& MM) const;
+    double int2e_get_angular_gauntSF_m2_SL(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& LL, const int& MM) const;
+    double int2e_get_angular_gauntSF_z1_SL(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& LL, const int& MM) const;
+    double int2e_get_angular_gauntSF_z2_SL(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& LL, const int& MM) const;
+
+    inline double int2e_get_threeSH(const int& l1, const int& m1, const int& l2, const int& m2, const int& l3, const int& m3, const double& threeJ) const;
+    inline double factor_p1(const int& l, const int& m) const;
+    inline double factor_p2(const int& l, const int& m) const;
+    inline double factor_m1(const int& l, const int& m) const;
+    inline double factor_m2(const int& l, const int& m) const;
+    inline double factor_z1(const int& l, const int& m) const;
+    inline double factor_z2(const int& l, const int& m) const;
+    
 
 public:
     Matrix<intShell, Dynamic, 1> shell_list;
@@ -55,6 +75,7 @@ public:
     void get_h2eSD_JK_direct(int2eJK& SSLL, int2eJK& SSSS, const int& occMaxL = -1);
     int2eJK get_h2e_JK_gaunt(const string& intType, const int& occMaxL = -1) const;
     int2eJK get_h2e_JK_gaunt_compact(const string& intType, const int& occMaxL = -1) const;
+    int2eJK get_h2e_JK_gauntSF_compact(const string& intType, const int& occMaxL = -1);
     void get_h2e_JK_gaunt_direct(int2eJK& LSLS, int2eJK& LSSL, const int& occMaxL = -1, const bool& spinFree = false);
     void get_h2eSD_JK_gaunt_direct(int2eJK& LSLS, int2eJK& LSSL, const int& occMaxL = -1);
     
