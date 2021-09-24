@@ -16,30 +16,37 @@ using namespace Eigen;
 */
 inline double INT_SPH::int2e_get_threeSH(const int& l1, const int& m1, const int& l2, const int& m2, const int& l3, const int& m3, const double& threeJ) const
 {
+    // return pow(-1,m1)*threeJ*wigner_3j(l1,l2,l3,-m1,m2,m3);
     return pow(-1,m1)*threeJ*wigner_3j(l1,l2,l3,-m1,m2,m3)*sqrt((2.0*l1+1.0)*(2.0*l3+1.0));
 }
 inline double INT_SPH::factor_p1(const int& l, const int& m) const
 {
+    // return sqrt((l-m)*(l-m-1.0));
     return sqrt((l-m)*(l-m-1.0)/(2.0*l+1.0)/(2.0*l-1.0));
 }
 inline double INT_SPH::factor_p2(const int& l, const int& m) const
 {
+    // return -sqrt((l+m+1.0)*(l+m+2.0));
     return -sqrt((l+m+1.0)*(l+m+2.0)/(2.0*l+1.0)/(2.0*l+3.0));
 }
 inline double INT_SPH::factor_m1(const int& l, const int& m) const
 {
+    // return -sqrt((l+m)*(l+m-1.0));
     return -sqrt((l+m)*(l+m-1.0)/(2.0*l+1.0)/(2.0*l-1.0));
 }
 inline double INT_SPH::factor_m2(const int& l, const int& m) const
 {
+    // return sqrt((l-m+1.0)*(l-m+2.0));
     return sqrt((l-m+1.0)*(l-m+2.0)/(2.0*l+1.0)/(2.0*l+3.0));
 }
 inline double INT_SPH::factor_z1(const int& l, const int& m) const
 {
+    // return sqrt((l+m)*(l-m));
     return sqrt((l+m)*(l-m)/(2.0*l+1.0)/(2.0*l-1.0));
 }
 inline double INT_SPH::factor_z2(const int& l, const int& m) const
 {
+    // return sqrt((l+m+1.0)*(l-m+1.0));
     return sqrt((l+m+1.0)*(l-m+1.0)/(2.0*l+1.0)/(2.0*l+3.0));
 }
 double INT_SPH::int2e_get_angular_gaunt_LSLS(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& l3, const int& two_m3, const int& s3, const int& l4, const int& two_m4, const int& s4, const int& LL) const
@@ -84,211 +91,136 @@ double INT_SPH::int2e_get_angular_gaunt_LSSL(const int& l1, const int& two_m1, c
 */
 double INT_SPH::int2e_get_angular_gauntSF_p1_LS(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& LL, const int& MM) const
 {
-    // if(l2 == 0) return 0.0;
-    // else
-    // {
-        // double tmp = s1*s2*sqrt((l1+0.5+s1*two_m1/2.0)*(l2+0.5+s2*two_m2/2.0)*(l2-two_m2/2.0+0.5)*(l2-two_m2/2.0-0.5))*wigner_3j(l1,LL,l2-1,(-two_m1+1)/2,MM,(two_m2+1)/2);
-        // if(abs((two_m2+3)/2) <= l2-1)
-        //     tmp -= sqrt((l1+0.5-s1*two_m1/2.0)*(l2+0.5-s2*two_m2/2.0)*(l2-two_m2/2.0-0.5)*(l2-two_m2/2.0-1.5))*wigner_3j(l1,LL,l2-1,(-two_m1-1)/2,MM,(two_m2+3)/2);
-        // return pow(-1,(two_m1-1)/2)/sqrt((2.0*l2+1.0)*(2.0*l2-1.0))*wigner_3j_zeroM(l1,LL,l2-1)*tmp;
-        double threeJ = wigner_3j_zeroM(l1,LL,l2-1);
-        double tmp = 0.0;
-        if(abs((two_m2+1)/2) <= l2-1)
-            tmp += s1*s2*sqrt((l1+0.5+s1*two_m1/2.0)*(l2+0.5+s2*two_m2/2.0))*factor_p1(l2,(two_m2-1)/2)*int2e_get_threeSH(l1,(two_m1-1)/2,LL,MM,l2-1,(two_m2+1)/2,threeJ);
-        if(abs((two_m2+3)/2) <= l2-1)
-            tmp += sqrt((l1+0.5-s1*two_m1/2.0)*(l2+0.5-s2*two_m2/2.0))*factor_p1(l2,(two_m2+1)/2)*int2e_get_threeSH(l1,(two_m1+1)/2,LL,MM,l2-1,(two_m2+3)/2,threeJ);
-        return tmp/sqrt((2.0*l1+1.0)*(2.0*l2+1.0));
-    // } 
+    double threeJ = wigner_3j_zeroM(l1,LL,l2-1);
+    double tmp = 0.0;
+    if(abs((two_m2+1)/2) <= l2-1)
+        tmp += s1*s2*sqrt((l1+0.5+s1*two_m1/2.0)*(l2+0.5+s2*two_m2/2.0))*factor_p1(l2,(two_m2-1)/2)*int2e_get_threeSH(l1,(two_m1-1)/2,LL,MM,l2-1,(two_m2+1)/2,threeJ);
+    if(abs((two_m2+3)/2) <= l2-1)
+        tmp += sqrt((l1+0.5-s1*two_m1/2.0)*(l2+0.5-s2*two_m2/2.0))*factor_p1(l2,(two_m2+1)/2)*int2e_get_threeSH(l1,(two_m1+1)/2,LL,MM,l2-1,(two_m2+3)/2,threeJ);
+    // return tmp/(2.0*l2+1.0);
+    return tmp/sqrt((2.0*l1+1.0)*(2.0*l2+1.0));
 }
 double INT_SPH::int2e_get_angular_gauntSF_p2_LS(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& LL, const int& MM) const
 {
-    // if(abs((two_m2+1)/2) > l2+1) return 0.0;
-    // else
-    // {
-        // double tmp = s1*s2*sqrt((l1+0.5+s1*two_m1/2.0)*(l2+0.5+s2*two_m2/2.0)*(l2+two_m2/2.0+0.5)*(l2+two_m2/2.0+1.5))*wigner_3j(l1,LL,l2+1,(-two_m1+1)/2,MM,(two_m2+1)/2);
-        // if(abs((two_m2+3)/2) <= l2+1)
-        //     tmp -= sqrt((l1+0.5-s1*two_m1/2.0)*(l2+0.5-s2*two_m2/2.0)*(l2+two_m2/2.0+1.5)*(l2+two_m2/2.0+2.5))*wigner_3j(l1,LL,l2+1,(-two_m1-1)/2,MM,(two_m2+3)/2);
-        // return pow(-1,(two_m1+1)/2)/sqrt((2.0*l2+1.0)*(2.0*l2+3.0))*wigner_3j_zeroM(l1,LL,l2+1)*tmp;
-        double threeJ = wigner_3j_zeroM(l1,LL,l2+1);
-        double tmp = 0.0;
-        if(abs((two_m2+1)/2) <= l2+1)
-            tmp = s1*s2*sqrt((l1+0.5+s1*two_m1/2.0)*(l2+0.5+s2*two_m2/2.0))*factor_p2(l2,(two_m2-1)/2)*int2e_get_threeSH(l1,(two_m1-1)/2,LL,MM,l2+1,(two_m2+1)/2,threeJ);
-        if(abs((two_m2+3)/2) <= l2+1)
-            tmp += sqrt((l1+0.5-s1*two_m1/2.0)*(l2+0.5-s2*two_m2/2.0))*factor_p2(l2,(two_m2+1)/2)*int2e_get_threeSH(l1,(two_m1+1)/2,LL,MM,l2+1,(two_m2+3)/2,threeJ);
-        return tmp/sqrt((2.0*l1+1.0)*(2.0*l2+1.0));
-    // } 
+    double threeJ = wigner_3j_zeroM(l1,LL,l2+1);
+    double tmp = 0.0;
+    if(abs((two_m2+1)/2) <= l2+1)
+        tmp += s1*s2*sqrt((l1+0.5+s1*two_m1/2.0)*(l2+0.5+s2*two_m2/2.0))*factor_p2(l2,(two_m2-1)/2)*int2e_get_threeSH(l1,(two_m1-1)/2,LL,MM,l2+1,(two_m2+1)/2,threeJ);
+    if(abs((two_m2+3)/2) <= l2+1)
+        tmp += sqrt((l1+0.5-s1*two_m1/2.0)*(l2+0.5-s2*two_m2/2.0))*factor_p2(l2,(two_m2+1)/2)*int2e_get_threeSH(l1,(two_m1+1)/2,LL,MM,l2+1,(two_m2+3)/2,threeJ);
+    // return tmp/(2.0*l2+1.0);
+    return tmp/sqrt((2.0*l1+1.0)*(2.0*l2+1.0));
 }
 double INT_SPH::int2e_get_angular_gauntSF_m1_LS(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& LL, const int& MM) const
 {
-    if(l2 == 0 || (abs((two_m2-1)/2) > l2-1)) return 0.0;
-    else
-    {
-        // double tmp = -sqrt((l1+0.5-s1*two_m1/2.0)*(l2+0.5-s2*two_m2/2.0)*(l2+two_m2/2.0+0.5)*(l2+two_m2/2.0-0.5))*wigner_3j(l1,LL,l2-1,(-two_m1-1)/2,MM,(two_m2-1)/2);
-        // if(abs((two_m2-3)/2) <= l2-1)
-        //     tmp += s1*s2*sqrt((l1+0.5+s1*two_m1/2.0)*(l2+0.5+s2*two_m2/2.0)*(l2+two_m2/2.0-0.5)*(l2+two_m2/2.0-1.5))*wigner_3j(l1,LL,l2-1,(-two_m1+1)/2,MM,(two_m2-3)/2);
-        // return pow(-1,(two_m1+1)/2)/sqrt((2.0*l2+1.0)*(2.0*l2-1.0))*wigner_3j_zeroM(l1,LL,l2-1)*tmp;
-        double threeJ = wigner_3j_zeroM(l1,LL,l2-1);
-        double tmp = sqrt((l1+0.5-s1*two_m1/2.0)*(l2+0.5-s2*two_m2/2.0))*factor_m1(l2,(two_m2+1)/2)*int2e_get_threeSH(l1,(two_m1+1)/2,LL,MM,l2-1,(two_m2-1)/2,threeJ);
-        // if(abs((two_m2-3)/2) <= l2-1)
-            tmp += s1*s2*sqrt((l1+0.5+s1*two_m1/2.0)*(l2+0.5+s2*two_m2/2.0))*factor_m1(l2,(two_m2-1)/2)*int2e_get_threeSH(l1,(two_m1-1)/2,LL,MM,l2-1,(two_m2-3)/2,threeJ);
-        return tmp/sqrt((2.0*l1+1.0)*(2.0*l2+1.0));
-    } 
+    double threeJ = wigner_3j_zeroM(l1,LL,l2-1);
+    double tmp = 0.0;
+    if(abs((two_m2-3)/2) <= l2-1)
+        tmp += s1*s2*sqrt((l1+0.5+s1*two_m1/2.0)*(l2+0.5+s2*two_m2/2.0))*factor_m1(l2,(two_m2-1)/2)*int2e_get_threeSH(l1,(two_m1-1)/2,LL,MM,l2-1,(two_m2-3)/2,threeJ);
+    if(abs((two_m2-1)/2) <= l2-1)
+        tmp += sqrt((l1+0.5-s1*two_m1/2.0)*(l2+0.5-s2*two_m2/2.0))*factor_m1(l2,(two_m2+1)/2)*int2e_get_threeSH(l1,(two_m1+1)/2,LL,MM,l2-1,(two_m2-1)/2,threeJ);
+    // return tmp/(2.0*l2+1.0);
+    return tmp/sqrt((2.0*l1+1.0)*(2.0*l2+1.0));
 }
 double INT_SPH::int2e_get_angular_gauntSF_m2_LS(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& LL, const int& MM) const
 {
-    // if(abs((two_m2-1)/2) > l2+1) return 0.0;
-    // else
-    // {
-        // double tmp = -sqrt((l1+0.5-s1*two_m1/2.0)*(l2+0.5-s2*two_m2/2.0)*(l2-two_m2/2.0+0.5)*(l2-two_m2/2.0+1.5))*wigner_3j(l1,LL,l2+1,(-two_m1-1)/2,MM,(two_m2-1)/2);
-        // if(abs((two_m2-3)/2) <= l2+1)
-        //     tmp += s1*s2*sqrt((l1+0.5+s1*two_m1/2.0)*(l2+0.5+s2*two_m2/2.0)*(l2-two_m2/2.0+1.5)*(l2-two_m2/2.0+2.5))*wigner_3j(l1,LL,l2+1,(-two_m1+1)/2,MM,(two_m2-3)/2);
-        // return pow(-1,(two_m1-1)/2)/sqrt((2.0*l2+1.0)*(2.0*l2+3.0))*wigner_3j_zeroM(l1,LL,l2+1)*tmp;
-        double threeJ = wigner_3j_zeroM(l1,LL,l2+1);
-        double tmp = sqrt((l1+0.5-s1*two_m1/2.0)*(l2+0.5-s2*two_m2/2.0))*factor_m2(l2,(two_m2+1)/2)*int2e_get_threeSH(l1,(two_m1+1)/2,LL,MM,l2+1,(two_m2-1)/2,threeJ);
-        // if(abs((two_m2-3)/2) <= l2+1)
-            tmp += s1*s2*sqrt((l1+0.5+s1*two_m1/2.0)*(l2+0.5+s2*two_m2/2.0))*factor_m2(l2,(two_m2-1)/2)*int2e_get_threeSH(l1,(two_m1-1)/2,LL,MM,l2+1,(two_m2-3)/2,threeJ);
-        return tmp/sqrt((2.0*l1+1.0)*(2.0*l2+1.0));
-    // } 
+    double threeJ = wigner_3j_zeroM(l1,LL,l2+1);
+    double tmp = 0.0;
+    if(abs((two_m2-3)/2) <= l2+1)
+        tmp += s1*s2*sqrt((l1+0.5+s1*two_m1/2.0)*(l2+0.5+s2*two_m2/2.0))*factor_m2(l2,(two_m2-1)/2)*int2e_get_threeSH(l1,(two_m1-1)/2,LL,MM,l2+1,(two_m2-3)/2,threeJ);
+    if(abs((two_m2-1)/2) <= l2+1)
+        tmp += sqrt((l1+0.5-s1*two_m1/2.0)*(l2+0.5-s2*two_m2/2.0))*factor_m2(l2,(two_m2+1)/2)*int2e_get_threeSH(l1,(two_m1+1)/2,LL,MM,l2+1,(two_m2-1)/2,threeJ);
+    // return tmp/(2.0*l2+1.0);
+    return tmp/sqrt((2.0*l1+1.0)*(2.0*l2+1.0));
 }
 double INT_SPH::int2e_get_angular_gauntSF_z1_LS(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& LL, const int& MM) const
 {
-    if(l2 == 0||(abs((two_m2-1)/2) > l2-1 && abs((two_m2+1)/2) > l2-1))    return 0.0;
-    else
-    {
-        // double tmp = 0.0;
-        // if(abs((two_m2-1)/2) <= l2-1)
-        //     tmp += s1*s2*sqrt((l1+0.5+s1*two_m1/2.0)*(l2+0.5+s2*two_m2/2.0)*(l2+two_m2/2.0-0.5)*(l2-two_m2/2.0+0.5))*wigner_3j(l1,LL,l2-1,(-two_m1+1)/2,MM,(two_m2-1)/2);
-        // if(abs((two_m2+1)/2) <= l2-1)
-        //     tmp -= sqrt((l1+0.5-s1*two_m1/2.0)*(l2+0.5-s2*two_m2/2.0)*(l2+two_m2/2.0+0.5)*(l2-two_m2/2.0-0.5))*wigner_3j(l1,LL,l2-1,(-two_m1-1)/2,MM,(two_m2+1)/2);
-        // return pow(-1,(two_m1-1)/2)/sqrt((2.0*l2+1.0)*(2.0*l2-1.0))*wigner_3j_zeroM(l1,LL,l2-1)*tmp;
-        double threeJ = wigner_3j_zeroM(l1,LL,l2-1);
-        double tmp = 0.0;
-        // if(abs((two_m2-1)/2) <= l2-1)
-            tmp += s1*s2*sqrt((l1+0.5+s1*two_m1/2.0)*(l2+0.5+s2*two_m2/2.0))*factor_z1(l2,(two_m2-1)/2)*int2e_get_threeSH(l1,(two_m1-1)/2,LL,MM,l2-1,(two_m2-1)/2,threeJ);
-        // if(abs((two_m2+1)/2) <= l2-1)
-            tmp += sqrt((l1+0.5-s1*two_m1/2.0)*(l2+0.5-s2*two_m2/2.0))*factor_z1(l2,(two_m2+1)/2)*int2e_get_threeSH(l1,(two_m1+1)/2,LL,MM,l2-1,(two_m2+1)/2,threeJ);
-        return tmp/sqrt((2.0*l1+1.0)*(2.0*l2+1.0));
-    }
+    double threeJ = wigner_3j_zeroM(l1,LL,l2-1);
+    double tmp = 0.0;
+    if(abs((two_m2-1)/2) <= l2-1)
+        tmp += s1*s2*sqrt((l1+0.5+s1*two_m1/2.0)*(l2+0.5+s2*two_m2/2.0))*factor_z1(l2,(two_m2-1)/2)*int2e_get_threeSH(l1,(two_m1-1)/2,LL,MM,l2-1,(two_m2-1)/2,threeJ);
+    if(abs((two_m2+1)/2) <= l2-1)
+        tmp += sqrt((l1+0.5-s1*two_m1/2.0)*(l2+0.5-s2*two_m2/2.0))*factor_z1(l2,(two_m2+1)/2)*int2e_get_threeSH(l1,(two_m1+1)/2,LL,MM,l2-1,(two_m2+1)/2,threeJ);
+    // return tmp/(2.0*l2+1.0);
+    return tmp/sqrt((2.0*l1+1.0)*(2.0*l2+1.0));
 }
 double INT_SPH::int2e_get_angular_gauntSF_z2_LS(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& LL, const int& MM) const
 {
-    // if(abs((two_m2-1)/2) > l2+1 && abs((two_m2+1)/2) > l2+1)    return 0.0;
-    // else
-    // {
-        // double tmp = 0.0;
-        // if(abs((two_m2-1)/2) <= l2+1)
-        //     tmp += s1*s2*sqrt((l1+0.5+s1*two_m1/2.0)*(l2+0.5+s2*two_m2/2.0)*(l2+two_m2/2.0+0.5)*(l2-two_m2/2.0+1.5))*wigner_3j(l1,LL,l2+1,(-two_m1+1)/2,MM,(two_m2-1)/2);
-        // if(abs((two_m2+1)/2) <= l2+1)
-        //     tmp -= sqrt((l1+0.5-s1*two_m1/2.0)*(l2+0.5-s2*two_m2/2.0)*(l2+two_m2/2.0+1.5)*(l2-two_m2/2.0+0.5))*wigner_3j(l1,LL,l2+1,(-two_m1-1)/2,MM,(two_m2+1)/2);
-        // return pow(-1,(two_m1-1)/2)/sqrt((2.0*l2+1.0)*(2.0*l2+3.0))*wigner_3j_zeroM(l1,LL,l2+1)*tmp;
-        double threeJ = wigner_3j_zeroM(l1,LL,l2+1);
-        double tmp = 0.0;
-        // if(abs((two_m2-1)/2) <= l2+1)
-            tmp += s1*s2*sqrt((l1+0.5+s1*two_m1/2.0)*(l2+0.5+s2*two_m2/2.0))*factor_z2(l2,(two_m2-1)/2)*int2e_get_threeSH(l1,(two_m1-1)/2,LL,MM,l2+1,(two_m2-1)/2,threeJ);
-        // if(abs((two_m2+1)/2) <= l2+1)
-            tmp += sqrt((l1+0.5-s1*two_m1/2.0)*(l2+0.5-s2*two_m2/2.0))*factor_z2(l2,(two_m2+1)/2)*int2e_get_threeSH(l1,(two_m1+1)/2,LL,MM,l2+1,(two_m2+1)/2,threeJ);
-        return tmp/sqrt((2.0*l1+1.0)*(2.0*l2+1.0));
-    // }
+    double threeJ = wigner_3j_zeroM(l1,LL,l2+1);
+    double tmp = 0.0;
+    if(abs((two_m2-1)/2) <= l2+1)
+        tmp += s1*s2*sqrt((l1+0.5+s1*two_m1/2.0)*(l2+0.5+s2*two_m2/2.0))*factor_z2(l2,(two_m2-1)/2)*int2e_get_threeSH(l1,(two_m1-1)/2,LL,MM,l2+1,(two_m2-1)/2,threeJ);
+    if(abs((two_m2+1)/2) <= l2+1)
+        tmp += sqrt((l1+0.5-s1*two_m1/2.0)*(l2+0.5-s2*two_m2/2.0))*factor_z2(l2,(two_m2+1)/2)*int2e_get_threeSH(l1,(two_m1+1)/2,LL,MM,l2+1,(two_m2+1)/2,threeJ);
+    // return tmp/(2.0*l2+1.0);
+    return tmp/sqrt((2.0*l1+1.0)*(2.0*l2+1.0));
 }
 
 double INT_SPH::int2e_get_angular_gauntSF_p1_SL(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& LL, const int& MM) const
 {
-    if(l1 == 0 || (abs((two_m1+1)/2) > l1-1)) return 0.0;
-    else
-    {
-        double threeJ = wigner_3j_zeroM(l1-1,LL,l2);
-        double tmp = s1*s2*sqrt((l1+0.5+s1*two_m1/2.0)*(l2+0.5+s2*two_m2/2.0))*factor_p1(l1,(two_m1-1)/2)*int2e_get_threeSH(l1-1,(two_m1+1)/2,LL,MM,l2,(two_m2-1)/2,threeJ);
+    double threeJ = wigner_3j_zeroM(l1-1,LL,l2);
+    double tmp = 0.0;
+    if(abs((two_m1+1)/2) <= l1-1)
+        tmp += s1*s2*sqrt((l1+0.5+s1*two_m1/2.0)*(l2+0.5+s2*two_m2/2.0))*factor_p1(l1,(two_m1-1)/2)*int2e_get_threeSH(l1-1,(two_m1+1)/2,LL,MM,l2,(two_m2-1)/2,threeJ);
+    if(abs((two_m1+3)/2) <= l1-1)
         tmp += sqrt((l1+0.5-s1*two_m1/2.0)*(l2+0.5-s2*two_m2/2.0))*factor_p1(l1,(two_m1+1)/2)*int2e_get_threeSH(l1-1,(two_m1+3)/2,LL,MM,l2,(two_m2+1)/2,threeJ);
-        return tmp/sqrt((2.0*l1+1.0)*(2.0*l2+1.0));
-    } 
+    // return tmp/(2.0*l1+1.0);
+    return tmp/sqrt((2.0*l1+1.0)*(2.0*l2+1.0));
 }
 double INT_SPH::int2e_get_angular_gauntSF_p2_SL(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& LL, const int& MM) const
 {
-    // if(abs((two_m1+1)/2) > l1+1) return 0.0;
-    // else
-    // {
-        // double tmp = s1*s2*sqrt((l1+0.5+s1*two_m1/2.0)*(l2+0.5+s2*two_m2/2.0)*(l1+two_m1/2.0+0.5)*(l1+two_m1/2.0+1.5))*wigner_3j(l1+1,LL,l2,(-two_m1-1)/2,MM,(two_m2-1)/2);
-        // if(abs((two_m1+3)/2) <= l1+1)
-        //     tmp -= sqrt((l1+0.5-s1*two_m1/2.0)*(l2+0.5-s2*two_m2/2.0)*(l1+two_m1/2.0+1.5)*(l1+two_m1/2.0+2.5))*wigner_3j(l1+1,LL,l2,(-two_m1-3)/2,MM,(two_m2+1)/2);
-        // return pow(-1,(two_m1-1)/2)/sqrt((2.0*l1+1.0)*(2.0*l1+3.0))*wigner_3j_zeroM(l1+1,LL,l2)*tmp;
-        double threeJ = wigner_3j_zeroM(l1+1,LL,l2);
-        double tmp = s1*s2*sqrt((l1+0.5+s1*two_m1/2.0)*(l2+0.5+s2*two_m2/2.0))*factor_p2(l1,(two_m1-1)/2)*int2e_get_threeSH(l1+1,(two_m1+1)/2,LL,MM,l2,(two_m2-1)/2,threeJ);
-        // if(abs((two_m1+3)/2) <= l1+1)
-            tmp += sqrt((l1+0.5-s1*two_m1/2.0)*(l2+0.5-s2*two_m2/2.0))*factor_p2(l1,(two_m1+1)/2)*int2e_get_threeSH(l1+1,(two_m1+3)/2,LL,MM,l2,(two_m2+1)/2,threeJ);
-        return tmp/sqrt((2.0*l1+1.0)*(2.0*l2+1.0));
-    // } 
+    double threeJ = wigner_3j_zeroM(l1+1,LL,l2);
+    double tmp = 0.0;
+    if(abs((two_m1+1)/2) <= l1+1) 
+        tmp += s1*s2*sqrt((l1+0.5+s1*two_m1/2.0)*(l2+0.5+s2*two_m2/2.0))*factor_p2(l1,(two_m1-1)/2)*int2e_get_threeSH(l1+1,(two_m1+1)/2,LL,MM,l2,(two_m2-1)/2,threeJ);
+    if(abs((two_m1+3)/2) <= l1+1)
+        tmp += sqrt((l1+0.5-s1*two_m1/2.0)*(l2+0.5-s2*two_m2/2.0))*factor_p2(l1,(two_m1+1)/2)*int2e_get_threeSH(l1+1,(two_m1+3)/2,LL,MM,l2,(two_m2+1)/2,threeJ);
+    // return tmp/(2.0*l1+1.0);
+    return tmp/sqrt((2.0*l1+1.0)*(2.0*l2+1.0));
 }
 double INT_SPH::int2e_get_angular_gauntSF_m1_SL(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& LL, const int& MM) const
 {
-    if(l1 == 0 || (abs((two_m1-1)/2) > l1-1)) return 0.0;
-    else
-    {
-        // double tmp = -sqrt((l1+0.5-s1*two_m1/2.0)*(l2+0.5-s2*two_m2/2.0)*(l1+two_m1/2.0+0.5)*(l1+two_m1/2.0-0.5))*wigner_3j(l1-1,LL,l2,(-two_m1+1)/2,MM,(two_m2+1)/2);
-        // if(abs((two_m1-3)/2) <= l1-1)
-        //     tmp += s1*s2*sqrt((l1+0.5+s1*two_m1/2.0)*(l2+0.5+s2*two_m2/2.0)*(l1+two_m1/2.0-0.5)*(l1+two_m1/2.0-1.5))*wigner_3j(l1-1,LL,l2,(-two_m1+3)/2,MM,(two_m2-1)/2);
-        // return pow(-1,(two_m1-1)/2)/sqrt((2.0*l1+1.0)*(2.0*l1-1.0))*wigner_3j_zeroM(l1-1,LL,l2)*tmp;
-        double threeJ = wigner_3j_zeroM(l1-1,LL,l2);
-        double tmp = sqrt((l1+0.5-s1*two_m1/2.0)*(l2+0.5-s2*two_m2/2.0))*factor_m1(l1,(two_m1+1)/2)*int2e_get_threeSH(l1-1,(two_m1-1)/2,LL,MM,l2,(two_m2+1)/2,threeJ);
-        // if(abs((two_m1-3)/2) <= l1-1)
-            tmp +=  s1*s2*sqrt((l1+0.5+s1*two_m1/2.0)*(l2+0.5+s2*two_m2/2.0))*factor_m1(l1,(two_m1-1)/2)*int2e_get_threeSH(l1-1,(two_m1-3)/2,LL,MM,l2,(two_m2-1)/2,threeJ);
-        return tmp/sqrt((2.0*l1+1.0)*(2.0*l2+1.0));
-    } 
+    double threeJ = wigner_3j_zeroM(l1-1,LL,l2);
+    double tmp = 0.0;
+    if(abs((two_m1-3)/2) <= l1-1)
+        tmp += s1*s2*sqrt((l1+0.5+s1*two_m1/2.0)*(l2+0.5+s2*two_m2/2.0))*factor_m1(l1,(two_m1-1)/2)*int2e_get_threeSH(l1-1,(two_m1-3)/2,LL,MM,l2,(two_m2-1)/2,threeJ);
+    if(abs((two_m1-1)/2) <= l1-1)
+        tmp += sqrt((l1+0.5-s1*two_m1/2.0)*(l2+0.5-s2*two_m2/2.0))*factor_m1(l1,(two_m1+1)/2)*int2e_get_threeSH(l1-1,(two_m1-1)/2,LL,MM,l2,(two_m2+1)/2,threeJ);
+    // return tmp/(2.0*l1+1.0);
+    return tmp/sqrt((2.0*l1+1.0)*(2.0*l2+1.0));
 }
 double INT_SPH::int2e_get_angular_gauntSF_m2_SL(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& LL, const int& MM) const
 {
-    // if(abs((two_m1-1)/2) > l1+1) return 0.0;
-    // else
-    // {
-        // double tmp = -sqrt((l1+0.5-s1*two_m1/2.0)*(l2+0.5-s2*two_m2/2.0)*(l1-two_m1/2.0+0.5)*(l1-two_m1/2.0+1.5))*wigner_3j(l1+1,LL,l2,(-two_m1+1)/2,MM,(two_m2+1)/2);
-        // if(abs((two_m1-3)/2) <= l1+1)
-        //     tmp += s1*s2*sqrt((l1+0.5+s1*two_m1/2.0)*(l2+0.5+s2*two_m2/2.0)*(l1-two_m1/2.0+1.5)*(l1-two_m1/2.0+2.5))*wigner_3j(l1+1,LL,l2,(-two_m1+3)/2,MM,(two_m2-1)/2);
-        // return pow(-1,(two_m1+1)/2)/sqrt((2.0*l1+1.0)*(2.0*l1+3.0))*wigner_3j_zeroM(l1+1,LL,l2)*tmp;
-        double threeJ = wigner_3j_zeroM(l1+1,LL,l2);
-        double tmp = sqrt((l1+0.5-s1*two_m1/2.0)*(l2+0.5-s2*two_m2/2.0))*factor_m2(l1,(two_m1+1)/2)*int2e_get_threeSH(l1+1,(two_m1-1)/2,LL,MM,l2,(two_m2+1)/2,threeJ);
-        // if(abs((two_m1-3)/2) <= l1+1)
-            tmp +=  s1*s2*sqrt((l1+0.5+s1*two_m1/2.0)*(l2+0.5+s2*two_m2/2.0))*factor_m2(l1,(two_m1-1)/2)*int2e_get_threeSH(l1+1,(two_m1-3)/2,LL,MM,l2,(two_m2-1)/2,threeJ);
-        return tmp/sqrt((2.0*l1+1.0)*(2.0*l2+1.0));
-    // } 
+    double threeJ = wigner_3j_zeroM(l1+1,LL,l2);
+    double tmp = 0.0;
+    if(abs((two_m1-3)/2) <= l1+1)
+        tmp += s1*s2*sqrt((l1+0.5+s1*two_m1/2.0)*(l2+0.5+s2*two_m2/2.0))*factor_m2(l1,(two_m1-1)/2)*int2e_get_threeSH(l1+1,(two_m1-3)/2,LL,MM,l2,(two_m2-1)/2,threeJ);
+    if(abs((two_m1-1)/2) <= l1+1)
+        tmp += sqrt((l1+0.5-s1*two_m1/2.0)*(l2+0.5-s2*two_m2/2.0))*factor_m2(l1,(two_m1+1)/2)*int2e_get_threeSH(l1+1,(two_m1-1)/2,LL,MM,l2,(two_m2+1)/2,threeJ);
+    // return tmp/(2.0*l1+1.0);
+    return tmp/sqrt((2.0*l1+1.0)*(2.0*l2+1.0));
 }
 double INT_SPH::int2e_get_angular_gauntSF_z1_SL(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& LL, const int& MM) const
 {
-    if(l1 == 0||(abs((two_m1-1)/2) > l1-1 && abs((two_m1+1)/2) > l1-1))    return 0.0;
-    else
-    {
-        // double tmp = 0.0;
-        // if(abs((two_m1-1)/2) <= l1-1)
-        //     tmp += s1*s2*sqrt((l1+0.5+s1*two_m1/2.0)*(l2+0.5+s2*two_m2/2.0)*(l1+two_m1/2.0-0.5)*(l1-two_m1/2.0+0.5))*wigner_3j(l1-1,LL,l2,(-two_m1+1)/2,MM,(two_m2-1)/2);
-        // if(abs((two_m1+1)/2) <= l1-1)
-        //     tmp -= sqrt((l1+0.5-s1*two_m1/2.0)*(l2+0.5-s2*two_m2/2.0)*(l1+two_m1/2.0+0.5)*(l1-two_m1/2.0-0.5))*wigner_3j(l1-1,LL,l2,(-two_m1-1)/2,MM,(two_m2+1)/2);
-        // return pow(-1,(two_m1-1)/2)/sqrt((2.0*l1+1.0)*(2.0*l1-1.0))*wigner_3j_zeroM(l1-1,LL,l2)*tmp;
-        double threeJ = wigner_3j_zeroM(l1-1,LL,l2);
-        double tmp = 0.0;
-        // if(abs((two_m1-1)/2) <= l1-1)
-            tmp += s1*s2*sqrt((l1+0.5+s1*two_m1/2.0)*(l2+0.5+s2*two_m2/2.0))*factor_z1(l1,(two_m1-1)/2)*int2e_get_threeSH(l1-1,(two_m1-1)/2,LL,MM,l2,(two_m2-1)/2,threeJ);
-        // if(abs((two_m1+1)/2) <= l1-1)
-            tmp += sqrt((l1+0.5-s1*two_m1/2.0)*(l2+0.5-s2*two_m2/2.0))*factor_z1(l1,(two_m1+1)/2)*int2e_get_threeSH(l1-1,(two_m1+1)/2,LL,MM,l2,(two_m2+1)/2,threeJ);
-        return tmp/sqrt((2.0*l1+1.0)*(2.0*l2+1.0));
-    }
+    double threeJ = wigner_3j_zeroM(l1-1,LL,l2);
+    double tmp = 0.0;
+    if(abs((two_m1-1)/2) <= l1-1)
+        tmp += s1*s2*sqrt((l1+0.5+s1*two_m1/2.0)*(l2+0.5+s2*two_m2/2.0))*factor_z1(l1,(two_m1-1)/2)*int2e_get_threeSH(l1-1,(two_m1-1)/2,LL,MM,l2,(two_m2-1)/2,threeJ);
+    if(abs((two_m1+1)/2) <= l1-1)
+        tmp += sqrt((l1+0.5-s1*two_m1/2.0)*(l2+0.5-s2*two_m2/2.0))*factor_z1(l1,(two_m1+1)/2)*int2e_get_threeSH(l1-1,(two_m1+1)/2,LL,MM,l2,(two_m2+1)/2,threeJ);
+    // return tmp/(2.0*l1+1.0);
+    return tmp/sqrt((2.0*l1+1.0)*(2.0*l2+1.0));
 }
 double INT_SPH::int2e_get_angular_gauntSF_z2_SL(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& LL, const int& MM) const
 {
-    // if(abs((two_m1-1)/2) > l1+1 && abs((two_m1+1)/2) > l1+1)    return 0.0;
-    // else
-    // {
-        // double tmp = 0.0;
-        // if(abs((two_m1-1)/2) <= l1+1)
-        //     tmp += s1*s2*sqrt((l1+0.5+s1*two_m1/2.0)*(l2+0.5+s2*two_m2/2.0)*(l1+two_m1/2.0+0.5)*(l1-two_m1/2.0+1.5))*wigner_3j(l1+1,LL,l2,(-two_m1+1)/2,MM,(two_m2-1)/2);
-        // if(abs((two_m1+1)/2) <= l1+1)
-        //     tmp -= sqrt((l1+0.5-s1*two_m1/2.0)*(l2+0.5-s2*two_m2/2.0)*(l1+two_m1/2.0+1.5)*(l1-two_m1/2.0+0.5))*wigner_3j(l1+1,LL,l2,(-two_m1-1)/2,MM,(two_m2+1)/2);
-        // return pow(-1,(two_m1-1)/2)/sqrt((2.0*l1+1.0)*(2.0*l1+3.0))*wigner_3j_zeroM(l1+1,LL,l2)*tmp;
-        double threeJ = wigner_3j_zeroM(l1+1,LL,l2);
-        double tmp = 0.0;
-        // if(abs((two_m1-1)/2) <= l1+1)
-            tmp += s1*s2*sqrt((l1+0.5+s1*two_m1/2.0)*(l2+0.5+s2*two_m2/2.0))*factor_z2(l1,(two_m1-1)/2)*int2e_get_threeSH(l1+1,(two_m1-1)/2,LL,MM,l2,(two_m2-1)/2,threeJ);
-        // if(abs((two_m1+1)/2) <= l1+1)
-            tmp += sqrt((l1+0.5-s1*two_m1/2.0)*(l2+0.5-s2*two_m2/2.0))*factor_z2(l1,(two_m1+1)/2)*int2e_get_threeSH(l1+1,(two_m1+1)/2,LL,MM,l2,(two_m2+1)/2,threeJ);
-        return tmp/sqrt((2.0*l1+1.0)*(2.0*l2+1.0));
-    // }
+    double threeJ = wigner_3j_zeroM(l1+1,LL,l2);
+    double tmp = 0.0;
+    if(abs((two_m1-1)/2) <= l1+1)
+        tmp += s1*s2*sqrt((l1+0.5+s1*two_m1/2.0)*(l2+0.5+s2*two_m2/2.0))*factor_z2(l1,(two_m1-1)/2)*int2e_get_threeSH(l1+1,(two_m1-1)/2,LL,MM,l2,(two_m2-1)/2,threeJ);
+    if(abs((two_m1+1)/2) <= l1+1)
+        tmp += sqrt((l1+0.5-s1*two_m1/2.0)*(l2+0.5-s2*two_m2/2.0))*factor_z2(l1,(two_m1+1)/2)*int2e_get_threeSH(l1+1,(two_m1+1)/2,LL,MM,l2,(two_m2+1)/2,threeJ);
+    // return tmp/(2.0*l1+1.0);
+    return tmp/sqrt((2.0*l1+1.0)*(2.0*l2+1.0));
 }
 
 /*
@@ -309,7 +241,7 @@ void INT_SPH::int2e_get_angular_gauntSF_LSLS(const int& l1, const int& two_m1, c
         double m2_12 = int2e_get_angular_gauntSF_m2_LS(l1,two_m1,s1,l2,two_m2,s2,LL,-mm);
         double m2_34 = int2e_get_angular_gauntSF_m2_LS(l3,two_m3,s3,l4,two_m4,s4,LL,mm);
         double z2_12 = int2e_get_angular_gauntSF_z2_LS(l1,two_m1,s1,l2,two_m2,s2,LL,-mm);
-        double z2_34 = int2e_get_angular_gauntSF_z2_LS(l3,two_m3,s3,l4,two_m4,s4,LL,mm);       
+        double z2_34 = int2e_get_angular_gauntSF_z2_LS(l3,two_m3,s3,l4,two_m4,s4,LL,mm);
         lsls11 += pow(-1,mm) * (0.5*(p1_12*m1_34+m1_12*p1_34) + z1_12*z1_34);
         lsls12 += pow(-1,mm) * (0.5*(p1_12*m2_34+m1_12*p2_34) + z1_12*z2_34);
         lsls21 += pow(-1,mm) * (0.5*(p2_12*m1_34+m2_12*p1_34) + z2_12*z1_34);
@@ -327,6 +259,16 @@ void INT_SPH::int2e_get_angular_gauntSF_LSSL(const int& l1, const int& two_m1, c
         double p2_12 = int2e_get_angular_gauntSF_p2_LS(l1,two_m1,s1,l2,two_m2,s2,LL,-mm);
         double m2_12 = int2e_get_angular_gauntSF_m2_LS(l1,two_m1,s1,l2,two_m2,s2,LL,-mm);
         double z2_12 = int2e_get_angular_gauntSF_z2_LS(l1,two_m1,s1,l2,two_m2,s2,LL,-mm);
+        // double p1_34 = int2e_get_angular_gauntSF_p1_LS(l4,two_m4,s4,l3,two_m3,s3,LL,-mm);
+        // double p2_34 = int2e_get_angular_gauntSF_p2_LS(l4,two_m4,s4,l3,two_m3,s3,LL,-mm);
+        // double m1_34 = int2e_get_angular_gauntSF_m1_LS(l4,two_m4,s4,l3,two_m3,s3,LL,-mm);
+        // double m2_34 = int2e_get_angular_gauntSF_m2_LS(l4,two_m4,s4,l3,two_m3,s3,LL,-mm);
+        // double z1_34 = int2e_get_angular_gauntSF_z1_LS(l4,two_m4,s4,l3,two_m3,s3,LL,-mm);
+        // double z2_34 = int2e_get_angular_gauntSF_z2_LS(l4,two_m4,s4,l3,two_m3,s3,LL,-mm); 
+        // lssl11 += (0.5*(p1_12*p1_34+m1_12*m1_34) + z1_12*z1_34);
+        // lssl12 += (0.5*(p1_12*p2_34+m1_12*m2_34) + z1_12*z2_34);
+        // lssl21 += (0.5*(p2_12*p1_34+m2_12*m1_34) + z2_12*z1_34);
+        // lssl22 += (0.5*(p2_12*p2_34+m2_12*m2_34) + z2_12*z2_34);
         double p1_34 = int2e_get_angular_gauntSF_p1_SL(l3,two_m3,s3,l4,two_m4,s4,LL,mm);
         double p2_34 = int2e_get_angular_gauntSF_p2_SL(l3,two_m3,s3,l4,two_m4,s4,LL,mm);
         double m1_34 = int2e_get_angular_gauntSF_m1_SL(l3,two_m3,s3,l4,two_m4,s4,LL,mm);
@@ -1018,10 +960,10 @@ int2eJK INT_SPH::get_h2e_JK_gauntSF_compact(const string& intType, const int& oc
                         exit(99);
                     }
                 }
-                tmp_d11 /= (twojj_q + 1);   array_angular_J11[tmp][index_tmp_p][index_tmp_q] = tmp_d11;
-                tmp_d12 /= (twojj_q + 1);   array_angular_J12[tmp][index_tmp_p][index_tmp_q] = tmp_d12;
-                tmp_d21 /= (twojj_q + 1);   array_angular_J21[tmp][index_tmp_p][index_tmp_q] = tmp_d21;
-                tmp_d22 /= (twojj_q + 1);   array_angular_J22[tmp][index_tmp_p][index_tmp_q] = tmp_d22;
+                tmp_d11 /= (twojj_q + 1);   array_angular_K11[tmp][index_tmp_p][index_tmp_q] = tmp_d11;
+                tmp_d12 /= (twojj_q + 1);   array_angular_K12[tmp][index_tmp_p][index_tmp_q] = tmp_d12;
+                tmp_d21 /= (twojj_q + 1);   array_angular_K21[tmp][index_tmp_p][index_tmp_q] = tmp_d21;
+                tmp_d22 /= (twojj_q + 1);   array_angular_K22[tmp][index_tmp_p][index_tmp_q] = tmp_d22;
             }
         }
         EndTime = clock();
@@ -1118,27 +1060,19 @@ int2eJK INT_SPH::get_h2e_JK_gauntSF_compact(const string& intType, const int& oc
                         {
                             array_radial_J11[tmp][e1J][e2J][index_tmp_p][index_tmp_q] += lk2*lk4 * radial_2e_list_J[tmp](3,0)
                                     - 2.0*a4*lk2 * radial_2e_list_J[tmp](1,0) - 2.0*a2*lk4 * radial_2e_list_J[tmp](2,0);
-                            array_radial_J12[tmp][e1J][e2J][index_tmp_p][index_tmp_q] += lk2 * radial_2e_list_J[tmp](3,0)
-                                    - 2.0*a4*lk2 * radial_2e_list_J[tmp](1,0) - 2.0*a2 * radial_2e_list_J[tmp](2,0);
-                            array_radial_J21[tmp][e1J][e2J][index_tmp_p][index_tmp_q] += lk4 * radial_2e_list_J[tmp](3,0)
-                                    - 2.0*a4 * radial_2e_list_J[tmp](1,0) - 2.0*a2*lk4 * radial_2e_list_J[tmp](2,0);
-                            array_radial_J22[tmp][e1J][e2J][index_tmp_p][index_tmp_q] += radial_2e_list_J[tmp](3,0)
-                                    - 2.0*a4 * radial_2e_list_J[tmp](1,0) - 2.0*a2 * radial_2e_list_J[tmp](2,0);
+                            array_radial_J12[tmp][e1J][e2J][index_tmp_p][index_tmp_q] -= 2.0*a4*lk2 * radial_2e_list_J[tmp](1,0);
+                            array_radial_J21[tmp][e1J][e2J][index_tmp_p][index_tmp_q] -= 2.0*a2*lk4 * radial_2e_list_J[tmp](2,0);
                         }
                         else if(l_p != 0 && l_q == 0)
                         {
                             array_radial_J11[tmp][e1J][e2J][index_tmp_p][index_tmp_q] -= 2.0*a4*lk2 * radial_2e_list_J[tmp](1,0);
                             array_radial_J12[tmp][e1J][e2J][index_tmp_p][index_tmp_q] -= 2.0*a4*lk2 * radial_2e_list_J[tmp](1,0);
-                            array_radial_J21[tmp][e1J][e2J][index_tmp_p][index_tmp_q] -= 2.0*a4 * radial_2e_list_J[tmp](1,0);
-                            array_radial_J22[tmp][e1J][e2J][index_tmp_p][index_tmp_q] -= 2.0*a4 * radial_2e_list_J[tmp](1,0);
                         }   
                             
                         else if(l_p == 0 && l_q != 0)
                         {
                             array_radial_J11[tmp][e1J][e2J][index_tmp_p][index_tmp_q] -= 2.0*a2*lk4 * radial_2e_list_J[tmp](2,0);
-                            array_radial_J12[tmp][e1J][e2J][index_tmp_p][index_tmp_q] -= 2.0*a2 * radial_2e_list_J[tmp](2,0);
                             array_radial_J21[tmp][e1J][e2J][index_tmp_p][index_tmp_q] -= 2.0*a2*lk4 * radial_2e_list_J[tmp](2,0);
-                            array_radial_J22[tmp][e1J][e2J][index_tmp_p][index_tmp_q] -= 2.0*a2 * radial_2e_list_J[tmp](2,0);
                         }
                         array_radial_J11[tmp][e1J][e2J][index_tmp_p][index_tmp_q] /= norm_J * 4.0 * pow(speedOfLight,2);
                         array_radial_J12[tmp][e1J][e2J][index_tmp_p][index_tmp_q] /= norm_J * 4.0 * pow(speedOfLight,2);
@@ -1155,26 +1089,18 @@ int2eJK INT_SPH::get_h2e_JK_gauntSF_compact(const string& intType, const int& oc
                         {
                             array_radial_J11[tmp][e1J][e2J][index_tmp_p][index_tmp_q] += lk2*lk3 * radial_2e_list_J[tmp](3,0)
                                     - 2.0*a3*lk2 * radial_2e_list_J[tmp](1,0) - 2.0*a2*lk3 * radial_2e_list_J[tmp](2,0);
-                            array_radial_J12[tmp][e1J][e2J][index_tmp_p][index_tmp_q] += lk2 * radial_2e_list_J[tmp](3,0)
-                                    - 2.0*a3*lk2 * radial_2e_list_J[tmp](1,0) - 2.0*a2 * radial_2e_list_J[tmp](2,0);
-                            array_radial_J21[tmp][e1J][e2J][index_tmp_p][index_tmp_q] += lk3 * radial_2e_list_J[tmp](3,0)
-                                    - 2.0*a3 * radial_2e_list_J[tmp](1,0) - 2.0*a2*lk3 * radial_2e_list_J[tmp](2,0);
-                            array_radial_J22[tmp][e1J][e2J][index_tmp_p][index_tmp_q] += radial_2e_list_J[tmp](3,0)
-                                    - 2.0*a3 * radial_2e_list_J[tmp](1,0) - 2.0*a2 * radial_2e_list_J[tmp](2,0);
+                            array_radial_J12[tmp][e1J][e2J][index_tmp_p][index_tmp_q] -= 2.0*a3*lk2 * radial_2e_list_J[tmp](1,0);
+                            array_radial_J21[tmp][e1J][e2J][index_tmp_p][index_tmp_q] -= 2.0*a2*lk3 * radial_2e_list_J[tmp](2,0);
                         }
                         else if(l_p != 0 && l_q == 0)
                         {
                             array_radial_J11[tmp][e1J][e2J][index_tmp_p][index_tmp_q] -= 2.0*a3*lk2 * radial_2e_list_J[tmp](1,0);
                             array_radial_J12[tmp][e1J][e2J][index_tmp_p][index_tmp_q] -= 2.0*a3*lk2 * radial_2e_list_J[tmp](1,0);
-                            array_radial_J21[tmp][e1J][e2J][index_tmp_p][index_tmp_q] -= 2.0*a3 * radial_2e_list_J[tmp](1,0);
-                            array_radial_J22[tmp][e1J][e2J][index_tmp_p][index_tmp_q] -= 2.0*a3 * radial_2e_list_J[tmp](1,0);
                         }
                         else if(l_p == 0 && l_q != 0)
                         {
                             array_radial_J11[tmp][e1J][e2J][index_tmp_p][index_tmp_q] -= 2.0*a2*lk3 * radial_2e_list_J[tmp](2,0);
-                            array_radial_J12[tmp][e1J][e2J][index_tmp_p][index_tmp_q] -= 2.0*a2 * radial_2e_list_J[tmp](2,0);
                             array_radial_J21[tmp][e1J][e2J][index_tmp_p][index_tmp_q] -= 2.0*a2*lk3 * radial_2e_list_J[tmp](2,0);
-                            array_radial_J22[tmp][e1J][e2J][index_tmp_p][index_tmp_q] -= 2.0*a2 * radial_2e_list_J[tmp](2,0);
                         }
                         array_radial_J11[tmp][e1J][e2J][index_tmp_p][index_tmp_q] /= -1.0 * norm_J * 4.0 * pow(speedOfLight,2);
                         array_radial_J12[tmp][e1J][e2J][index_tmp_p][index_tmp_q] /= -1.0 * norm_J * 4.0 * pow(speedOfLight,2);
@@ -1201,26 +1127,18 @@ int2eJK INT_SPH::get_h2e_JK_gauntSF_compact(const string& intType, const int& oc
                         {
                             array_radial_K11[tmp][e1K][e2K][index_tmp_p][index_tmp_q] += lk2*lk4 * radial_2e_list_K[tmp](3,0) 
                                     - 2.0*a4*lk2 * radial_2e_list_K[tmp](1,0) - 2.0*a2*lk4 * radial_2e_list_K[tmp](2,0);
-                            array_radial_K12[tmp][e1K][e2K][index_tmp_p][index_tmp_q] += lk2 * radial_2e_list_K[tmp](3,0) 
-                                    - 2.0*a4*lk2 * radial_2e_list_K[tmp](1,0) - 2.0*a2 * radial_2e_list_K[tmp](2,0);
-                            array_radial_K21[tmp][e1K][e2K][index_tmp_p][index_tmp_q] += lk4 * radial_2e_list_K[tmp](3,0) 
-                                    - 2.0*a4 * radial_2e_list_K[tmp](1,0) - 2.0*a2*lk4 * radial_2e_list_K[tmp](2,0);
-                            array_radial_K22[tmp][e1K][e2K][index_tmp_p][index_tmp_q] += radial_2e_list_K[tmp](3,0) 
-                                    - 2.0*a4 * radial_2e_list_K[tmp](1,0) - 2.0*a2 * radial_2e_list_K[tmp](2,0);
+                            array_radial_K12[tmp][e1K][e2K][index_tmp_p][index_tmp_q] -= 2.0*a4*lk2 * radial_2e_list_K[tmp](1,0);
+                            array_radial_K21[tmp][e1K][e2K][index_tmp_p][index_tmp_q] -= 2.0*a2*lk4 * radial_2e_list_K[tmp](2,0);
                         }
                         else if(l_p == 0 && l_q != 0)
                         {
                             array_radial_K11[tmp][e1K][e2K][index_tmp_p][index_tmp_q] -= 2.0*a4*lk2 * radial_2e_list_K[tmp](1,0);
                             array_radial_K12[tmp][e1K][e2K][index_tmp_p][index_tmp_q] -= 2.0*a4*lk2 * radial_2e_list_K[tmp](1,0);
-                            array_radial_K21[tmp][e1K][e2K][index_tmp_p][index_tmp_q] -= 2.0*a4 * radial_2e_list_K[tmp](1,0);
-                            array_radial_K22[tmp][e1K][e2K][index_tmp_p][index_tmp_q] -= 2.0*a4 * radial_2e_list_K[tmp](1,0);
                         }
                         else if(l_p != 0 && l_q == 0)
                         {
                             array_radial_K11[tmp][e1K][e2K][index_tmp_p][index_tmp_q] -= 2.0*a2*lk4 * radial_2e_list_K[tmp](2,0);
-                            array_radial_K12[tmp][e1K][e2K][index_tmp_p][index_tmp_q] -= 2.0*a2 * radial_2e_list_K[tmp](2,0);
                             array_radial_K21[tmp][e1K][e2K][index_tmp_p][index_tmp_q] -= 2.0*a2*lk4 * radial_2e_list_K[tmp](2,0);
-                            array_radial_K22[tmp][e1K][e2K][index_tmp_p][index_tmp_q] -= 2.0*a2 * radial_2e_list_K[tmp](2,0);
                         }
                         array_radial_K11[tmp][e1K][e2K][index_tmp_p][index_tmp_q] /= norm_K * 4.0 * pow(speedOfLight,2);
                         array_radial_K12[tmp][e1K][e2K][index_tmp_p][index_tmp_q] /= norm_K * 4.0 * pow(speedOfLight,2);
@@ -1237,12 +1155,8 @@ int2eJK INT_SPH::get_h2e_JK_gauntSF_compact(const string& intType, const int& oc
                         {
                             array_radial_K11[tmp][e1K][e2K][index_tmp_p][index_tmp_q] += lk2*lk3 * radial_2e_list_K[tmp](3,0) 
                                     - 2.0*a3*lk2 * radial_2e_list_K[tmp](1,0) - 2.0*a2*lk3 * radial_2e_list_K[tmp](2,0);
-                            array_radial_K12[tmp][e1K][e2K][index_tmp_p][index_tmp_q] += lk2 * radial_2e_list_K[tmp](3,0) 
-                                    - 2.0*a3*lk2 * radial_2e_list_K[tmp](1,0) - 2.0*a2 * radial_2e_list_K[tmp](2,0);
-                            array_radial_K21[tmp][e1K][e2K][index_tmp_p][index_tmp_q] += lk3 * radial_2e_list_K[tmp](3,0) 
-                                    - 2.0*a3 * radial_2e_list_K[tmp](1,0) - 2.0*a2*lk3 * radial_2e_list_K[tmp](2,0);
-                            array_radial_K22[tmp][e1K][e2K][index_tmp_p][index_tmp_q] += radial_2e_list_K[tmp](3,0) 
-                                    - 2.0*a3 * radial_2e_list_K[tmp](1,0) - 2.0*a2 * radial_2e_list_K[tmp](2,0);
+                            array_radial_K12[tmp][e1K][e2K][index_tmp_p][index_tmp_q] -= 2.0*a3*lk2 * radial_2e_list_K[tmp](1,0);
+                            array_radial_K21[tmp][e1K][e2K][index_tmp_p][index_tmp_q] -= 2.0*a2*lk3 * radial_2e_list_K[tmp](2,0);
                         }
                         array_radial_K11[tmp][e1K][e2K][index_tmp_p][index_tmp_q] /= -1.0 * norm_K * 4.0 * pow(speedOfLight,2);
                         array_radial_K12[tmp][e1K][e2K][index_tmp_p][index_tmp_q] /= -1.0 * norm_K * 4.0 * pow(speedOfLight,2);
