@@ -1221,6 +1221,16 @@ int2eJK INT_SPH::get_h2e_JK_gauntSF_compact(const string& intType, const int& oc
 
 void INT_SPH::get_h2e_JK_gaunt_direct(int2eJK& LSLS, int2eJK& LSSL, const int& occMaxL, const bool& spinFree)
 {
-    LSLS = get_h2e_JK_gaunt_compact("LSLS",occMaxL);
-    LSSL = get_h2e_JK_gaunt_compact("LSSL",occMaxL);
+    if(spinFree)
+    {
+        LSLS = get_h2e_JK_gauntSF_compact("LSLS",occMaxL);
+        LSSL = get_h2e_JK_gauntSF_compact("LSSL",occMaxL);
+    }
+    else
+    {
+        LSLS = get_h2e_JK_gaunt_compact("LSLS",occMaxL);
+        LSSL = get_h2e_JK_gaunt_compact("LSSL",occMaxL);
+    }
+    
+    return;
 }

@@ -78,7 +78,7 @@ int main()
             /* Average of configuration */
             DHF_SPH_CA scfer(intor, "ZMAT", amfiMethod[1], amfiMethod[2], amfiMethod[3],true);
             scfer.convControl = amfiSCFconv;
-            scfer.runSCF(amfiMethod[2]);
+            scfer.runSCF(amfiMethod[2],false);
             amfiUnique.push_back(Rotate::unite_irrep(scfer.get_amfi_unc_ca(intor,amfiMethod[2]), intor.irrep_list));
             XUnique.push_back(Rotate::unite_irrep(scfer.get_X(), intor.irrep_list));
         }
@@ -87,7 +87,7 @@ int main()
             /* Fractional occupation */
             DHF_SPH scfer(intor, "ZMAT", amfiMethod[1], amfiMethod[2], amfiMethod[3],true);
             scfer.convControl = amfiSCFconv;
-            scfer.runSCF(amfiMethod[2]);
+            scfer.runSCF(amfiMethod[2],false);
             // amfiUnique.push_back(Rotate::unite_irrep(scfer.x2c2ePCC(),intor.irrep_list));
             amfiUnique.push_back(Rotate::unite_irrep(scfer.get_amfi_unc(intor,amfiMethod[2]), intor.irrep_list));
             XUnique.push_back(Rotate::unite_irrep(scfer.get_X(), intor.irrep_list));
@@ -166,10 +166,13 @@ void readZMAT(const string& filename, vector<string>& atoms, vector<string>& bas
         cout << "ERROR opening file " << filename << endl;
         exit(99);
     }
+        cout << "Reading ZMAT..." << endl;
         getline(ifs,flags);
+        cout << flags << endl;
         while (!ifs.eof())
         {
             getline(ifs,flags);
+            cout << flags << endl;
             flags2 = removeSpaces(flags);
             if(flags2.size() != 0 && readAtom)
             {
@@ -193,8 +196,9 @@ void readZMAT(const string& filename, vector<string>& atoms, vector<string>& bas
         while (!ifs.eof())
         {
             getline(ifs,flags);
+            cout << flags << endl;
             removeSpaces(flags);
-            size_t found = flags.find("BASIS");
+            size_t found = flags.find("BASIS=");
             if(found != string::npos)
             {
                 string tmp_s = flags.substr(found+6,flags.size()-6);
@@ -216,6 +220,7 @@ void readZMAT(const string& filename, vector<string>& atoms, vector<string>& bas
         while (!ifs.eof() && readBasis)
         {
             getline(ifs,flags);
+            cout << flags << endl;
             size_t found = flags.find(":");
             if(found != string::npos)
             {
@@ -224,6 +229,7 @@ void readZMAT(const string& filename, vector<string>& atoms, vector<string>& bas
                 for(int ii = 1; ii < atoms.size(); ii++)
                 {
                     getline(ifs,flags);
+                    cout << flags << endl;
                     flags = removeSpaces(flags);
                     basis.push_back(flags);
                 }
@@ -233,6 +239,7 @@ void readZMAT(const string& filename, vector<string>& atoms, vector<string>& bas
         while (!ifs.eof())
         {
             getline(ifs,flags);
+            cout << flags << endl;
             removeSpaces(flags);
             if(flags == "%amfiMethod*")
             {   

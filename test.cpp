@@ -26,10 +26,10 @@ int main()
 {
     readInput("input");
     INT_SPH intor(atomName, basisSet);
-    bool twoC = false, spinFree = false, withGaunt=true;
+    bool twoC = false, spinFree = false, withGaunt = false, gaussian_nuc = true;
 
-    DHF_SPH_CA scf4c(intor,"input",spinFree,twoC,withGaunt,true);
-    scf4c.runSCF(twoC);
+    DHF_SPH scf4c(intor,"input",spinFree,twoC,withGaunt,true,gaussian_nuc);
+    scf4c.runSCF(twoC,false);
 
     return 0;
 }

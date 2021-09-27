@@ -11,7 +11,7 @@ using namespace std;
 using namespace Eigen;
 
 
-DHF_SPH::DHF_SPH(INT_SPH& int_sph_, const string& filename, const bool& spinFree, const bool& twoC, const bool& with_gaunt_, const bool& allInt):
+DHF_SPH::DHF_SPH(INT_SPH& int_sph_, const string& filename, const bool& spinFree, const bool& twoC, const bool& with_gaunt_, const bool& allInt, const bool& gaussian_nuc):
 irrep_list(int_sph_.irrep_list), with_gaunt(with_gaunt_), shell_list(int_sph_.shell_list)
 {
     cout << "Initializing Dirac-HF for " << int_sph_.atomName << " atom." << endl;
@@ -69,17 +69,29 @@ irrep_list(int_sph_.irrep_list), with_gaunt(with_gaunt_), shell_list(int_sph_.sh
         numberOfDouble += 2.0*irrep_list(ir).size*irrep_list(ir).size*irrep_list(jr).size*irrep_list(jr).size;
     }
     numberOfDouble *= 5.0;
-    if(with_gaunt)  numberOfDouble = numberOfDouble/5.0*7.0;
+    if(with_gaunt)  numberOfDouble = numberOfDouble/5.0*9.0;
     cout << "Maximum memory cost (2e part) in SCF and amfi calculation: " << numberOfDouble*sizeof(double)/pow(1024.0,3) << " GB." << endl;
 
     StartTime = clock();
     overlap = int_sph_.get_h1e("overlap");
     kinetic = int_sph_.get_h1e("kinetic");
-    Vnuc = int_sph_.get_h1e("nuc_attra");
-    if(spinFree)
-        WWW = int_sph_.get_h1e("s_p_nuc_s_p_sf");
+    if(gaussian_nuc)
+    {
+        Vnuc = int_sph_.get_h1e("nucGau_attra");
+        if(spinFree)
+            WWW = int_sph_.get_h1e("s_p_nucGau_s_p_sf");
+        else
+            WWW = int_sph_.get_h1e("s_p_nucGau_s_p");
+    }
     else
-        WWW = int_sph_.get_h1e("s_p_nuc_s_p");
+    {
+        Vnuc = int_sph_.get_h1e("nuc_attra");
+        if(spinFree)
+            WWW = int_sph_.get_h1e("s_p_nuc_s_p_sf");
+        else
+            WWW = int_sph_.get_h1e("s_p_nuc_s_p");
+    }
+        
     EndTime = clock();
     cout << "1e-integral finished in " << (EndTime - StartTime) / (double)CLOCKS_PER_SEC << " seconds." << endl;
 
@@ -909,6 +921,32 @@ vMatrixXd DHF_SPH::get_amfi_unc(INT_SPH& int_sph_, const bool& twoC, const strin
         EndTime = clock();
         cout << "2e-integral-Gaunt finished in " << (EndTime - StartTime) / (double)CLOCKS_PER_SEC << " seconds." << endl << endl; 
     }
+    int2eJK gauntLSLS_SD, gauntLSSL_SD;
+    if(amfi_with_gaunt_real)
+    {
+        int_sph_.get_h2e_JK_gaunt_direct(gauntLSLS_SD,gauntLSSL_SD,-1,true);
+        if(renormalizedSmall)
+        {
+            renormalize_h2e(gauntLSLS_SD,"LSLS");
+            renormalize_h2e(gauntLSSL_SD,"LSSL");
+        }
+        symmetrize_JK_gaunt(gauntLSLS_SD,Nirrep_compact);
+        for(int ir = 0; ir < Nirrep_compact; ir++)
+        for(int jr = 0; jr < Nirrep_compact; jr++)
+        {
+            int size_i = irrep_list(compact2all(ir)).size, size_j = irrep_list(compact2all(jr)).size;
+            #pragma omp parallel  for
+            for(int nn = 0; nn < size_i*size_i*size_j*size_j; nn++)
+            {
+                int kk = nn / (size_j * size_j), ll = nn - kk*size_j*size_j;
+                gauntLSLS_SD.J[ir][jr][kk][ll] = gauntLSLS_JK.J[ir][jr][kk][ll] - gauntLSLS_SD.J[ir][jr][kk][ll];
+                gauntLSSL_SD.J[ir][jr][kk][ll] = gauntLSSL_JK.J[ir][jr][kk][ll] - gauntLSSL_SD.J[ir][jr][kk][ll];
+                kk = nn / (size_i * size_j), ll = nn - kk*size_i*size_j;
+                gauntLSLS_SD.K[ir][jr][kk][ll] = gauntLSLS_JK.K[ir][jr][kk][ll] - gauntLSLS_SD.K[ir][jr][kk][ll];
+                gauntLSSL_SD.K[ir][jr][kk][ll] = gauntLSSL_JK.K[ir][jr][kk][ll] - gauntLSSL_SD.K[ir][jr][kk][ll];
+            }
+        }
+    }
     int2eJK SSLL_SD, SSSS_SD;
     int_sph_.get_h2eSD_JK_direct(SSLL_SD, SSSS_SD);
     symmetrize_JK(SSSS_SD,Nirrep_compact);
@@ -939,11 +977,11 @@ vMatrixXd DHF_SPH::get_amfi_unc(INT_SPH& int_sph_, const bool& twoC, const strin
             EndTime = clock();
             cout << "Complete 2e-integral finished in " << (EndTime - StartTime) / (double)CLOCKS_PER_SEC << " seconds." << endl << endl; 
         }
-        return get_amfi_unc(SSLL_SD, SSSS_SD, density, Xmethod, amfi_with_gaunt_real);
+        return get_amfi_unc(SSLL_SD, SSSS_SD, gauntLSLS_SD, gauntLSSL_SD, density, Xmethod, amfi_with_gaunt_real);
     }
 }
 
-vMatrixXd DHF_SPH::get_amfi_unc(const int2eJK& h2eSSLL_SD, const int2eJK& h2eSSSS_SD, const vMatrixXd& density_, const string& Xmethod, const bool& amfi_with_gaunt)
+vMatrixXd DHF_SPH::get_amfi_unc(const int2eJK& h2eSSLL_SD, const int2eJK& h2eSSSS_SD, const int2eJK& gauntLSLS_SD, const int2eJK& gauntLSSL_SD, const vMatrixXd& density_, const string& Xmethod, const bool& amfi_with_gaunt)
 {
     if(!converged)
     {
@@ -1014,13 +1052,13 @@ vMatrixXd DHF_SPH::get_amfi_unc(const int2eJK& h2eSSLL_SD, const int2eJK& h2eSSS
                     if(amfi_with_gaunt)
                     {
                         int enm = nn*size_tmp+mm, ers = rr*size_tmp2+ss, erm = rr*size_tmp+mm, ens = nn*size_tmp2+ss;
-                        SO_4c(mm,nn) -= density_(jr)(size_tmp2+ss,size_tmp2+rr) * gauntLSSL_JK.K[ir_c][jr_c][emr][esn];
-                        SO_4c(mm+size_tmp,nn+size_tmp) -= density_(jr)(ss,rr) * gauntLSSL_JK.K[jr_c][ir_c][esn][emr];
-                        SO_4c(mm+size_tmp,nn) += density_(jr)(size_tmp2+ss,rr)*gauntLSLS_JK.J[ir_c][jr_c][enm][ers] + density_(jr)(ss,size_tmp2+rr) * gauntLSSL_JK.J[jr_c][ir_c][esr][emn];
+                        SO_4c(mm,nn) -= density_(jr)(size_tmp2+ss,size_tmp2+rr) * gauntLSSL_SD.K[ir_c][jr_c][emr][esn];
+                        SO_4c(mm+size_tmp,nn+size_tmp) -= density_(jr)(ss,rr) * gauntLSSL_SD.K[jr_c][ir_c][esn][emr];
+                        SO_4c(mm+size_tmp,nn) += density_(jr)(size_tmp2+ss,rr)*gauntLSLS_SD.J[ir_c][jr_c][enm][ers] + density_(jr)(ss,size_tmp2+rr) * gauntLSSL_SD.J[jr_c][ir_c][esr][emn];
                         if(mm != nn) 
                         {
                             int ern = rr*size_tmp+nn, ems = mm*size_tmp2+ss;
-                            SO_4c(nn+size_tmp,mm) += density_(jr)(size_tmp2+ss,rr)*gauntLSLS_JK.J[ir_c][jr_c][emn][ers] + density_(jr)(ss,size_tmp2+rr) * gauntLSSL_JK.J[jr_c][ir_c][esr][enm];
+                            SO_4c(nn+size_tmp,mm) += density_(jr)(size_tmp2+ss,rr)*gauntLSLS_SD.J[ir_c][jr_c][emn][ers] + density_(jr)(ss,size_tmp2+rr) * gauntLSSL_SD.J[jr_c][ir_c][esr][enm];
                         }
                     }
                 }

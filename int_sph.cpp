@@ -410,6 +410,13 @@ double INT_SPH::int2e_get_angular_K(const int& l1, const int& two_m1, const int&
 vMatrixXd INT_SPH::get_h1e(const string& intType) const
 {
     vMatrixXd int_1e(Nirrep);
+    // isotope mass for finite nuclear calculation
+    VectorXd mass_tmp(103);
+    mass_tmp << 1,4,7,9,11,12,14,16,19,20,23,24,27,28,31,32,35,40,39,40,45,48,51,52,55,56,59,58,63,
+                64,69,74,75,80,79,84,85,88,89,90,93,98,98,102,103,106,107,114,115,120,121,130,127,
+                132,133,138,139,140,141,144,145,152,153,158,159,162,162,168,169,174,175,180,181,184,
+                187,192,193,195,197,202,205,208,209,209,210,222,223,226,227,232,231,238,237,244,243,
+                247,247,251,252,257,258,259,266;
     int int_tmp = 0;
     for(int irrep = 0; irrep < Nirrep; irrep++)
     {
@@ -476,6 +483,33 @@ vMatrixXd INT_SPH::get_h1e(const string& intType) const
                 }
                 else if(intType == "overlap")  h1e_single_shell(index_tmp)(ii,jj) = auxiliary_1e_list(2);
                 else if(intType == "nuc_attra")  h1e_single_shell(index_tmp)(ii,jj) = -atomNumber * auxiliary_1e_list(1);
+                else if(intType == "nucGau_attra")
+                {
+                    double a_13 = pow(mass_tmp(atomNumber-1),1.0/3.0);
+                    double rnuc = (0.836*a_13+0.570)/52917.7249, xi = 3.0/2.0/rnuc/rnuc;
+                    double norm = -atomNumber*pow(xi/M_PI,1.5);
+                    h1e_single_shell(index_tmp)(ii,jj) = norm*int2e_get_radial(0,0.0,0,xi,ll,a1,ll,a2,0)*4.0*M_PI;
+                }
+                else if(intType == "s_p_nucGau_s_p")
+                {
+                    double a_13 = pow(mass_tmp(atomNumber-1),1.0/3.0);
+                    double rnuc = (0.836*a_13+0.570)/52917.7249, xi = 3.0/2.0/rnuc/rnuc;
+                    double norm = -atomNumber*pow(xi/M_PI,1.5);
+                    double tmp = 4.0*a1*a2*int2e_get_radial(0,0.0,0,xi,ll+1,a1,ll+1,a2,0);
+                    if(ll != 0)
+                        tmp += (1.0+ll+kappa)*(1.0+ll+kappa)*int2e_get_radial(0,0.0,0,xi,ll-1,a1,ll-1,a2,0) - 2.0*(a1+a2)*(1+ll+kappa)*int2e_get_radial(0,0.0,0,xi,ll+1,a1,ll-1,a2,0);
+                    h1e_single_shell(index_tmp)(ii,jj) = norm*tmp*4.0*M_PI;
+                }
+                else if(intType == "s_p_nucGau_s_p_sf")
+                {
+                    double a_13 = pow(mass_tmp(atomNumber-1),1.0/3.0);
+                    double rnuc = (0.836*a_13+0.570)/52917.7249, xi = 3.0/2.0/rnuc/rnuc;
+                    double norm = -atomNumber*pow(xi/M_PI,1.5);
+                    double tmp = 4.0*a1*a2*int2e_get_radial(0,0.0,0,xi,ll+1,a1,ll+1,a2,0);
+                    if(ll != 0)
+                        tmp += (2.0*ll*ll + ll)*int2e_get_radial(0,0.0,0,xi,ll-1,a1,ll-1,a2,0) - 2.0*(a1+a2)*(1+ll)*int2e_get_radial(0,0.0,0,xi,ll+1,a1,ll-1,a2,0);
+                    h1e_single_shell(index_tmp)(ii,jj) = norm*tmp*4.0*M_PI;
+                }
                 else if(intType == "kinetic")
                 {
                     h1e_single_shell(index_tmp)(ii,jj) = 4*a1*a2 * auxiliary_1e_list(4);
