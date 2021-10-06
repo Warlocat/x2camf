@@ -77,6 +77,7 @@ irrep_list(int_sph_.irrep_list), with_gaunt(with_gaunt_), shell_list(int_sph_.sh
     kinetic = int_sph_.get_h1e("kinetic");
     if(gaussian_nuc)
     {
+        cout << "Using Gaussian nuclear model!" << endl << endl;
         Vnuc = int_sph_.get_h1e("nucGau_attra");
         if(spinFree)
             WWW = int_sph_.get_h1e("s_p_nucGau_s_p_sf");
@@ -924,28 +925,30 @@ vMatrixXd DHF_SPH::get_amfi_unc(INT_SPH& int_sph_, const bool& twoC, const strin
     int2eJK gauntLSLS_SD, gauntLSSL_SD;
     if(amfi_with_gaunt_real)
     {
-        int_sph_.get_h2e_JK_gaunt_direct(gauntLSLS_SD,gauntLSSL_SD,-1,true);
-        if(renormalizedSmall)
-        {
-            renormalize_h2e(gauntLSLS_SD,"LSLS");
-            renormalize_h2e(gauntLSSL_SD,"LSSL");
-        }
-        symmetrize_JK_gaunt(gauntLSLS_SD,Nirrep_compact);
-        for(int ir = 0; ir < Nirrep_compact; ir++)
-        for(int jr = 0; jr < Nirrep_compact; jr++)
-        {
-            int size_i = irrep_list(compact2all(ir)).size, size_j = irrep_list(compact2all(jr)).size;
-            #pragma omp parallel  for
-            for(int nn = 0; nn < size_i*size_i*size_j*size_j; nn++)
-            {
-                int kk = nn / (size_j * size_j), ll = nn - kk*size_j*size_j;
-                gauntLSLS_SD.J[ir][jr][kk][ll] = gauntLSLS_JK.J[ir][jr][kk][ll] - gauntLSLS_SD.J[ir][jr][kk][ll];
-                gauntLSSL_SD.J[ir][jr][kk][ll] = gauntLSSL_JK.J[ir][jr][kk][ll] - gauntLSSL_SD.J[ir][jr][kk][ll];
-                kk = nn / (size_i * size_j), ll = nn - kk*size_i*size_j;
-                gauntLSLS_SD.K[ir][jr][kk][ll] = gauntLSLS_JK.K[ir][jr][kk][ll] - gauntLSLS_SD.K[ir][jr][kk][ll];
-                gauntLSSL_SD.K[ir][jr][kk][ll] = gauntLSSL_JK.K[ir][jr][kk][ll] - gauntLSSL_SD.K[ir][jr][kk][ll];
-            }
-        }
+        // int_sph_.get_h2e_JK_gaunt_direct(gauntLSLS_SD,gauntLSSL_SD,-1,true);
+        // if(renormalizedSmall)
+        // {
+        //     renormalize_h2e(gauntLSLS_SD,"LSLS");
+        //     renormalize_h2e(gauntLSSL_SD,"LSSL");
+        // }
+        // symmetrize_JK_gaunt(gauntLSLS_SD,Nirrep_compact);
+        // for(int ir = 0; ir < Nirrep_compact; ir++)
+        // for(int jr = 0; jr < Nirrep_compact; jr++)
+        // {
+        //     int size_i = irrep_list(compact2all(ir)).size, size_j = irrep_list(compact2all(jr)).size;
+        //     #pragma omp parallel  for
+        //     for(int nn = 0; nn < size_i*size_i*size_j*size_j; nn++)
+        //     {
+        //         int kk = nn / (size_j * size_j), ll = nn - kk*size_j*size_j;
+        //         gauntLSLS_SD.J[ir][jr][kk][ll] = gauntLSLS_JK.J[ir][jr][kk][ll] - gauntLSLS_SD.J[ir][jr][kk][ll];
+        //         gauntLSSL_SD.J[ir][jr][kk][ll] = gauntLSSL_JK.J[ir][jr][kk][ll] - gauntLSSL_SD.J[ir][jr][kk][ll];
+        //         kk = nn / (size_i * size_j), ll = nn - kk*size_i*size_j;
+        //         gauntLSLS_SD.K[ir][jr][kk][ll] = gauntLSLS_JK.K[ir][jr][kk][ll] - gauntLSLS_SD.K[ir][jr][kk][ll];
+        //         gauntLSSL_SD.K[ir][jr][kk][ll] = gauntLSSL_JK.K[ir][jr][kk][ll] - gauntLSSL_SD.K[ir][jr][kk][ll];
+        //     }
+        // }
+        gauntLSLS_SD = gauntLSLS_JK;
+        gauntLSSL_SD = gauntLSSL_JK;
     }
     int2eJK SSLL_SD, SSSS_SD;
     int_sph_.get_h2eSD_JK_direct(SSLL_SD, SSSS_SD);

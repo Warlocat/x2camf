@@ -66,7 +66,8 @@ int main()
     if(amfiMethod[1])   method = method + "spin-free-";
     if(amfiMethod[2])   method = method + "x2c1e-";
     else method = method + "Dirac Hatree Fock";
-    if(amfiMethod[3])   method = method + "with Gaunt";
+    if(amfiMethod[3])   method = method + " with Gaunt interaction\n";
+    if(amfiMethod[4])   method = method + " with Gaussian nuclear model";
     cout << "amfi Method input: " << method << endl;
 
     vector<MatrixXcd> amfiUnique, XUnique;
@@ -76,18 +77,18 @@ int main()
         if(amfiMethod[0])
         {
             /* Average of configuration */
-            DHF_SPH_CA scfer(intor, "ZMAT", amfiMethod[1], amfiMethod[2], amfiMethod[3],true);
+            DHF_SPH_CA scfer(intor, "ZMAT", amfiMethod[1], amfiMethod[2], amfiMethod[3],true, amfiMethod[4]);
             scfer.convControl = amfiSCFconv;
-            scfer.runSCF(amfiMethod[2],false);
+            scfer.runSCF(amfiMethod[2]);
             amfiUnique.push_back(Rotate::unite_irrep(scfer.get_amfi_unc_ca(intor,amfiMethod[2]), intor.irrep_list));
             XUnique.push_back(Rotate::unite_irrep(scfer.get_X(), intor.irrep_list));
         }
         else
         {
             /* Fractional occupation */
-            DHF_SPH scfer(intor, "ZMAT", amfiMethod[1], amfiMethod[2], amfiMethod[3],true);
+            DHF_SPH scfer(intor, "ZMAT", amfiMethod[1], amfiMethod[2], amfiMethod[3],true, amfiMethod[4]);
             scfer.convControl = amfiSCFconv;
-            scfer.runSCF(amfiMethod[2],false);
+            scfer.runSCF(amfiMethod[2]);
             // amfiUnique.push_back(Rotate::unite_irrep(scfer.x2c2ePCC(),intor.irrep_list));
             amfiUnique.push_back(Rotate::unite_irrep(scfer.get_amfi_unc(intor,amfiMethod[2]), intor.irrep_list));
             XUnique.push_back(Rotate::unite_irrep(scfer.get_X(), intor.irrep_list));
@@ -157,7 +158,7 @@ int main()
 
 void readZMAT(const string& filename, vector<string>& atoms, vector<string>& basis, vector<bool>& amfiMethod, double& SCFconv)
 {
-    bool readAtom = true, readBasis = true;
+    bool readAtom = true, readBasis = true, GauNuc = false;
     ifstream ifs;
     string flags, flags2, basisSet;
     ifs.open(filename);
@@ -211,6 +212,11 @@ void readZMAT(const string& filename, vector<string>& atoms, vector<string>& bas
                     readBasis = false;
                 }
             }
+            found = flags.find("NUC_MODEL=GAUSSIAN");
+            if(found != string::npos)
+            {
+                GauNuc = true;
+            }
             found = flags.find(")");
             if(found != string::npos)
             {
@@ -247,12 +253,14 @@ void readZMAT(const string& filename, vector<string>& atoms, vector<string>& bas
                 //spin-free
                 //two-component
                 //gaunt
+                //Gaussian finite nuclear model
                 for(int ii = 0 ; ii < 4; ii++)
                 {
                     bool tmp;
                     ifs >> tmp;
                     amfiMethod.push_back(tmp);
                 }
+                amfiMethod.push_back(GauNuc);
                 break;
             }
             else if(flags == "%atmconv")
@@ -267,6 +275,7 @@ void readZMAT(const string& filename, vector<string>& atoms, vector<string>& bas
             amfiMethod.push_back(false); //spin-free
             amfiMethod.push_back(false); //two-component
             amfiMethod.push_back(true); //with gaunt
+            amfiMethod.push_back(false); //with gaunt
         }
     ifs.close();
 
