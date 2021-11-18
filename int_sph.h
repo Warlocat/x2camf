@@ -31,6 +31,8 @@ protected:
     double int2e_get_angular_J(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& LL) const;
     double int2e_get_angular_gaunt_LSLS(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& l3, const int& two_m3, const int& s3, const int& l4, const int& two_m4, const int& s4, const int& LL) const;
     double int2e_get_angular_gaunt_LSSL(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& l3, const int& two_m3, const int& s3, const int& l4, const int& two_m4, const int& s4, const int& LL) const;
+    double int2e_get_angular_gaunt_LSLS_9j(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& l3, const int& two_m3, const int& s3, const int& l4, const int& two_m4, const int& s4, const int& LL) const;
+    double int2e_get_angular_gaunt_LSSL_9j(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& l3, const int& two_m3, const int& s3, const int& l4, const int& two_m4, const int& s4, const int& LL) const;
     void int2e_get_angular_gauntSF_LSLS(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& l3, const int& two_m3, const int& s3, const int& l4, const int& two_m4, const int& s4, const int& LL, double& lsls11, double& lsls12, double& lsls21, double& lsls22);
     void int2e_get_angular_gauntSF_LSSL(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& l3, const int& two_m3, const int& s3, const int& l4, const int& two_m4, const int& s4, const int& LL, double& lssl11, double& lssl12, double& lssl21, double& lssl22);
     double int2e_get_angular_gauntSF_p1_LS(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& LL, const int& MM) const;
@@ -47,6 +49,7 @@ protected:
     double int2e_get_angular_gauntSF_z2_SL(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& LL, const int& MM) const;
 
     inline double int2e_get_threeSH(const int& l1, const int& m1, const int& l2, const int& m2, const int& l3, const int& m3, const double& threeJ) const;
+    inline double int2e_get_angularX_RME(const int& two_j1, const int& l1, const int& two_j2, const int& l2, const int& LL, const int& vv, const double& threeJ) const;
     inline double factor_p1(const int& l, const int& m) const;
     inline double factor_p2(const int& l, const int& m) const;
     inline double factor_m1(const int& l, const int& m) const;

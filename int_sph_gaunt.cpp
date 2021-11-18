@@ -19,6 +19,11 @@ inline double INT_SPH::int2e_get_threeSH(const int& l1, const int& m1, const int
     // return pow(-1,m1)*threeJ*wigner_3j(l1,l2,l3,-m1,m2,m3);
     return pow(-1,m1)*threeJ*wigner_3j(l1,l2,l3,-m1,m2,m3)*sqrt((2.0*l1+1.0)*(2.0*l3+1.0));
 }
+inline double INT_SPH::int2e_get_angularX_RME(const int& two_j1, const int& l1, const int& two_j2, const int& l2, const int& LL, const int& vv, const double& threeJ) const
+{
+    return sqrt(6.0 * (two_j1+1.0)*(two_j2+1.0)*(2*LL+1.0) * (2*l1+1.0)*(2*l2+1.0)) * threeJ
+           * gsl_sf_coupling_9j(2*l1,2*l2,2*vv,1,1,2,two_j1,two_j2,2*LL) * pow(-1,l1);
+}
 inline double INT_SPH::factor_p1(const int& l, const int& m) const
 {
     // return sqrt((l-m)*(l-m-1.0));
@@ -84,6 +89,52 @@ double INT_SPH::int2e_get_angular_gaunt_LSSL(const int& l1, const int& two_m1, c
         angular += pow(-1,MM)*(2.0*tmp1*tmp4 + 2.0*tmp2*tmp3 + (-tmp5+tmp6)*(tmp7-tmp8) );
     }
     return angular * pow(-1,(two_m1+two_m3)/2) * wigner_3j_zeroM(l1,LL,l2p)*wigner_3j_zeroM(l3p,LL,l4);
+}
+/*
+    Another implementation using wigner-9j symbol
+    A little bit slower than the direct expansion but much simpler in formulations
+*/
+double INT_SPH::int2e_get_angular_gaunt_LSLS_9j(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& l3, const int& two_m3, const int& s3, const int& l4, const int& two_m4, const int& s4, const int& LL) const
+{
+    double angular = 0.0;
+    int l2p = l2+s2, l4p = l4+s4;
+    int two_j1 = 2*l1+s1, two_j2 = 2*l2+s2, two_j3 = 2*l3+s3, two_j4 = 2*l4+s4, vv = LL;
+    double threeJ1 = wigner_3j_zeroM(l2p,vv,l1), threeJ2 = wigner_3j_zeroM(l3,vv,l4p), tmp;
+    for(int LLL = abs(LL-1); LLL <= LL+1; LLL++)
+    {
+        tmp = 0.0;
+        double rme1 = int2e_get_angularX_RME(two_j2,l2p,two_j1,l1,LLL,vv,threeJ1);
+        double rme2 = int2e_get_angularX_RME(two_j3,l3,two_j4,l4p,LLL,vv,threeJ2);
+        for(int MMM = -LLL; MMM <= LLL; MMM++)
+        {
+            tmp += gsl_sf_coupling_3j(two_j2,2*LLL,two_j1,-two_m2,2*MMM,two_m1)
+                 * gsl_sf_coupling_3j(two_j3,2*LLL,two_j4,-two_m3,2*MMM,two_m4);
+        }
+        angular += tmp*rme1*rme2;
+    }
+    
+    return angular*pow(-1,(two_j2+two_j3-two_m2-two_m3)/2);
+}
+double INT_SPH::int2e_get_angular_gaunt_LSSL_9j(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& l3, const int& two_m3, const int& s3, const int& l4, const int& two_m4, const int& s4, const int& LL) const
+{
+    double angular = 0.0;
+    int l2p = l2+s2, l3p = l3+s3;
+    int two_j1 = 2*l1+s1, two_j2 = 2*l2+s2, two_j3 = 2*l3+s3, two_j4 = 2*l4+s4, vv = LL;
+    double threeJ1 = wigner_3j_zeroM(l2p,vv,l1), threeJ2 = wigner_3j_zeroM(l3p,vv,l4), tmp;
+    for(int LLL = abs(LL-1); LLL <= LL+1; LLL++)
+    {
+        tmp = 0.0;
+        double rme1 = int2e_get_angularX_RME(two_j2,l2p,two_j1,l1,LLL,vv,threeJ1);
+        double rme2 = int2e_get_angularX_RME(two_j3,l3p,two_j4,l4,LLL,vv,threeJ2);
+        for(int MMM = -LLL; MMM <= LLL; MMM++)
+        {
+            tmp += gsl_sf_coupling_3j(two_j2,2*LLL,two_j1,-two_m2,2*MMM,two_m1)
+                 * gsl_sf_coupling_3j(two_j3,2*LLL,two_j4,-two_m3,2*MMM,two_m4);
+        }
+        angular += tmp*rme1*rme2;
+    }
+    
+    return angular*pow(-1,(two_j2+two_j3-two_m2-two_m3)/2);
 }
 
 /*
@@ -476,22 +527,6 @@ int2eJK INT_SPH::get_h2e_JK_gaunt(const string& intType, const int& occMaxL) con
                             array_radial_J[tmp][e1J][e2J][index_tmp_p][index_tmp_q] -= 2.0*a2*lk3 * radial_2e_list_J[tmp](2,0);
                         array_radial_J[tmp][e1J][e2J][index_tmp_p][index_tmp_q] /= -1.0 * norm_J * 4.0 * pow(speedOfLight,2);
                     }
-                    else if(intType == "LSLS_SF")
-                    {
-                        
-                    }
-                    else if(intType == "LSSL_SF")
-                    {
-                        
-                    }
-                    else if(intType == "LSLS_SD")
-                    {
-                        
-                    }
-                    else if(intType == "LSSL_SD")
-                    {
-                        
-                    }
                     else
                     {
                         cout << "ERROR: Unkonwn intType in get_h2e_JK_gaunt." << endl;
@@ -521,22 +556,6 @@ int2eJK INT_SPH::get_h2e_JK_gaunt(const string& intType, const int& occMaxL) con
                             array_radial_K[tmp][e1K][e2K][index_tmp_p][index_tmp_q] += lk2*lk3 * radial_2e_list_K[tmp](3,0) 
                                     - 2.0*a3*lk2 * radial_2e_list_K[tmp](1,0) - 2.0*a2*lk3 * radial_2e_list_K[tmp](2,0);
                         array_radial_K[tmp][e1K][e2K][index_tmp_p][index_tmp_q] /= -1.0 * norm_K * 4.0 * pow(speedOfLight,2);
-                    }
-                    else if(intType == "LSLS_SF")
-                    {
-                        
-                    }
-                    else if(intType == "LSSL_SF")
-                    {
-                        
-                    }
-                    else if(intType == "LSLS_SD")
-                    {
-                        
-                    }
-                    else if(intType == "LSSL_SD")
-                    {
-                        
                     }
                     else
                     {
