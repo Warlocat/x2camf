@@ -20,7 +20,7 @@ protected:
     vVectorXd norm_s;
     vVectorXd occNumber, occNumberCore;
     double d_density, nelec;
-    bool converged = false, renormalizedSmall = false, with_gaunt = false, X_calculated = false;
+    bool converged = false, renormalizedSmall = false, with_gaunt = false, with_gauge = false, X_calculated = false;
     
     /* evaluate density martix */
     MatrixXd evaluateDensity_spinor(const MatrixXd& coeff_, const VectorXd& occNumber_, const bool& twoC = false);
@@ -39,7 +39,7 @@ public:
     vVectorXd ene_orb;
     VectorXd ene_orb_total;
 
-    DHF_SPH(INT_SPH& int_sph_, const string& filename, const bool& spinFree = false, const bool& twoC = false, const bool& with_gaunt_ = false, const bool& allInt = false, const bool& gaussian_nuc = false);
+    DHF_SPH(INT_SPH& int_sph_, const string& filename, const bool& spinFree = false, const bool& twoC = false, const bool& with_gaunt_ = false, const bool& with_gauge_ = false, const bool& allInt = false, const bool& gaussian_nuc = false);
     virtual ~DHF_SPH();
     
     virtual void runSCF(const bool& twoC = false, const bool& renormSmall = true, vMatrixXd* initialGuess = NULL);

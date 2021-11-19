@@ -11,8 +11,8 @@ using namespace std;
 using namespace Eigen;
 
 
-DHF_SPH::DHF_SPH(INT_SPH& int_sph_, const string& filename, const bool& spinFree, const bool& twoC, const bool& with_gaunt_, const bool& allInt, const bool& gaussian_nuc):
-irrep_list(int_sph_.irrep_list), with_gaunt(with_gaunt_), shell_list(int_sph_.shell_list)
+DHF_SPH::DHF_SPH(INT_SPH& int_sph_, const string& filename, const bool& spinFree, const bool& twoC, const bool& with_gaunt_, const bool& with_gauge_, const bool& allInt, const bool& gaussian_nuc):
+irrep_list(int_sph_.irrep_list), with_gaunt(with_gaunt_), with_gauge(with_gauge_), shell_list(int_sph_.shell_list)
 {
     cout << "Initializing Dirac-HF for " << int_sph_.atomName << " atom." << endl;
     Nirrep = int_sph_.irrep_list.rows();
@@ -70,6 +70,7 @@ irrep_list(int_sph_.irrep_list), with_gaunt(with_gaunt_), shell_list(int_sph_.sh
     }
     numberOfDouble *= 5.0;
     if(with_gaunt)  numberOfDouble = numberOfDouble/5.0*9.0;
+    if(with_gauge)  numberOfDouble = numberOfDouble/9.0*12.0;
     cout << "Maximum memory cost (2e part) in SCF and amfi calculation: " << numberOfDouble*sizeof(double)/pow(1024.0,3) << " GB." << endl;
 
     StartTime = clock();
@@ -110,6 +111,7 @@ irrep_list(int_sph_.irrep_list), with_gaunt(with_gaunt_), shell_list(int_sph_.sh
         //Always calculate all Gaunt integrals for amfi integrals
         if(spinFree)
         {
+            cout << "ATTENTION! Spin-free Gaunt integrals are used!" << endl;
             gauntLSLS_JK = int_sph_.get_h2e_JK_gauntSF_compact("LSLS");
             gauntLSSL_JK = int_sph_.get_h2e_JK_gauntSF_compact("LSSL");
         }
@@ -117,6 +119,28 @@ irrep_list(int_sph_.irrep_list), with_gaunt(with_gaunt_), shell_list(int_sph_.sh
             int_sph_.get_h2e_JK_gaunt_direct(gauntLSLS_JK,gauntLSSL_JK);
         EndTime = clock();
         cout << "2e-integral-Gaunt finished in " << (EndTime - StartTime) / (double)CLOCKS_PER_SEC << " seconds." << endl << endl; 
+    }
+    if(with_gauge && !twoC)
+    {
+        int2eJK tmp1, tmp2;
+        int_sph_.get_h2e_JK_gauge_direct(tmp1,tmp2);
+        for(int ir = 0; ir < occMax_irrep_compact; ir++)
+        for(int jr = 0; jr < occMax_irrep_compact; jr++)
+        {
+            int size_i = irrep_list(compact2all(ir)).size, size_j = irrep_list(compact2all(jr)).size;
+            #pragma omp parallel  for
+            for(int ii = 0; ii < size_i*size_i*size_j*size_j; ii++)
+            {
+                int e1 = ii/size_j/size_j, e2 = ii-e1*size_j*size_j;
+                gauntLSLS_JK.J[ir][jr][e1][e2] += tmp1.J[ir][jr][e1][e2];
+                gauntLSSL_JK.J[ir][jr][e1][e2] += tmp2.J[ir][jr][e1][e2];
+                e1 = ii/size_i/size_j; e2 = ii-e1*size_i*size_j;
+                gauntLSLS_JK.K[ir][jr][e1][e2] += tmp1.K[ir][jr][e1][e2];
+                gauntLSSL_JK.K[ir][jr][e1][e2] += tmp2.K[ir][jr][e1][e2];
+            }
+        }
+        EndTime = clock();
+        cout << "2e-integral-gauge finished in " << (EndTime - StartTime) / (double)CLOCKS_PER_SEC << " seconds." << endl << endl; 
     }
     symmetrize_h2e(twoC);
 

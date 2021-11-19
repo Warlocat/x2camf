@@ -13,8 +13,8 @@ using namespace Eigen;
 vVectorXd occNumberDebug;
 
 
-DHF_SPH_CA::DHF_SPH_CA(INT_SPH& int_sph_, const string& filename, const bool& spinFree, const bool& twoC, const bool& with_gaunt_, const bool& allInt, const bool& gaussian_nuc):
-DHF_SPH(int_sph_,filename,spinFree,twoC,with_gaunt_,allInt,gaussian_nuc)
+DHF_SPH_CA::DHF_SPH_CA(INT_SPH& int_sph_, const string& filename, const bool& spinFree, const bool& twoC, const bool& with_gaunt_, const bool& with_gauge_, const bool& allInt, const bool& gaussian_nuc):
+DHF_SPH(int_sph_,filename,spinFree,twoC,with_gaunt_,with_gauge_,allInt,gaussian_nuc)
 {
     openShell = -1;
     for(int ir = 0; ir < occMax_irrep; ir++)

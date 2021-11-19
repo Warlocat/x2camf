@@ -26,6 +26,7 @@ protected:
     double auxiliary_2e_r_inf(const int& l1, const int& l2, const double& a1, const double& a2) const;
     /* evaluate radial part and angular part in 2e integrals */
     double int2e_get_radial(const int& l1, const double& a1, const int& l2, const double& a2, const int& l3, const double& a3, const int& l4, const double& a4, const int& LL) const;
+    double int2e_get_radial_gauge(const int& l1, const double& a1, const int& l2, const double& a2, const int& l3, const double& a3, const int& l4, const double& a4, const int& LL, const int& v1, const int& v2) const;
     double int2e_get_angular(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& l3, const int& two_m3, const int& s3, const int& l4, const int& two_m4, const int& s4, const int& LL) const;
     double int2e_get_angular_K(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& LL) const;
     double int2e_get_angular_J(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& LL) const;
@@ -33,6 +34,8 @@ protected:
     double int2e_get_angular_gaunt_LSSL(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& l3, const int& two_m3, const int& s3, const int& l4, const int& two_m4, const int& s4, const int& LL) const;
     double int2e_get_angular_gaunt_LSLS_9j(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& l3, const int& two_m3, const int& s3, const int& l4, const int& two_m4, const int& s4, const int& LL) const;
     double int2e_get_angular_gaunt_LSSL_9j(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& l3, const int& two_m3, const int& s3, const int& l4, const int& two_m4, const int& s4, const int& LL) const;
+    double int2e_get_angular_gauge_LSLS(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& l3, const int& two_m3, const int& s3, const int& l4, const int& two_m4, const int& s4, const int& LL, const int& v1, const int& v2) const;
+    double int2e_get_angular_gauge_LSSL(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& l3, const int& two_m3, const int& s3, const int& l4, const int& two_m4, const int& s4, const int& LL, const int& v1, const int& v2) const;
     void int2e_get_angular_gauntSF_LSLS(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& l3, const int& two_m3, const int& s3, const int& l4, const int& two_m4, const int& s4, const int& LL, double& lsls11, double& lsls12, double& lsls21, double& lsls22);
     void int2e_get_angular_gauntSF_LSSL(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& l3, const int& two_m3, const int& s3, const int& l4, const int& two_m4, const int& s4, const int& LL, double& lssl11, double& lssl12, double& lssl21, double& lssl22);
     double int2e_get_angular_gauntSF_p1_LS(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& LL, const int& MM) const;
@@ -49,7 +52,7 @@ protected:
     double int2e_get_angular_gauntSF_z2_SL(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& LL, const int& MM) const;
 
     inline double int2e_get_threeSH(const int& l1, const int& m1, const int& l2, const int& m2, const int& l3, const int& m3, const double& threeJ) const;
-    inline double int2e_get_angularX_RME(const int& two_j1, const int& l1, const int& two_j2, const int& l2, const int& LL, const int& vv, const double& threeJ) const;
+    double int2e_get_angularX_RME(const int& two_j1, const int& l1, const int& two_j2, const int& l2, const int& LL, const int& vv, const double& threeJ) const;
     inline double factor_p1(const int& l, const int& m) const;
     inline double factor_p2(const int& l, const int& m) const;
     inline double factor_m1(const int& l, const int& m) const;
@@ -81,6 +84,8 @@ public:
     int2eJK get_h2e_JK_gauntSF_compact(const string& intType, const int& occMaxL = -1);
     void get_h2e_JK_gaunt_direct(int2eJK& LSLS, int2eJK& LSSL, const int& occMaxL = -1, const bool& spinFree = false);
     void get_h2eSD_JK_gaunt_direct(int2eJK& LSLS, int2eJK& LSSL, const int& occMaxL = -1);
+    int2eJK get_h2e_JK_gauge_compact(const string& intType, const int& occMaxL = -1) const;
+    void get_h2e_JK_gauge_direct(int2eJK& LSLS, int2eJK& LSSL, const int& occMaxL = -1, const bool& spinFree = false);
     
     /* get contraction coefficients for uncontracted calculations */
     MatrixXd get_coeff_contraction_spinor();

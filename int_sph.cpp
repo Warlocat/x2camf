@@ -279,7 +279,7 @@ void INT_SPH::normalization()
 /*
     auxiliary_1e is to evaluate \int_0^inf x^l exp(-ax^2) dx
 */
-inline double INT_SPH::auxiliary_1e(const int& l, const double& a) const
+double INT_SPH::auxiliary_1e(const int& l, const double& a) const
 {
     int n = l / 2;
     if(l == 0)  return 0.5*sqrt(M_PI/a);
@@ -290,12 +290,12 @@ inline double INT_SPH::auxiliary_1e(const int& l, const double& a) const
 /*
     auxiliary_2e_0_r is to evaluate \int_0^inf \int_0^r2 r1^l1 r2^l2 exp(-a1 * r1^2) exp(-a2 * r2^2) dr1dr2
 */
-inline double INT_SPH::auxiliary_2e_0_r(const int& l1, const int& l2, const double& a1, const double& a2) const
+double INT_SPH::auxiliary_2e_0_r(const int& l1, const int& l2, const double& a1, const double& a2) const
 {
     int n1 = l1 / 2;
     if(n1 * 2 == l1)
     {
-        cout << "ERROR: When auxiliary_2e_0r is called, l1 must be set to an odd number!" << endl;
+        cout << "ERROR: When auxiliary_2e_0_r is called, l1 must be set to an odd number!" << endl;
         exit(99);
     }
     else
@@ -313,12 +313,12 @@ inline double INT_SPH::auxiliary_2e_0_r(const int& l1, const int& l2, const doub
 /*
     auxiliary_2e_r_inf is to evaluate \int_0^inf \int_r2^inf r1^l1 r2^l2 exp(-a1 * r1^2) exp(-a2 * r2^2) dr1dr2
 */
-inline double INT_SPH::auxiliary_2e_r_inf(const int& l1, const int& l2, const double& a1, const double& a2) const
+double INT_SPH::auxiliary_2e_r_inf(const int& l1, const int& l2, const double& a1, const double& a2) const
 {
     int n1 = l1 / 2;
     if(n1 * 2 == l1)
     {
-        cout << "ERROR: When auxiliary_2e_0r is called, l1 must be set to an odd number!" << endl;
+        cout << "ERROR: When auxiliary_2e_r_inf is called, l1 must be set to an odd number!" << endl;
         exit(99);
     }
     else
