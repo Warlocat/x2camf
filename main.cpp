@@ -65,9 +65,10 @@ int main()
     if(amfiMethod[0])   method = method + "aoc-";
     if(amfiMethod[1])   method = method + "spin-free-";
     if(amfiMethod[2])   method = method + "x2c1e-";
-    else method = method + "Dirac Hatree Fock";
+    else method = method + "Dirac Hatree Fock\n";
     if(amfiMethod[3])   method = method + " with Gaunt interaction\n";
-    if(amfiMethod[4])   method = method + " with Gaussian nuclear model";
+    if(amfiMethod[4])   method = method + " with gauge interaction\n";
+    if(amfiMethod[5])   method = method + " with Gaussian nuclear model";
     cout << "amfi Method input: " << method << endl;
 
     vector<MatrixXcd> amfiUnique, XUnique;
@@ -77,7 +78,7 @@ int main()
         if(amfiMethod[0])
         {
             /* Average of configuration */
-            DHF_SPH_CA scfer(intor, "ZMAT", amfiMethod[1], amfiMethod[2], amfiMethod[3],true, amfiMethod[4]);
+            DHF_SPH_CA scfer(intor, "ZMAT", amfiMethod[1], amfiMethod[2], amfiMethod[3], amfiMethod[4],true, amfiMethod[5]);
             scfer.convControl = amfiSCFconv;
             scfer.runSCF(amfiMethod[2]);
             amfiUnique.push_back(Rotate::unite_irrep(scfer.get_amfi_unc_ca(intor,amfiMethod[2]), intor.irrep_list));
@@ -86,7 +87,7 @@ int main()
         else
         {
             /* Fractional occupation */
-            DHF_SPH scfer(intor, "ZMAT", amfiMethod[1], amfiMethod[2], amfiMethod[3],true, amfiMethod[4]);
+            DHF_SPH scfer(intor, "ZMAT", amfiMethod[1], amfiMethod[2], amfiMethod[3], amfiMethod[4],true, amfiMethod[5]);
             scfer.convControl = amfiSCFconv;
             scfer.runSCF(amfiMethod[2]);
             // amfiUnique.push_back(Rotate::unite_irrep(scfer.x2c2ePCC(),intor.irrep_list));
@@ -253,8 +254,9 @@ void readZMAT(const string& filename, vector<string>& atoms, vector<string>& bas
                 //spin-free
                 //two-component
                 //gaunt
+		//gauge
                 //Gaussian finite nuclear model
-                for(int ii = 0 ; ii < 4; ii++)
+                for(int ii = 0 ; ii < 5; ii++)
                 {
                     bool tmp;
                     ifs >> tmp;
@@ -275,7 +277,8 @@ void readZMAT(const string& filename, vector<string>& atoms, vector<string>& bas
             amfiMethod.push_back(false); //spin-free
             amfiMethod.push_back(false); //two-component
             amfiMethod.push_back(true); //with gaunt
-            amfiMethod.push_back(false); //with gaunt
+            amfiMethod.push_back(false); //with gauge
+            amfiMethod.push_back(false); //without Gaussian nuclear model 
         }
     ifs.close();
 
