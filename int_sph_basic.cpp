@@ -507,6 +507,79 @@ double INT_SPH::get_radial_SSSS_K(const int& lp, const int& lq, const int& LL, c
     
     return tmp;
 }
+
+double INT_SPH::get_radial_LSLS_J(const int& lp, const int& lq, const int& LL, const double& a1, const double& a2, const double& a3, const double& a4, const double& lk1, const double& lk2, const double& lk3, const double& lk4, double radial_list[4], const bool& spinFree) const
+{
+    double tmp = 4.0*a2*a4 * radial_list[0];
+    if(spinFree)
+    {
+
+    }
+    else
+    {
+        if(lp != 0 && lq != 0)
+            tmp += lk2*lk4 * radial_list[3] - 2.0*a4*lk2 * radial_list[1] - 2.0*a2*lk4 * radial_list[2];
+        else if(lp != 0 && lq == 0)
+            tmp -= 2.0*a4*lk2 * radial_list[1];
+        else if(lp == 0 && lq != 0)
+            tmp -= 2.0*a2*lk4 * radial_list[2];
+    }
+    
+    return tmp;
+}
+double INT_SPH::get_radial_LSLS_K(const int& lp, const int& lq, const int& LL, const double& a1, const double& a2, const double& a3, const double& a4, const double& lk1, const double& lk2, const double& lk3, const double& lk4, double radial_list[4], const bool& spinFree) const
+{
+    double tmp = 4.0*a2*a4 * radial_list[0];
+    if(spinFree)
+    {
+
+    }
+    else
+    {
+        if(lp != 0 && lq != 0)
+            tmp += lk2*lk4 * radial_list[3] - 2.0*a4*lk2 * radial_list[1] - 2.0*a2*lk4 * radial_list[2];
+        else if(lp == 0 && lq != 0)
+            tmp -= 2.0*a4*lk2 * radial_list[1];
+        else if(lp != 0 && lq == 0)
+            tmp -= 2.0*a2*lk4 * radial_list[2];
+    }
+    
+    return tmp;
+}
+double INT_SPH::get_radial_LSSL_J(const int& lp, const int& lq, const int& LL, const double& a1, const double& a2, const double& a3, const double& a4, const double& lk1, const double& lk2, const double& lk3, const double& lk4, double radial_list[4], const bool& spinFree) const
+{
+    double tmp = 4.0*a2*a3 * radial_list[0];
+    if(spinFree)
+    {
+
+    }
+    else
+    {
+        if(lp != 0 && lq != 0)
+            tmp += lk2*lk3 *radial_list[3] - 2.0*a3*lk2 * radial_list[1] - 2.0*a2*lk3 * radial_list[2];
+        else if(lp != 0 && lq == 0)
+            tmp -= 2.0*a3*lk2 * radial_list[1];
+        else if(lp == 0 && lq != 0)
+            tmp -= 2.0*a2*lk3 * radial_list[2];
+    }
+    
+    return tmp;
+}
+double INT_SPH::get_radial_LSSL_K(const int& lp, const int& lq, const int& LL, const double& a1, const double& a2, const double& a3, const double& a4, const double& lk1, const double& lk2, const double& lk3, const double& lk4, double radial_list[4], const bool& spinFree) const
+{
+    double tmp = 4.0*a2*a3 * radial_list[0];
+    if(spinFree)
+    {
+
+    }
+    else
+    {
+        if(lq != 0)
+            tmp += lk2*lk3 * radial_list[3] - 2.0*a3*lk2 * radial_list[1] - 2.0*a2*lk3 * radial_list[2];
+    }
+    
+    return tmp;
+}
 /* 
     get contraction coefficients for uncontracted calculations 
 */
@@ -543,3 +616,13 @@ MatrixXd INT_SPH::get_coeff_contraction_spinor()
 }
 
 
+double INT_SPH::int2e_get_threeSH(const int& l1, const int& m1, const int& l2, const int& m2, const int& l3, const int& m3, const double& threeJ) const
+{
+    // return pow(-1,m1)*threeJ*wigner_3j(l1,l2,l3,-m1,m2,m3);
+    return pow(-1,m1)*threeJ*wigner_3j(l1,l2,l3,-m1,m2,m3)*sqrt((2.0*l1+1.0)*(2.0*l3+1.0));
+}
+double INT_SPH::int2e_get_angularX_RME(const int& two_j1, const int& l1, const int& two_j2, const int& l2, const int& LL, const int& vv, const double& threeJ) const
+{
+    return sqrt(6.0 * (two_j1+1.0)*(two_j2+1.0)*(2*LL+1.0) * (2*l1+1.0)*(2*l2+1.0)) * threeJ
+           * gsl_sf_coupling_9j(2*l1,2*l2,2*vv,1,1,2,two_j1,two_j2,2*LL) * pow(-1,l1);
+}

@@ -101,6 +101,7 @@ int main()
         XUnique[ii] = Rotate::separate2mCompact(XUnique[ii],intor.irrep_list);
     }
 
+    cout << "Constructing amfso integrals...." << endl;
     int sizeAll = 0, int_tmp = 0;
     for(int ii = 0; ii < atomList.size(); ii++)
     {
@@ -145,12 +146,9 @@ int main()
     }
 
     int sizeAllReal = 2*sizeAll2;
-    //F_INTERFACE::rfile_("X2CMFSOM_CFOUR",tmp,&sizeAllReal);
-    //F_INTERFACE::prvecr_(tmp,&sizeAllReal);
+    cout << "Writing amfso integrals...." << endl;
     F_INTERFACE::wfile_("X2CMFSOM",(double*)amfiAll,&sizeAllReal);
     F_INTERFACE::wfile_("X2CATMXM",(double*)XAll,&sizeAllReal);
-
-    
 
     return 0;
 }

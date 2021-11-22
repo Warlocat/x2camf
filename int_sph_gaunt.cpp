@@ -14,16 +14,6 @@ using namespace Eigen;
 /* 
     evaluate angular part in 2e gaunt integrals 
 */
-inline double INT_SPH::int2e_get_threeSH(const int& l1, const int& m1, const int& l2, const int& m2, const int& l3, const int& m3, const double& threeJ) const
-{
-    // return pow(-1,m1)*threeJ*wigner_3j(l1,l2,l3,-m1,m2,m3);
-    return pow(-1,m1)*threeJ*wigner_3j(l1,l2,l3,-m1,m2,m3)*sqrt((2.0*l1+1.0)*(2.0*l3+1.0));
-}
-double INT_SPH::int2e_get_angularX_RME(const int& two_j1, const int& l1, const int& two_j2, const int& l2, const int& LL, const int& vv, const double& threeJ) const
-{
-    return sqrt(6.0 * (two_j1+1.0)*(two_j2+1.0)*(2*LL+1.0) * (2*l1+1.0)*(2*l2+1.0)) * threeJ
-           * gsl_sf_coupling_9j(2*l1,2*l2,2*vv,1,1,2,two_j1,two_j2,2*LL) * pow(-1,l1);
-}
 inline double INT_SPH::factor_p1(const int& l, const int& m) const
 {
     // return sqrt((l-m)*(l-m-1.0));
@@ -611,7 +601,6 @@ int2eJK INT_SPH::get_h2e_JK_gaunt(const string& intType, const int& occMaxL) con
 }
 int2eJK INT_SPH::get_h2e_JK_gaunt_compact(const string& intType, const int& occMaxL) const
 {
-    double time_a = 0.0, time_r = 0.0, time_c = 0.0;
     int occMaxShell = 0, Nirrep_compact = 0;
     if(occMaxL == -1)    occMaxShell = size_shell;
     else
@@ -648,19 +637,87 @@ int2eJK INT_SPH::get_h2e_JK_gaunt_compact(const string& intType, const int& occM
         int l_q = shell_list(qshell).l, l_max = max(l_p,l_q), LmaxJ = min(l_p+l_p, l_q+l_q)+1, LmaxK = l_p+l_q+1;
         int size_gtos_p = shell_list(pshell).coeff.rows(), size_gtos_q = shell_list(qshell).coeff.rows();
         int size_tmp_p = (l_p == 0) ? 1 : 2, size_tmp_q = (l_q == 0) ? 1 : 2;
-        double array_radial_J[LmaxJ+1][size_gtos_p*size_gtos_p][size_gtos_q*size_gtos_q][size_tmp_p][size_tmp_q];
-        double array_radial_K[LmaxK+1][size_gtos_p*size_gtos_q][size_gtos_q*size_gtos_p][size_tmp_p][size_tmp_q];
         double array_angular_J[LmaxJ+1][size_tmp_p][size_tmp_q], array_angular_K[LmaxK+1][size_tmp_p][size_tmp_q];
+        double radial_2e_list_J[size_gtos_p*size_gtos_p*size_gtos_q*size_gtos_q][LmaxJ+1][4];
+        double radial_2e_list_K[size_gtos_p*size_gtos_p*size_gtos_q*size_gtos_q][LmaxK+1][4];
 
-        StartTime = clock();
         #pragma omp parallel  for
+        for(int tt = 0; tt < size_gtos_p*size_gtos_p*size_gtos_q*size_gtos_q; tt++)
+        {
+            int e1J = tt/(size_gtos_q*size_gtos_q);
+            int e2J = tt - e1J*(size_gtos_q*size_gtos_q);
+            int ii = e1J/size_gtos_p, jj = e1J - ii*size_gtos_p;
+            int kk = e2J/size_gtos_q, ll = e2J - kk*size_gtos_q;
+            int e1K = ii*size_gtos_q+ll, e2K = kk*size_gtos_p+jj;
+            double a_i_J = shell_list(pshell).exp_a(ii), a_j_J = shell_list(pshell).exp_a(jj), a_k_J = shell_list(qshell).exp_a(kk), a_l_J = shell_list(qshell).exp_a(ll);
+            double a_i_K = shell_list(pshell).exp_a(ii), a_j_K = shell_list(qshell).exp_a(ll), a_k_K = shell_list(qshell).exp_a(kk), a_l_K = shell_list(pshell).exp_a(jj);
+        
+            if(intType.substr(0,4) == "LSLS")
+            {
+                for(int LL = LmaxJ; LL >= 0; LL -= 2)
+                {
+                    radial_2e_list_J[tt][LL][0] = int2e_get_radial(l_p,a_i_J,l_p+1,a_j_J,l_q,a_k_J,l_q+1,a_l_J,LL);
+                    if(l_p != 0)
+                        radial_2e_list_J[tt][LL][1] = int2e_get_radial(l_p,a_i_J,l_p-1,a_j_J,l_q,a_k_J,l_q+1,a_l_J,LL);
+                    if(l_q != 0)
+                        radial_2e_list_J[tt][LL][2] = int2e_get_radial(l_p,a_i_J,l_p+1,a_j_J,l_q,a_k_J,l_q-1,a_l_J,LL);
+                    if(l_p != 0 && l_q != 0)
+                        radial_2e_list_J[tt][LL][3] = int2e_get_radial(l_p,a_i_J,l_p-1,a_j_J,l_q,a_k_J,l_q-1,a_l_J,LL);
+                }
+                for(int LL = LmaxK; LL >= 0; LL -= 2)
+                {
+                    radial_2e_list_K[tt][LL][0] = int2e_get_radial(l_p,a_i_K,l_q+1,a_j_K,l_q,a_k_K,l_p+1,a_l_K,LL);
+                    if(l_q != 0)
+                        radial_2e_list_K[tt][LL][1] = int2e_get_radial(l_p,a_i_K,l_q-1,a_j_K,l_q,a_k_K,l_p+1,a_l_K,LL);
+                    if(l_p != 0)
+                        radial_2e_list_K[tt][LL][2] = int2e_get_radial(l_p,a_i_K,l_q+1,a_j_K,l_q,a_k_K,l_p-1,a_l_K,LL);
+                    if(l_p != 0 && l_q != 0)
+                        radial_2e_list_K[tt][LL][3] = int2e_get_radial(l_p,a_i_K,l_q-1,a_j_K,l_q,a_k_K,l_p-1,a_l_K,LL);
+                }
+            }
+            else if(intType.substr(0,4) == "LSSL")
+            {
+                for(int LL = LmaxJ; LL >= 0; LL -= 2)
+                {
+                    radial_2e_list_J[tt][LL][0] = int2e_get_radial(l_p,a_i_J,l_p+1,a_j_J,l_q+1,a_k_J,l_q,a_l_J,LL);
+                    if(l_p != 0)
+                        radial_2e_list_J[tt][LL][1] = int2e_get_radial(l_p,a_i_J,l_p-1,a_j_J,l_q+1,a_k_J,l_q,a_l_J,LL);
+                    if(l_q != 0)
+                        radial_2e_list_J[tt][LL][2] = int2e_get_radial(l_p,a_i_J,l_p+1,a_j_J,l_q-1,a_k_J,l_q,a_l_J,LL);
+                    if(l_p != 0 && l_q != 0)
+                        radial_2e_list_J[tt][LL][3] = int2e_get_radial(l_p,a_i_J,l_p-1,a_j_J,l_q-1,a_k_J,l_q,a_l_J,LL);
+                }
+                for(int LL = LmaxK; LL >= 0; LL -= 2)
+                {
+                    radial_2e_list_K[tt][LL][0] = int2e_get_radial(l_p,a_i_K,l_q+1,a_j_K,l_q+1,a_k_K,l_p,a_l_K,LL);
+                    if(l_q != 0)
+                    {
+                        radial_2e_list_K[tt][LL][1] = int2e_get_radial(l_p,a_i_K,l_q-1,a_j_K,l_q+1,a_k_K,l_p,a_l_K,LL);
+                        radial_2e_list_K[tt][LL][2] = int2e_get_radial(l_p,a_i_K,l_q+1,a_j_K,l_q-1,a_k_K,l_p,a_l_K,LL);
+                        radial_2e_list_K[tt][LL][3] = int2e_get_radial(l_p,a_i_K,l_q-1,a_j_K,l_q-1,a_k_K,l_p,a_l_K,LL);
+                    }
+                }
+            }
+            else
+            {
+                cout << "ERROR: Unkonwn intType in get_h2e_JK_gaunt." << endl;
+                exit(99);
+            }
+        }
+
         for(int twojj_p = abs(2*l_p-1); twojj_p <= 2*l_p+1; twojj_p = twojj_p + 2)
         for(int twojj_q = abs(2*l_q-1); twojj_q <= 2*l_q+1; twojj_q = twojj_q + 2)
         {
             int sym_ap = twojj_p - 2*l_p, sym_aq = twojj_q - 2*l_q;
-            int index_tmp_p = (l_p > 0) ? 1 - (2*l_p+1 - twojj_p)/2 : 0;
-            int index_tmp_q = (l_q > 0) ? 1 - (2*l_q+1 - twojj_q)/2 : 0;
+            int int_tmp2_p = (twojj_p - abs(2*l_p-1)) / 2, int_tmp2_q = (twojj_q - abs(2*l_q-1))/2;
+            int_2e_JK.J[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q] = new double*[size_gtos_p*size_gtos_p];
+            for(int iii = 0; iii < size_gtos_p*size_gtos_p; iii++)
+                int_2e_JK.J[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q][iii] = new double[size_gtos_q*size_gtos_q];
+            int_2e_JK.K[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q] = new double*[size_gtos_p*size_gtos_q];
+            for(int iii = 0; iii < size_gtos_p*size_gtos_q; iii++)
+                int_2e_JK.K[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q][iii] = new double[size_gtos_p*size_gtos_q];
 
+            // Angular
             for(int tmp = LmaxJ; tmp >= 0; tmp -= 2)
             {
                 double tmp_d = 0.0;
@@ -677,7 +734,7 @@ int2eJK INT_SPH::get_h2e_JK_gaunt_compact(const string& intType, const int& occM
                     }
                 }
                 tmp_d /= (twojj_q + 1);
-                array_angular_J[tmp][index_tmp_p][index_tmp_q] = tmp_d;
+                array_angular_J[tmp][int_tmp2_p][int_tmp2_q] = tmp_d;
             }
             for(int tmp = LmaxK; tmp >= 0; tmp -= 2)
             {
@@ -695,122 +752,42 @@ int2eJK INT_SPH::get_h2e_JK_gaunt_compact(const string& intType, const int& occM
                     }
                 }
                 tmp_d /= (twojj_q + 1);
-                array_angular_K[tmp][index_tmp_p][index_tmp_q] = tmp_d;
+                array_angular_K[tmp][int_tmp2_p][int_tmp2_q] = tmp_d;
             }
-        }
-        EndTime = clock();
-        time_a += (EndTime - StartTime)/(double)CLOCKS_PER_SEC;
 
-        StartTime = clock();
-        #pragma omp parallel  for
-        for(int tt = 0; tt < size_gtos_p*size_gtos_p*size_gtos_q*size_gtos_q; tt++)
-        {
-            int e1J = tt/(size_gtos_q*size_gtos_q);
-            int e2J = tt - e1J*(size_gtos_q*size_gtos_q);
-            int ii = e1J/size_gtos_p, jj = e1J - ii*size_gtos_p;
-            int kk = e2J/size_gtos_q, ll = e2J - kk*size_gtos_q;
-            int e1K = ii*size_gtos_q+ll, e2K = kk*size_gtos_p+jj;
-            MatrixXd radial_2e_list_J[LmaxJ+1], radial_2e_list_K[LmaxK+1];
-            double a_i_J = shell_list(pshell).exp_a(ii), a_j_J = shell_list(pshell).exp_a(jj), a_k_J = shell_list(qshell).exp_a(kk), a_l_J = shell_list(qshell).exp_a(ll);
-            double a_i_K = shell_list(pshell).exp_a(ii), a_j_K = shell_list(qshell).exp_a(ll), a_k_K = shell_list(qshell).exp_a(kk), a_l_K = shell_list(pshell).exp_a(jj);
-        
-            if(intType.substr(0,4) == "LSLS")
+            // Radial 
+            double k_p = -(twojj_p+1.0)*sym_ap/2.0, k_q = -(twojj_q+1.0)*sym_aq/2.0;
+            #pragma omp parallel  for
+            for(int tt = 0; tt < size_gtos_p*size_gtos_p*size_gtos_q*size_gtos_q; tt++)
             {
-                for(int LL = LmaxJ; LL >= 0; LL -= 2)
-                {
-                    radial_2e_list_J[LL].resize(4,1);
-                    radial_2e_list_J[LL](0,0) = int2e_get_radial(l_p,a_i_J,l_p+1,a_j_J,l_q,a_k_J,l_q+1,a_l_J,LL);
-                    if(l_p != 0)
-                        radial_2e_list_J[LL](1,0) = int2e_get_radial(l_p,a_i_J,l_p-1,a_j_J,l_q,a_k_J,l_q+1,a_l_J,LL);
-                    if(l_q != 0)
-                        radial_2e_list_J[LL](2,0) = int2e_get_radial(l_p,a_i_J,l_p+1,a_j_J,l_q,a_k_J,l_q-1,a_l_J,LL);
-                    if(l_p != 0 && l_q != 0)
-                        radial_2e_list_J[LL](3,0) = int2e_get_radial(l_p,a_i_J,l_p-1,a_j_J,l_q,a_k_J,l_q-1,a_l_J,LL);
-                }
-                for(int LL = LmaxK; LL >= 0; LL -= 2)
-                {
-                    radial_2e_list_K[LL].resize(4,1);
-                    radial_2e_list_K[LL](0,0) = int2e_get_radial(l_p,a_i_K,l_q+1,a_j_K,l_q,a_k_K,l_p+1,a_l_K,LL);
-                    if(l_q != 0)
-                        radial_2e_list_K[LL](1,0) = int2e_get_radial(l_p,a_i_K,l_q-1,a_j_K,l_q,a_k_K,l_p+1,a_l_K,LL);
-                    if(l_p != 0)
-                        radial_2e_list_K[LL](2,0) = int2e_get_radial(l_p,a_i_K,l_q+1,a_j_K,l_q,a_k_K,l_p-1,a_l_K,LL);
-                    if(l_p != 0 && l_q != 0)
-                        radial_2e_list_K[LL](3,0) = int2e_get_radial(l_p,a_i_K,l_q-1,a_j_K,l_q,a_k_K,l_p-1,a_l_K,LL);
-                }
-            }
-            else if(intType.substr(0,4) == "LSSL")
-            {
-                for(int LL = LmaxJ; LL >= 0; LL -= 2)
-                {
-                    radial_2e_list_J[LL].resize(4,1);
-                    radial_2e_list_J[LL](0,0) = int2e_get_radial(l_p,a_i_J,l_p+1,a_j_J,l_q+1,a_k_J,l_q,a_l_J,LL);
-                    if(l_p != 0)
-                        radial_2e_list_J[LL](1,0) = int2e_get_radial(l_p,a_i_J,l_p-1,a_j_J,l_q+1,a_k_J,l_q,a_l_J,LL);
-                    if(l_q != 0)
-                        radial_2e_list_J[LL](2,0) = int2e_get_radial(l_p,a_i_J,l_p+1,a_j_J,l_q-1,a_k_J,l_q,a_l_J,LL);
-                    if(l_p != 0 && l_q != 0)
-                        radial_2e_list_J[LL](3,0) = int2e_get_radial(l_p,a_i_J,l_p-1,a_j_J,l_q-1,a_k_J,l_q,a_l_J,LL);
-                }
-                for(int LL = LmaxK; LL >= 0; LL -= 2)
-                {
-                    radial_2e_list_K[LL].resize(4,1);
-                    radial_2e_list_K[LL](0,0) = int2e_get_radial(l_p,a_i_K,l_q+1,a_j_K,l_q+1,a_k_K,l_p,a_l_K,LL);
-                    if(l_q != 0)
-                    {
-                        radial_2e_list_K[LL](1,0) = int2e_get_radial(l_p,a_i_K,l_q-1,a_j_K,l_q+1,a_k_K,l_p,a_l_K,LL);
-                        radial_2e_list_K[LL](2,0) = int2e_get_radial(l_p,a_i_K,l_q+1,a_j_K,l_q-1,a_k_K,l_p,a_l_K,LL);
-                        radial_2e_list_K[LL](3,0) = int2e_get_radial(l_p,a_i_K,l_q-1,a_j_K,l_q-1,a_k_K,l_p,a_l_K,LL);
-                    }
-                }
-            }
-            else
-            {
-                cout << "ERROR: Unkonwn intType in get_h2e_JK_gaunt." << endl;
-                exit(99);
-            }
-                
-            for(int twojj_p = abs(2*l_p-1); twojj_p <= 2*l_p+1; twojj_p = twojj_p + 2)
-            for(int twojj_q = abs(2*l_q-1); twojj_q <= 2*l_q+1; twojj_q = twojj_q + 2)
-            {
-                int index_tmp_p = (l_p > 0) ? 1 - (2*l_p+1 - twojj_p)/2 : 0;
-                int index_tmp_q = (l_q > 0) ? 1 - (2*l_q+1 - twojj_q)/2 : 0;
-                int sym_ap = twojj_p - 2*l_p, sym_aq = twojj_q - 2*l_q;
-                double k_p = -(twojj_p+1.0)*sym_ap/2.0, k_q = -(twojj_q+1.0)*sym_aq/2.0;
+                double radial_J, radial_K;
+                int e1J = tt/(size_gtos_q*size_gtos_q);
+                int e2J = tt - e1J*(size_gtos_q*size_gtos_q);
+                int ii = e1J/size_gtos_p, jj = e1J - ii*size_gtos_p;
+                int kk = e2J/size_gtos_q, ll = e2J - kk*size_gtos_q;
+                int e1K = ii*size_gtos_q+ll, e2K = kk*size_gtos_p+jj;
                 double norm_J = shell_list(pshell).norm(ii) * shell_list(pshell).norm(jj) * shell_list(qshell).norm(kk) * shell_list(qshell).norm(ll), norm_K = shell_list(pshell).norm(ii) * shell_list(qshell).norm(ll) * shell_list(qshell).norm(kk) * shell_list(pshell).norm(jj);
                 double lk1 = 1+l_p+k_p, lk2 = 1+l_p+k_p, lk3 = 1+l_q+k_q, lk4 = 1+l_q+k_q, a1 = shell_list(pshell).exp_a(ii), a2 = shell_list(pshell).exp_a(jj), a3 = shell_list(qshell).exp_a(kk), a4 = shell_list(qshell).exp_a(ll);
+                int_2e_JK.J[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q][e1J][e2J] = 0.0;
+                int_2e_JK.K[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q][e1K][e2K] = 0.0;
 
                 for(int tmp = LmaxJ; tmp >= 0; tmp -= 2)
                 {
                     if(intType == "LSLS")
                     {
-                        array_radial_J[tmp][e1J][e2J][index_tmp_p][index_tmp_q] = 4.0*a2*a4 * radial_2e_list_J[tmp](0,0);
-                        if(l_p != 0 && l_q != 0)
-                            array_radial_J[tmp][e1J][e2J][index_tmp_p][index_tmp_q] += lk2*lk4 * radial_2e_list_J[tmp](3,0)
-                                    - 2.0*a4*lk2 * radial_2e_list_J[tmp](1,0) - 2.0*a2*lk4 * radial_2e_list_J[tmp](2,0);
-                        else if(l_p != 0 && l_q == 0)
-                            array_radial_J[tmp][e1J][e2J][index_tmp_p][index_tmp_q] -= 2.0*a4*lk2 * radial_2e_list_J[tmp](1,0);
-                        else if(l_p == 0 && l_q != 0)
-                            array_radial_J[tmp][e1J][e2J][index_tmp_p][index_tmp_q] -= 2.0*a2*lk4 * radial_2e_list_J[tmp](2,0);
-                        array_radial_J[tmp][e1J][e2J][index_tmp_p][index_tmp_q] /= norm_J * 4.0 * pow(speedOfLight,2);
+                        radial_J = get_radial_LSLS_J(l_p,l_q,tmp,a1,a2,a3,a4,lk1,lk2,lk3,lk4,radial_2e_list_J[tt][tmp],false)/norm_J/4.0/pow(speedOfLight,2);
                     }
                     else if(intType == "LSSL")
                     {
-                        array_radial_J[tmp][e1J][e2J][index_tmp_p][index_tmp_q] = 4.0*a2*a3 * radial_2e_list_J[tmp](0,0);
-                        if(l_p != 0 && l_q != 0)
-                            array_radial_J[tmp][e1J][e2J][index_tmp_p][index_tmp_q] += lk2*lk3 * radial_2e_list_J[tmp](3,0)
-                                    - 2.0*a3*lk2 * radial_2e_list_J[tmp](1,0) - 2.0*a2*lk3 * radial_2e_list_J[tmp](2,0);
-                        else if(l_p != 0 && l_q == 0)
-                            array_radial_J[tmp][e1J][e2J][index_tmp_p][index_tmp_q] -= 2.0*a3*lk2 * radial_2e_list_J[tmp](1,0);
-                        else if(l_p == 0 && l_q != 0)
-                            array_radial_J[tmp][e1J][e2J][index_tmp_p][index_tmp_q] -= 2.0*a2*lk3 * radial_2e_list_J[tmp](2,0);
-                        array_radial_J[tmp][e1J][e2J][index_tmp_p][index_tmp_q] /= -1.0 * norm_J * 4.0 * pow(speedOfLight,2);
+                        
+                        radial_J = -get_radial_LSSL_J(l_p,l_q,tmp,a1,a2,a3,a4,lk1,lk2,lk3,lk4,radial_2e_list_J[tt][tmp],false)/norm_J/4.0/pow(speedOfLight,2);
                     }
                     else
                     {
                         cout << "ERROR: Unkonwn intType in get_h2e_JK_gaunt." << endl;
                         exit(99);
                     }
+                    int_2e_JK.J[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q][e1J][e2J] += radial_J * array_angular_J[tmp][int_tmp2_p][int_tmp2_q];
                 }
                 lk2 = 1+l_q+k_q; lk4 = 1+l_p+k_p; 
                 a2 = shell_list(qshell).exp_a(ll); a4 = shell_list(pshell).exp_a(jj);
@@ -818,69 +795,26 @@ int2eJK INT_SPH::get_h2e_JK_gaunt_compact(const string& intType, const int& occM
                 {
                     if(intType == "LSLS")
                     {
-                        array_radial_K[tmp][e1K][e2K][index_tmp_p][index_tmp_q] = 4.0*a2*a4 * radial_2e_list_K[tmp](0,0);
-                        if(l_p != 0 && l_q != 0)
-                            array_radial_K[tmp][e1K][e2K][index_tmp_p][index_tmp_q] += lk2*lk4 * radial_2e_list_K[tmp](3,0) 
-                                    - 2.0*a4*lk2 * radial_2e_list_K[tmp](1,0) - 2.0*a2*lk4 * radial_2e_list_K[tmp](2,0);
-                        else if(l_p == 0 && l_q != 0)
-                            array_radial_K[tmp][e1K][e2K][index_tmp_p][index_tmp_q] -= 2.0*a4*lk2 * radial_2e_list_K[tmp](1,0);
-                        else if(l_p != 0 && l_q == 0)
-                            array_radial_K[tmp][e1K][e2K][index_tmp_p][index_tmp_q] -= 2.0*a2*lk4 * radial_2e_list_K[tmp](2,0);
-                        array_radial_K[tmp][e1K][e2K][index_tmp_p][index_tmp_q] /= norm_K * 4.0 * pow(speedOfLight,2);
+                        radial_K = get_radial_LSLS_K(l_p,l_q,tmp,a1,a2,a3,a4,lk1,lk2,lk3,lk4,radial_2e_list_K[tt][tmp],false)/norm_K/4.0/pow(speedOfLight,2);
                     }
                     else if(intType == "LSSL")
                     {
-                        array_radial_K[tmp][e1K][e2K][index_tmp_p][index_tmp_q] = 4.0*a2*a3 * radial_2e_list_K[tmp](0,0);
-                        if(l_q != 0)
-                            array_radial_K[tmp][e1K][e2K][index_tmp_p][index_tmp_q] += lk2*lk3 * radial_2e_list_K[tmp](3,0) 
-                                    - 2.0*a3*lk2 * radial_2e_list_K[tmp](1,0) - 2.0*a2*lk3 * radial_2e_list_K[tmp](2,0);
-                        array_radial_K[tmp][e1K][e2K][index_tmp_p][index_tmp_q] /= -1.0 * norm_K * 4.0 * pow(speedOfLight,2);
+                        radial_K = -get_radial_LSSL_K(l_p,l_q,tmp,a1,a2,a3,a4,lk1,lk2,lk3,lk4,radial_2e_list_K[tt][tmp],false)/norm_K/4.0/pow(speedOfLight,2);
                     }
                     else
                     {
                         cout << "ERROR: Unkonwn intType in get_h2e_JK_gaunt." << endl;
                         exit(99);
                     }
+                    int_2e_JK.K[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q][e1K][e2K] += radial_K * array_angular_K[tmp][int_tmp2_p][int_tmp2_q];
                 }
             }
         }
-        EndTime = clock();
-        time_r += (EndTime - StartTime)/(double)CLOCKS_PER_SEC;
-
-        StartTime = clock();
-        int l_p_cycle = (l_p == 0) ? 1 : 2, l_q_cycle = (l_q == 0) ? 1 : 2;
-        for(int int_tmp2_p = 0; int_tmp2_p < l_p_cycle; int_tmp2_p++)
-        for(int int_tmp2_q = 0; int_tmp2_q < l_q_cycle; int_tmp2_q++)
-        {
-            int_2e_JK.J[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q] = new double*[size_gtos_p*size_gtos_p];
-            for(int iii = 0; iii < size_gtos_p*size_gtos_p; iii++)
-                int_2e_JK.J[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q][iii] = new double[size_gtos_q*size_gtos_q];
-            int_2e_JK.K[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q] = new double*[size_gtos_p*size_gtos_q];
-            for(int iii = 0; iii < size_gtos_p*size_gtos_q; iii++)
-                int_2e_JK.K[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q][iii] = new double[size_gtos_p*size_gtos_q];
-            #pragma omp parallel  for
-            for(int tt = 0; tt < size_gtos_p*size_gtos_p*size_gtos_q*size_gtos_q; tt++)
-            {
-                int e1J = tt/(size_gtos_q*size_gtos_q);
-                int e2J = tt - e1J*(size_gtos_q*size_gtos_q);
-                int e1K = tt/(size_gtos_p*size_gtos_q);
-                int e2K = tt - e1K*(size_gtos_p*size_gtos_q);
-                int_2e_JK.J[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q][e1J][e2J] = 0.0;
-                int_2e_JK.K[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q][e1K][e2K] = 0.0;
-                for(int tmp = LmaxJ; tmp >= 0; tmp = tmp - 2)
-                    int_2e_JK.J[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q][e1J][e2J] += array_radial_J[tmp][e1J][e2J][int_tmp2_p][int_tmp2_q] * array_angular_J[tmp][int_tmp2_p][int_tmp2_q];
-                for(int tmp = LmaxK; tmp >= 0; tmp = tmp - 2)
-                    int_2e_JK.K[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q][e1K][e2K] += array_radial_K[tmp][e1K][e2K][int_tmp2_p][int_tmp2_q] * array_angular_K[tmp][int_tmp2_p][int_tmp2_q];
-            }
-        }
-        EndTime = clock();
-        time_c += (EndTime - StartTime)/(double)CLOCKS_PER_SEC;
         int_tmp1_q += (l_q == 0) ? 1 : 2;
     }
     int_tmp1_p += (l_p == 0) ? 1 : 2;
     }
 
-    cout << time_a << "\t" << time_r << "\t" << time_c <<endl;
     return int_2e_JK;
 }
 int2eJK INT_SPH::get_h2e_JK_gauntSF_compact(const string& intType, const int& occMaxL)

@@ -26,10 +26,27 @@ int main()
 {
     readInput("input");
     INT_SPH intor(atomName, basisSet);
-    bool twoC = false, spinFree = false, withGaunt = true, withgauge = false, gaussian_nuc = true;
+    bool twoC = false, spinFree = false, withGaunt = true, withgauge = false, gaussian_nuc = false;
 
     DHF_SPH scf4c(intor,"input",spinFree,twoC,withGaunt,withgauge,true,gaussian_nuc);
     scf4c.runSCF(twoC,false);
+    auto ene_4c = scf4c.ene_orb;
+    auto amfi = scf4c.get_amfi_unc(intor,false);
+    DHF_SPH scf2c(intor,"input",true,true,false,false,true,false);
+    scf2c.runSCF(true,false);
+    auto ene_sfx2c = scf2c.ene_orb;
+    DHF_SPH scf2c_pc(intor,"input",true,true,false,false,true,false);
+    auto h1e = scf2c.get_h1e_4c();
+    for(int ir = 0; ir < h1e.rows(); ir++)
+    {
+        h1e(ir) = h1e(ir) + amfi(ir);
+    }
+    scf2c_pc.set_h1e_4c(h1e);
+    scf2c_pc.runSCF(true,false);
+    auto ene_pc = scf2c_pc.ene_orb;
+    cout << ene_4c(0)(0+ene_4c(0).rows()/2) << endl;
+    cout << ene_sfx2c(0)(0) << endl;
+    cout << ene_pc(0)(0) << endl;
 
     return 0;
 }
