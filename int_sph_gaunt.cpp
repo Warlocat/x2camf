@@ -14,32 +14,32 @@ using namespace Eigen;
 /* 
     evaluate angular part in 2e gaunt integrals 
 */
-inline double INT_SPH::factor_p1(const int& l, const int& m) const
+inline double factor_p1(const int& l, const int& m) 
 {
     // return sqrt((l-m)*(l-m-1.0));
     return sqrt((l-m)*(l-m-1.0)/(2.0*l+1.0)/(2.0*l-1.0));
 }
-inline double INT_SPH::factor_p2(const int& l, const int& m) const
+inline double factor_p2(const int& l, const int& m) 
 {
     // return -sqrt((l+m+1.0)*(l+m+2.0));
     return -sqrt((l+m+1.0)*(l+m+2.0)/(2.0*l+1.0)/(2.0*l+3.0));
 }
-inline double INT_SPH::factor_m1(const int& l, const int& m) const
+inline double factor_m1(const int& l, const int& m) 
 {
     // return -sqrt((l+m)*(l+m-1.0));
     return -sqrt((l+m)*(l+m-1.0)/(2.0*l+1.0)/(2.0*l-1.0));
 }
-inline double INT_SPH::factor_m2(const int& l, const int& m) const
+inline double factor_m2(const int& l, const int& m) 
 {
     // return sqrt((l-m+1.0)*(l-m+2.0));
     return sqrt((l-m+1.0)*(l-m+2.0)/(2.0*l+1.0)/(2.0*l+3.0));
 }
-inline double INT_SPH::factor_z1(const int& l, const int& m) const
+inline double factor_z1(const int& l, const int& m) 
 {
     // return sqrt((l+m)*(l-m));
     return sqrt((l+m)*(l-m)/(2.0*l+1.0)/(2.0*l-1.0));
 }
-inline double INT_SPH::factor_z2(const int& l, const int& m) const
+inline double factor_z2(const int& l, const int& m) 
 {
     // return sqrt((l+m+1.0)*(l-m+1.0));
     return sqrt((l+m+1.0)*(l-m+1.0)/(2.0*l+1.0)/(2.0*l+3.0));

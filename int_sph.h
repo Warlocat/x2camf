@@ -39,7 +39,8 @@ protected:
     double get_radial_LSSL_J(const int& lp, const int& lq, const int& LL, const double& a1, const double& a2, const double& a3, const double& a4, const double& lk1, const double& lk2, const double& lk3, const double& lk4, double radial_list[4], const bool& spinFree = false) const;
     double get_radial_LSSL_K(const int& lp, const int& lq, const int& LL, const double& a1, const double& a2, const double& a3, const double& a4, const double& lk1, const double& lk2, const double& lk3, const double& lk4, double radial_list[4], const bool& spinFree = false) const;
 
-    double int2e_get_radial_gauge(const int& l1, const double& a1, const int& l2, const double& a2, const int& l3, const double& a3, const int& l4, const double& a4, const int& LL, const int& v1, const int& v2) const;
+    double int2e_get_radial_Wmp(const int& l1, const double& a1, const int& l2, const double& a2, const int& l3, const double& a3, const int& l4, const double& a4, const int& LL) const;
+    double int2e_get_radial_Wpm(const int& l1, const double& a1, const int& l2, const double& a2, const int& l3, const double& a3, const int& l4, const double& a4, const int& LL) const;
     double int2e_get_angular(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& l3, const int& two_m3, const int& s3, const int& l4, const int& two_m4, const int& s4, const int& LL) const;
     double int2e_get_angular_K(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& LL) const;
     double int2e_get_angular_J(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& LL) const;
@@ -47,8 +48,8 @@ protected:
     double int2e_get_angular_gaunt_LSSL(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& l3, const int& two_m3, const int& s3, const int& l4, const int& two_m4, const int& s4, const int& LL) const;
     double int2e_get_angular_gaunt_LSLS_9j(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& l3, const int& two_m3, const int& s3, const int& l4, const int& two_m4, const int& s4, const int& LL) const;
     double int2e_get_angular_gaunt_LSSL_9j(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& l3, const int& two_m3, const int& s3, const int& l4, const int& two_m4, const int& s4, const int& LL) const;
-    double int2e_get_angular_gauge_LSLS(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& l3, const int& two_m3, const int& s3, const int& l4, const int& two_m4, const int& s4, const int& LL, const int& v1, const int& v2) const;
-    double int2e_get_angular_gauge_LSSL(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& l3, const int& two_m3, const int& s3, const int& l4, const int& two_m4, const int& s4, const int& LL, const int& v1, const int& v2) const;
+    double int2e_get_angular_gauge_LSLS(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& l3, const int& two_m3, const int& s3, const int& l4, const int& two_m4, const int& s4, const int& ll, const int& v1, const int& v2) const;
+    double int2e_get_angular_gauge_LSSL(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& l3, const int& two_m3, const int& s3, const int& l4, const int& two_m4, const int& s4, const int& ll, const int& v1, const int& v2) const;
     void int2e_get_angular_gauntSF_LSLS(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& l3, const int& two_m3, const int& s3, const int& l4, const int& two_m4, const int& s4, const int& LL, double& lsls11, double& lsls12, double& lsls21, double& lsls22);
     void int2e_get_angular_gauntSF_LSSL(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& l3, const int& two_m3, const int& s3, const int& l4, const int& two_m4, const int& s4, const int& LL, double& lssl11, double& lssl12, double& lssl21, double& lssl22);
     double int2e_get_angular_gauntSF_p1_LS(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& LL, const int& MM) const;
@@ -66,12 +67,12 @@ protected:
 
     double int2e_get_threeSH(const int& l1, const int& m1, const int& l2, const int& m2, const int& l3, const int& m3, const double& threeJ) const;
     double int2e_get_angularX_RME(const int& two_j1, const int& l1, const int& two_j2, const int& l2, const int& LL, const int& vv, const double& threeJ) const;
-    inline double factor_p1(const int& l, const int& m) const;
-    inline double factor_p2(const int& l, const int& m) const;
-    inline double factor_m1(const int& l, const int& m) const;
-    inline double factor_m2(const int& l, const int& m) const;
-    inline double factor_z1(const int& l, const int& m) const;
-    inline double factor_z2(const int& l, const int& m) const;
+    // inline double factor_p1(const int& l, const int& m) const;
+    // inline double factor_p2(const int& l, const int& m) const;
+    // inline double factor_m1(const int& l, const int& m) const;
+    // inline double factor_m2(const int& l, const int& m) const;
+    // inline double factor_z1(const int& l, const int& m) const;
+    // inline double factor_z2(const int& l, const int& m) const;
     
 
 public:
