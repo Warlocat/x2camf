@@ -282,7 +282,13 @@ void INT_SPH::normalization()
 double INT_SPH::auxiliary_1e(const int& l, const double& a) const
 {
     int n = l / 2;
-    if(l == 0)  return 0.5*sqrt(M_PI/a);
+    if(l < 0)
+    {
+        if(l == -2) return 0.0;
+        cout << "ERROR: l = " << l << " for auxiliary 1e integral." << endl;
+        exit(99);
+    }
+    else if(l == 0)  return 0.5*sqrt(M_PI/a);
     else if(n*2 == l)    return double_factorial(2*n-1)/pow(a,n)/pow(2.0,n+1)*sqrt(M_PI/a);
     else    return factorial(n)/2.0/pow(a,n+1);
 }
