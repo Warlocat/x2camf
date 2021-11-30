@@ -299,6 +299,10 @@ double INT_SPH::auxiliary_1e(const int& l, const double& a) const
 double INT_SPH::auxiliary_2e_0_r(const int& l1, const int& l2, const double& a1, const double& a2) const
 {
     int n1 = l1 / 2;
+    if(l1 < 0 || l2 < 0)
+    {
+        return 0.0;
+    }
     if(n1 * 2 == l1)
     {
         cout << "ERROR: When auxiliary_2e_0_r is called, l1 must be set to an odd number!" << endl;
@@ -321,6 +325,10 @@ double INT_SPH::auxiliary_2e_0_r(const int& l1, const int& l2, const double& a1,
 */
 double INT_SPH::auxiliary_2e_r_inf(const int& l1, const int& l2, const double& a1, const double& a2) const
 {
+    if(l1 < 0 || l2 < 0)
+    {
+        return 0.0;
+    }
     int n1 = l1 / 2;
     if(n1 * 2 == l1)
     {

@@ -14,32 +14,45 @@ using namespace Eigen;
 double get_N_coeff(const int& v1, const int& aa, const int& ll, const int& mm)
 {
     if(abs(mm+aa) > ll+v1) return 0.0;
+    double tmp;
+    // return gsl_sf_coupling_3j(2*ll,2,2*ll+2*v1,2*mm,2*aa,-2*mm-2*aa)*gsl_sf_coupling_3j(2*ll,2,2*ll+2*v1,0,0,0)*pow(-1,mm+aa)*(2.0*(ll+v1)+1.0);
+
+    
     switch (v1)
     {
     case 1:
         switch (aa)
         {
         case -1:
-            return sqrt((ll-mm+1.0)*(ll-mm+2.0))/(2.0*ll+1)/sqrt(2.0);
+            tmp = sqrt((ll-mm+1.0)*(ll-mm+2.0))/(2.0*ll+1)/sqrt(2.0);
+            break;
         case 0:
-            return sqrt((ll+mm+1.0)*(ll-mm+1.0))/(2.0*ll+1);
+            tmp = sqrt((ll+mm+1.0)*(ll-mm+1.0))/(2.0*ll+1);
+            break;
         case 1:
-            return -sqrt((ll+mm+1.0)*(ll+mm+2.0))/(2.0*ll+1)/sqrt(2.0);
+            tmp = -sqrt((ll+mm+1.0)*(ll+mm+2.0))/(2.0*ll+1)/sqrt(2.0);
+            break;
         }
+        break;
     case -1:
         switch (aa)
         {
         case -1:
-            return -sqrt((ll+mm)*(ll+mm-1.0))/(2.0*ll+1)/sqrt(2.0);
+            tmp = -sqrt((ll+mm)*(ll+mm-1.0))/(2.0*ll+1)/sqrt(2.0);
+            break;
         case 0:
-            return sqrt((ll+mm)*(ll-mm))/(2.0*ll+1);
+            tmp = sqrt((ll+mm)*(ll-mm))/(2.0*ll+1);
+            break;
         case 1:
-            return sqrt((ll-mm)*(ll-mm-1.0))/(2.0*ll+1)/sqrt(2.0);
+            tmp = sqrt((ll-mm)*(ll-mm-1.0))/(2.0*ll+1)/sqrt(2.0);
+            break;
         }
+        break;
     default:
         cout << "ERROR: Input aa or v1 is invalid for N_coeff" << endl;
         exit(99);
     }
+    return tmp;
 }
 
 /* 
@@ -84,18 +97,18 @@ double INT_SPH::int2e_get_angular_gauge_LSLS(const int& l1, const int& two_m1, c
     double angular = 0.0;
     int l2p = l2+s2, l4p = l4+s4;
     int two_j1 = 2*l1+s1, two_j2 = 2*l2+s2, two_j3 = 2*l3+s3, two_j4 = 2*l4+s4;
-    // double threeJ1 = gsl_sf_coupling_3j(2*l1,2*ll+2*v1,2*l2p,0,0,0), threeJ2 = gsl_sf_coupling_3j(2*l3,2*ll+2*v2,2*l4p,0,0,0), tmp;
+    // double threeJ1 = gsl_sf_coupling_3j(2*l2p,2*ll+2*v1,2*l1,0,0,0), threeJ2 = gsl_sf_coupling_3j(2*l3,2*ll+2*v2,2*l4p,0,0,0), tmp;
     // tmp = 0.0;
-    // double rme1 = int2e_get_angularX_RME(two_j1,l1,two_j2,l2p,ll,ll+v1,threeJ1);
+    // double rme1 = int2e_get_angularX_RME(two_j2,l2p,two_j1,l1,ll,ll+v1,threeJ1);
     // double rme2 = int2e_get_angularX_RME(two_j3,l3,two_j4,l4p,ll,ll+v2,threeJ2);
     // for(int MMM = -ll; MMM <= ll; MMM++)
     // {
-    //     tmp += pow(-1,MMM) * gsl_sf_coupling_3j(two_j1,2*ll,two_j2,-two_m1,-2*MMM,two_m2)
+    //     tmp += pow(-1,MMM) * gsl_sf_coupling_3j(two_j2,2*ll,two_j1,-two_m2,-2*MMM,two_m1)
     //          * gsl_sf_coupling_3j(two_j3,2*ll,two_j4,-two_m3,2*MMM,two_m4);
     // }
     // angular += tmp*rme1*rme2;
     
-    // return angular*pow(-1,(two_j1+two_j3-two_m1-two_m3)/2)*(2.0*(ll+v1)+1.0)*(2.0*(ll+v2)+1.0)/(2.0*ll+1)*gsl_sf_coupling_3j(2,2*ll+2*v1,2*ll,0,0,0)*gsl_sf_coupling_3j(2,2*ll+2*v2,2*ll,0,0,0);
+    // return angular*pow(-1,(two_j2+two_j3-two_m2-two_m3)/2+ll+v1+1)*(2.0*(ll+v1)+1.0)*(2.0*(ll+v2)+1.0)/(2.0*ll+1)*gsl_sf_coupling_3j(2,2*ll+2*v1,2*ll,0,0,0)*gsl_sf_coupling_3j(2,2*ll+2*v2,2*ll,0,0,0);
     
     double threeJ1 = gsl_sf_coupling_3j(2*l1,2*ll+2*v1,2*l2p,0,0,0);
     double threeJ2 = gsl_sf_coupling_3j(2*l3,2*ll+2*v2,2*l4p,0,0,0);
@@ -107,14 +120,14 @@ double INT_SPH::int2e_get_angular_gauge_LSLS(const int& l1, const int& two_m1, c
         {
             tmpa = 0.0;
             for(int aa = -1; aa <= 1; aa++)
-                tmpa += get_N_coeff(v1,aa,ll,-MM)*gsl_sf_coupling_3j(2*ll+2*v1,2,2*LL,-2*MM+2*aa,-2*aa,2*MM);
+                tmpa += get_N_coeff(v1,aa,ll,-MM)*gsl_sf_coupling_3j(2,2*ll+2*v1,2*LL,-2*aa,-2*MM+2*aa,2*MM);
             tmpL += tmpa*sqrt(2.0*LL+1)*gsl_sf_coupling_3j(two_j1,2*LL,two_j2,-two_m1,-2*MM,two_m2)*int2e_get_angularX_RME(two_j1,l1,two_j2,l2p,LL,ll+v1,threeJ1);
         }
         for(int LP = Lpmin; LP<=Lpmax; LP++)
         {
             tmpb = 0.0;
             for(int bb = -1; bb <= 1; bb++)
-                tmpb += get_N_coeff(v2,bb,ll,MM)*gsl_sf_coupling_3j(2*ll+2*v2,2,2*LP,2*MM+2*bb,-2*bb,-2*MM);
+                tmpb += get_N_coeff(v2,bb,ll,MM)*gsl_sf_coupling_3j(2,2*ll+2*v2,2*LP,-2*bb,2*MM+2*bb,-2*MM);
             tmpLp += tmpb*sqrt(2.0*LP+1)*gsl_sf_coupling_3j(two_j3,2*LP,two_j4,-two_m3,2*MM,two_m4)*int2e_get_angularX_RME(two_j3,l3,two_j4,l4p,LP,ll+v2,threeJ2);
         }
         angular += pow(-1,MM)*tmpL*tmpLp;
@@ -128,18 +141,18 @@ double INT_SPH::int2e_get_angular_gauge_LSSL(const int& l1, const int& two_m1, c
     double angular = 0.0;
     int l2p = l2+s2, l3p = l3+s3;
     int two_j1 = 2*l1+s1, two_j2 = 2*l2+s2, two_j3 = 2*l3+s3, two_j4 = 2*l4+s4;
-    // double threeJ1 = gsl_sf_coupling_3j(2*l1,2*ll+2*v1,2*l2p,0,0,0), threeJ2 = gsl_sf_coupling_3j(2*l3p,2*ll+2*v2,2*l4,0,0,0), tmp;
+    // double threeJ1 = gsl_sf_coupling_3j(2*l2p,2*ll+2*v1,2*l1,0,0,0), threeJ2 = gsl_sf_coupling_3j(2*l3p,2*ll+2*v2,2*l4,0,0,0), tmp;
     // tmp = 0.0;
-    // double rme1 = int2e_get_angularX_RME(two_j1,l1,two_j2,l2p,ll,ll+v1,threeJ1);
+    // double rme1 = int2e_get_angularX_RME(two_j2,l2p,two_j1,l1,ll,ll+v1,threeJ1);
     // double rme2 = int2e_get_angularX_RME(two_j3,l3p,two_j4,l4,ll,ll+v2,threeJ2);
     // for(int MMM = -ll; MMM <= ll; MMM++)
     // {
-    //     tmp += pow(-1,MMM) * gsl_sf_coupling_3j(two_j1,2*ll,two_j2,-two_m1,-2*MMM,two_m2)
+    //     tmp += pow(-1,MMM) * gsl_sf_coupling_3j(two_j2,2*ll,two_j1,-two_m2,-2*MMM,two_m1)
     //          * gsl_sf_coupling_3j(two_j3,2*ll,two_j4,-two_m3,2*MMM,two_m4);
     // }
     // angular += tmp*rme1*rme2;
     
-    // return angular*pow(-1,(two_j1+two_j3-two_m1-two_m3)/2)*(2.0*(ll+v1)+1.0)*(2.0*(ll+v2)+1.0)/(2.0*ll+1)*gsl_sf_coupling_3j(2,2*ll+2*v1,2*ll,0,0,0)*gsl_sf_coupling_3j(2,2*ll+2*v2,2*ll,0,0,0);
+    // return angular*pow(-1,(two_j2+two_j3-two_m2-two_m3)/2+v1+1)*(2.0*(ll+v1)+1.0)*(2.0*(ll+v2)+1.0)/(2.0*ll+1)*gsl_sf_coupling_3j(2,2*ll+2*v1,2*ll,0,0,0)*gsl_sf_coupling_3j(2,2*ll+2*v2,2*ll,0,0,0);
 
     double threeJ1 = gsl_sf_coupling_3j(2*l1,2*ll+2*v1,2*l2p,0,0,0);
     double threeJ2 = gsl_sf_coupling_3j(2*l3p,2*ll+2*v2,2*l4,0,0,0);
@@ -151,14 +164,14 @@ double INT_SPH::int2e_get_angular_gauge_LSSL(const int& l1, const int& two_m1, c
         {
             tmpa = 0.0;
             for(int aa = -1; aa <= 1; aa++)
-                tmpa += get_N_coeff(v1,aa,ll,-MM)*gsl_sf_coupling_3j(2*ll+2*v1,2,2*LL,-2*MM+2*aa,-2*aa,2*MM);
+                tmpa += get_N_coeff(v1,aa,ll,-MM)*gsl_sf_coupling_3j(2,2*ll+2*v1,2*LL,-2*aa,-2*MM+2*aa,2*MM);
             tmpL += tmpa*sqrt(2.0*LL+1)*gsl_sf_coupling_3j(two_j1,2*LL,two_j2,-two_m1,-2*MM,two_m2)*int2e_get_angularX_RME(two_j1,l1,two_j2,l2p,LL,ll+v1,threeJ1);
         }
         for(int LP = Lpmin; LP<=Lpmax; LP++)
         {
             tmpb = 0.0;
             for(int bb = -1; bb <= 1; bb++)
-                tmpb += get_N_coeff(v2,bb,ll,MM)*gsl_sf_coupling_3j(2*ll+2*v2,2,2*LP,2*MM+2*bb,-2*bb,-2*MM);
+                tmpb += get_N_coeff(v2,bb,ll,MM)*gsl_sf_coupling_3j(2,2*ll+2*v2,2*LP,-2*bb,2*MM+2*bb,-2*MM);
             tmpLp += tmpb*sqrt(2.0*LP+1)*gsl_sf_coupling_3j(two_j3,2*LP,two_j4,-two_m3,2*MM,two_m4)*int2e_get_angularX_RME(two_j3,l3p,two_j4,l4,LP,ll+v2,threeJ2);
         }
         angular += pow(-1,MM)*tmpL*tmpLp;
