@@ -11,14 +11,15 @@
 using namespace std;
 using namespace Eigen;
 
-double get_N_coeff(const int& v1, const int& aa, const int& ll, const int& mm)
+double get_N_coeff(const int& vv, const int& aa, const int& ll, const int& mm)
 {
-    if(abs(mm+aa) > ll+v1) return 0.0;
+    if(abs(mm+aa) > ll+vv) return 0.0;
     double tmp;
-    // return gsl_sf_coupling_3j(2*ll,2,2*ll+2*v1,2*mm,2*aa,-2*mm-2*aa)*gsl_sf_coupling_3j(2*ll,2,2*ll+2*v1,0,0,0)*pow(-1,mm+aa)*(2.0*(ll+v1)+1.0);
+    //  return gsl_sf_coupling_3j(2*ll,2,2*ll+2*vv,2*mm,2*aa,-2*mm-2*aa)*gsl_sf_coupling_3j(2*ll,2,2*ll+2*vv,0,0,0)*pow(-1,mm+aa)*(2.0*(ll+vv)+1.0);
+    // return gsl_sf_coupling_3j(2*ll,2,2*ll+2*vv,2*mm,2*aa,-2*mm-2*aa)*gsl_sf_coupling_3j(2*ll,2,2*ll+2*vv,0,0,0)*pow(-1,mm)*(2.0*(ll+vv)+1.0);
 
     
-    switch (v1)
+    switch (vv)
     {
     case 1:
         switch (aa)
@@ -49,7 +50,7 @@ double get_N_coeff(const int& v1, const int& aa, const int& ll, const int& mm)
         }
         break;
     default:
-        cout << "ERROR: Input aa or v1 is invalid for N_coeff" << endl;
+        cout << "ERROR: Input aa or vv is invalid for N_coeff" << endl;
         exit(99);
     }
     return tmp;
@@ -58,36 +59,50 @@ double get_N_coeff(const int& v1, const int& aa, const int& ll, const int& mm)
 /* 
     evaluate radial part and angular part in 2e integrals 
 */
-double INT_SPH::int2e_get_radial_Wmp(const int& l1, const double& a1, const int& l2, const double& a2, const int& l3, const double& a3, const int& l4, const double& a4, const int& LL) const
+double INT_SPH::int2e_get_radial_gauge(const int& l1, const double& a1, const int& l2, const double& a2, const int& l3, const double& a3, const int& l4, const double& a4, const int& LL, const int& v1, const int& v2) const
 {
-    double radial = 0.0;
-    if((l1 + l2 + 3 + LL) % 2)
+    if(LL+v1<0||LL+v2<0||l1+l2+2<LL||l3+l4+2<LL) return 0.0;
+    double radial = 0.0, fac;
+    if(v1 == v2)
     {
-        radial = auxiliary_2e_0_r(l1 + l2 + 3 + LL, l3 + l4 - LL, a1 + a2, a3 + a4)
-               - auxiliary_2e_0_r(l1 + l2 + 1 + LL, l3 + l4 + 2 - LL, a1 + a2, a3 + a4);
+        int vv = LL + v1;
+        fac = -2.0*(2.0*LL+1.0)/(2.0*vv+1.0);
+        radial = int2e_get_radial(l1,a1,l2,a2,l3,a3,l4,a4,vv);
+    }
+    else if(v1 == -1 && v2 == +1)
+    {
+        fac = -(2.0*LL+1.0);
+        if((l1 + l2 + 3 + LL) % 2)
+        {
+            radial = auxiliary_2e_0_r(l1 + l2 + 3 + LL, l3 + l4 - LL, a1 + a2, a3 + a4)
+                   - auxiliary_2e_0_r(l1 + l2 + 1 + LL, l3 + l4 + 2 - LL, a1 + a2, a3 + a4);
+        }
+        else
+        {
+            radial = auxiliary_2e_r_inf(l3 + l4 - LL, l1 + l2 + 3 + LL, a3 + a4, a1 + a2)
+                   - auxiliary_2e_r_inf(l3 + l4 + 2 - LL, l1 + l2 + 1 + LL, a3 + a4, a1 + a2);
+        }
+    }
+    else if(v1 == +1 && v2 == -1)
+    {
+        fac = -(2.0*LL+1.0);
+        if((l3 + l4 + 3 + LL) % 2)
+        {
+            radial = auxiliary_2e_0_r(l3 + l4 + 3 + LL, l1 + l2 - LL, a3 + a4, a1 + a2)
+                   - auxiliary_2e_0_r(l3 + l4 + 1 + LL, l1 + l2 + 2 - LL, a3 + a4, a1 + a2);
+        }
+        else
+        {
+            radial = auxiliary_2e_r_inf(l1 + l2 - LL, l3 + l4 + 3 + LL, a1 + a2, a3 + a4)
+                   - auxiliary_2e_r_inf(l1 + l2 + 2 - LL, l3 + l4 + 1 + LL, a1 + a2, a3 + a4);
+        }
     }
     else
     {
-        radial = auxiliary_2e_r_inf(l3 + l4 - LL, l1 + l2 + 3 + LL, a3 + a4, a1 + a2)
-               - auxiliary_2e_r_inf(l3 + l4 + 2 - LL, l1 + l2 + 1 + LL, a3 + a4, a1 + a2);
+        cout << "WARNING: gauge radial input v1 and v2 are out of domain." << endl;
     }
-    return radial;
-}
-double INT_SPH::int2e_get_radial_Wpm(const int& l1, const double& a1, const int& l2, const double& a2, const int& l3, const double& a3, const int& l4, const double& a4, const int& LL) const
-{
-    double radial = 0.0;
-    if((l3 + l4 + 3 + LL) % 2)
-    {
-        radial = auxiliary_2e_0_r(l3 + l4 + 3 + LL, l1 + l2 - LL, a3 + a4, a1 + a2)
-               - auxiliary_2e_0_r(l3 + l4 + 1 + LL, l1 + l2 + 2 - LL, a3 + a4, a1 + a2);
-    }
-    else
-    {
-        radial = auxiliary_2e_r_inf(l1 + l2 - LL, l3 + l4 + 3 + LL, a1 + a2, a3 + a4)
-               - auxiliary_2e_r_inf(l1 + l2 + 2 - LL, l3 + l4 + 1 + LL, a1 + a2, a3 + a4);
-    }
-
-    return radial;
+    
+    return radial*fac;
 }
 
 
@@ -97,43 +112,43 @@ double INT_SPH::int2e_get_angular_gauge_LSLS(const int& l1, const int& two_m1, c
     double angular = 0.0;
     int l2p = l2+s2, l4p = l4+s4;
     int two_j1 = 2*l1+s1, two_j2 = 2*l2+s2, two_j3 = 2*l3+s3, two_j4 = 2*l4+s4;
-    // double threeJ1 = gsl_sf_coupling_3j(2*l2p,2*ll+2*v1,2*l1,0,0,0), threeJ2 = gsl_sf_coupling_3j(2*l3,2*ll+2*v2,2*l4p,0,0,0), tmp;
-    // tmp = 0.0;
-    // double rme1 = int2e_get_angularX_RME(two_j2,l2p,two_j1,l1,ll,ll+v1,threeJ1);
-    // double rme2 = int2e_get_angularX_RME(two_j3,l3,two_j4,l4p,ll,ll+v2,threeJ2);
-    // for(int MMM = -ll; MMM <= ll; MMM++)
-    // {
-    //     tmp += pow(-1,MMM) * gsl_sf_coupling_3j(two_j2,2*ll,two_j1,-two_m2,-2*MMM,two_m1)
-    //          * gsl_sf_coupling_3j(two_j3,2*ll,two_j4,-two_m3,2*MMM,two_m4);
-    // }
-    // angular += tmp*rme1*rme2;
-    
-    // return angular*pow(-1,(two_j2+two_j3-two_m2-two_m3)/2+ll+v1+1)*(2.0*(ll+v1)+1.0)*(2.0*(ll+v2)+1.0)/(2.0*ll+1)*gsl_sf_coupling_3j(2,2*ll+2*v1,2*ll,0,0,0)*gsl_sf_coupling_3j(2,2*ll+2*v2,2*ll,0,0,0);
-    
-    double threeJ1 = gsl_sf_coupling_3j(2*l1,2*ll+2*v1,2*l2p,0,0,0);
-    double threeJ2 = gsl_sf_coupling_3j(2*l3,2*ll+2*v2,2*l4p,0,0,0);
-    int Lmin = max(abs(ll+v1-1),0), Lmax = ll+v1+1, Lpmin = max(abs(ll+v2-1),0), Lpmax = ll+v2+1;
-    for(int MM = -ll; MM <= ll; MM++)
+    double threeJ1 = gsl_sf_coupling_3j(2*l1,2*ll+2*v1,2*l2p,0,0,0), threeJ2 = gsl_sf_coupling_3j(2*l3,2*ll+2*v2,2*l4p,0,0,0), tmp;
+    tmp = 0.0;
+    double rme1 = int2e_get_angularX_RME(two_j1,l1,two_j2,l2p,ll,ll+v1,threeJ1);
+    double rme2 = int2e_get_angularX_RME(two_j3,l3,two_j4,l4p,ll,ll+v2,threeJ2);
+    for(int MMM = -ll; MMM <= ll; MMM++)
     {
-        double tmpa, tmpb, tmpL = 0.0, tmpLp = 0.0;
-        for(int LL = Lmin; LL <= Lmax; LL++)
-        {
-            tmpa = 0.0;
-            for(int aa = -1; aa <= 1; aa++)
-                tmpa += get_N_coeff(v1,aa,ll,-MM)*gsl_sf_coupling_3j(2,2*ll+2*v1,2*LL,-2*aa,-2*MM+2*aa,2*MM);
-            tmpL += tmpa*sqrt(2.0*LL+1)*gsl_sf_coupling_3j(two_j1,2*LL,two_j2,-two_m1,-2*MM,two_m2)*int2e_get_angularX_RME(two_j1,l1,two_j2,l2p,LL,ll+v1,threeJ1);
-        }
-        for(int LP = Lpmin; LP<=Lpmax; LP++)
-        {
-            tmpb = 0.0;
-            for(int bb = -1; bb <= 1; bb++)
-                tmpb += get_N_coeff(v2,bb,ll,MM)*gsl_sf_coupling_3j(2,2*ll+2*v2,2*LP,-2*bb,2*MM+2*bb,-2*MM);
-            tmpLp += tmpb*sqrt(2.0*LP+1)*gsl_sf_coupling_3j(two_j3,2*LP,two_j4,-two_m3,2*MM,two_m4)*int2e_get_angularX_RME(two_j3,l3,two_j4,l4p,LP,ll+v2,threeJ2);
-        }
-        angular += pow(-1,MM)*tmpL*tmpLp;
+        tmp += pow(-1,MMM) * gsl_sf_coupling_3j(two_j1,2*ll,two_j2,-two_m1,-2*MMM,two_m2)
+             * gsl_sf_coupling_3j(two_j3,2*ll,two_j4,-two_m3,2*MMM,two_m4);
     }
+    angular += tmp*rme1*rme2;
     
-    return angular*pow(-1,(two_j1+two_j3-two_m1-two_m3)/2);
+    return angular*pow(-1,(two_j1+two_j3-two_m1-two_m3)/2)*(2.0*(ll+v1)+1.0)*(2.0*(ll+v2)+1.0)/(2.0*ll+1)*gsl_sf_coupling_3j(2,2*ll+2*v1,2*ll,0,0,0)*gsl_sf_coupling_3j(2,2*ll+2*v2,2*ll,0,0,0);
+    
+    // double threeJ1 = gsl_sf_coupling_3j(2*l1,2*ll+2*v1,2*l2p,0,0,0);
+    // double threeJ2 = gsl_sf_coupling_3j(2*l3,2*ll+2*v2,2*l4p,0,0,0);
+    // int Lmin = max(abs(ll+v1-1),0), Lmax = ll+v1+1, Lpmin = max(abs(ll+v2-1),0), Lpmax = ll+v2+1;
+    // for(int MM = -ll; MM <= ll; MM++)
+    // {
+    //     double tmpa, tmpb, tmpL = 0.0, tmpLp = 0.0;
+    //     for(int LL = Lmin; LL <= Lmax; LL++)
+    //     {
+    //         tmpa = 0.0;
+    //         for(int aa = -1; aa <= 1; aa++)
+    //             tmpa += get_N_coeff(v1,aa,ll,-MM)*gsl_sf_coupling_3j(2,2*ll+2*v1,2*LL,-2*aa,-2*MM+2*aa,2*MM);
+    //         tmpL += tmpa*sqrt(2.0*LL+1)*gsl_sf_coupling_3j(two_j1,2*LL,two_j2,-two_m1,-2*MM,two_m2)*int2e_get_angularX_RME(two_j1,l1,two_j2,l2p,LL,ll+v1,threeJ1);
+    //     }
+    //     for(int LP = Lpmin; LP<=Lpmax; LP++)
+    //     {
+    //         tmpb = 0.0;
+    //         for(int bb = -1; bb <= 1; bb++)
+    //             tmpb += get_N_coeff(v2,bb,ll,MM)*gsl_sf_coupling_3j(2,2*ll+2*v2,2*LP,-2*bb,2*MM+2*bb,-2*MM);
+    //         tmpLp += tmpb*sqrt(2.0*LP+1)*gsl_sf_coupling_3j(two_j3,2*LP,two_j4,-two_m3,2*MM,two_m4)*int2e_get_angularX_RME(two_j3,l3,two_j4,l4p,LP,ll+v2,threeJ2);
+    //     }
+    //     angular += pow(-1,MM)*tmpL*tmpLp;
+    // }
+    
+    // return angular*pow(-1,(two_j1+two_j3-two_m1-two_m3)/2);
 }
 double INT_SPH::int2e_get_angular_gauge_LSSL(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& l3, const int& two_m3, const int& s3, const int& l4, const int& two_m4, const int& s4, const int& ll, const int& v1, const int& v2) const
 {
@@ -141,43 +156,43 @@ double INT_SPH::int2e_get_angular_gauge_LSSL(const int& l1, const int& two_m1, c
     double angular = 0.0;
     int l2p = l2+s2, l3p = l3+s3;
     int two_j1 = 2*l1+s1, two_j2 = 2*l2+s2, two_j3 = 2*l3+s3, two_j4 = 2*l4+s4;
-    // double threeJ1 = gsl_sf_coupling_3j(2*l2p,2*ll+2*v1,2*l1,0,0,0), threeJ2 = gsl_sf_coupling_3j(2*l3p,2*ll+2*v2,2*l4,0,0,0), tmp;
-    // tmp = 0.0;
-    // double rme1 = int2e_get_angularX_RME(two_j2,l2p,two_j1,l1,ll,ll+v1,threeJ1);
-    // double rme2 = int2e_get_angularX_RME(two_j3,l3p,two_j4,l4,ll,ll+v2,threeJ2);
-    // for(int MMM = -ll; MMM <= ll; MMM++)
-    // {
-    //     tmp += pow(-1,MMM) * gsl_sf_coupling_3j(two_j2,2*ll,two_j1,-two_m2,-2*MMM,two_m1)
-    //          * gsl_sf_coupling_3j(two_j3,2*ll,two_j4,-two_m3,2*MMM,two_m4);
-    // }
-    // angular += tmp*rme1*rme2;
-    
-    // return angular*pow(-1,(two_j2+two_j3-two_m2-two_m3)/2+v1+1)*(2.0*(ll+v1)+1.0)*(2.0*(ll+v2)+1.0)/(2.0*ll+1)*gsl_sf_coupling_3j(2,2*ll+2*v1,2*ll,0,0,0)*gsl_sf_coupling_3j(2,2*ll+2*v2,2*ll,0,0,0);
-
-    double threeJ1 = gsl_sf_coupling_3j(2*l1,2*ll+2*v1,2*l2p,0,0,0);
-    double threeJ2 = gsl_sf_coupling_3j(2*l3p,2*ll+2*v2,2*l4,0,0,0);
-    int Lmin = max(abs(ll+v1-1),0), Lmax = ll+v1+1, Lpmin = max(abs(ll+v2-1),0), Lpmax = ll+v2+1;
-    for(int MM = -ll; MM <= ll; MM++)
+    double threeJ1 = gsl_sf_coupling_3j(2*l1,2*ll+2*v1,2*l2p,0,0,0), threeJ2 = gsl_sf_coupling_3j(2*l3p,2*ll+2*v2,2*l4,0,0,0), tmp;
+    tmp = 0.0;
+    double rme1 = int2e_get_angularX_RME(two_j1,l1,two_j2,l2p,ll,ll+v1,threeJ1);
+    double rme2 = int2e_get_angularX_RME(two_j3,l3p,two_j4,l4,ll,ll+v2,threeJ2);
+    for(int MMM = -ll; MMM <= ll; MMM++)
     {
-        double tmpa, tmpb, tmpL = 0.0, tmpLp = 0.0;
-        for(int LL = Lmin; LL <= Lmax; LL++)
-        {
-            tmpa = 0.0;
-            for(int aa = -1; aa <= 1; aa++)
-                tmpa += get_N_coeff(v1,aa,ll,-MM)*gsl_sf_coupling_3j(2,2*ll+2*v1,2*LL,-2*aa,-2*MM+2*aa,2*MM);
-            tmpL += tmpa*sqrt(2.0*LL+1)*gsl_sf_coupling_3j(two_j1,2*LL,two_j2,-two_m1,-2*MM,two_m2)*int2e_get_angularX_RME(two_j1,l1,two_j2,l2p,LL,ll+v1,threeJ1);
-        }
-        for(int LP = Lpmin; LP<=Lpmax; LP++)
-        {
-            tmpb = 0.0;
-            for(int bb = -1; bb <= 1; bb++)
-                tmpb += get_N_coeff(v2,bb,ll,MM)*gsl_sf_coupling_3j(2,2*ll+2*v2,2*LP,-2*bb,2*MM+2*bb,-2*MM);
-            tmpLp += tmpb*sqrt(2.0*LP+1)*gsl_sf_coupling_3j(two_j3,2*LP,two_j4,-two_m3,2*MM,two_m4)*int2e_get_angularX_RME(two_j3,l3p,two_j4,l4,LP,ll+v2,threeJ2);
-        }
-        angular += pow(-1,MM)*tmpL*tmpLp;
+        tmp += pow(-1,MMM) * gsl_sf_coupling_3j(two_j1,2*ll,two_j2,-two_m1,-2*MMM,two_m2)
+             * gsl_sf_coupling_3j(two_j3,2*ll,two_j4,-two_m3,2*MMM,two_m4);
     }
+    angular += tmp*rme1*rme2;
     
-    return angular*pow(-1,(two_j1+two_j3-two_m1-two_m3)/2);
+    return angular*pow(-1,(two_j1+two_j3-two_m1-two_m3)/2)*(2.0*(ll+v1)+1.0)*(2.0*(ll+v2)+1.0)/(2.0*ll+1)*gsl_sf_coupling_3j(2,2*ll+2*v1,2*ll,0,0,0)*gsl_sf_coupling_3j(2,2*ll+2*v2,2*ll,0,0,0);
+
+    // double threeJ1 = gsl_sf_coupling_3j(2*l1,2*ll+2*v1,2*l2p,0,0,0);
+    // double threeJ2 = gsl_sf_coupling_3j(2*l3p,2*ll+2*v2,2*l4,0,0,0);
+    // int Lmin = max(abs(ll+v1-1),0), Lmax = ll+v1+1, Lpmin = max(abs(ll+v2-1),0), Lpmax = ll+v2+1;
+    // for(int MM = -ll; MM <= ll; MM++)
+    // {
+    //     double tmpa, tmpb, tmpL = 0.0, tmpLp = 0.0;
+    //     for(int LL = Lmin; LL <= Lmax; LL++)
+    //     {
+    //         tmpa = 0.0;
+    //         for(int aa = -1; aa <= 1; aa++)
+    //             tmpa += get_N_coeff(v1,aa,ll,-MM)*gsl_sf_coupling_3j(2,2*ll+2*v1,2*LL,-2*aa,-2*MM+2*aa,2*MM);
+    //         tmpL += tmpa*sqrt(2.0*LL+1)*gsl_sf_coupling_3j(two_j1,2*LL,two_j2,-two_m1,-2*MM,two_m2)*int2e_get_angularX_RME(two_j1,l1,two_j2,l2p,LL,ll+v1,threeJ1);
+    //     }
+    //     for(int LP = Lpmin; LP<=Lpmax; LP++)
+    //     {
+    //         tmpb = 0.0;
+    //         for(int bb = -1; bb <= 1; bb++)
+    //             tmpb += get_N_coeff(v2,bb,ll,MM)*gsl_sf_coupling_3j(2,2*ll+2*v2,2*LP,-2*bb,2*MM+2*bb,-2*MM);
+    //         tmpLp += tmpb*sqrt(2.0*LP+1)*gsl_sf_coupling_3j(two_j3,2*LP,two_j4,-two_m3,2*MM,two_m4)*int2e_get_angularX_RME(two_j3,l3p,two_j4,l4,LP,ll+v2,threeJ2);
+    //     }
+    //     angular += pow(-1,MM)*tmpL*tmpLp;
+    // }
+    
+    // return angular*pow(-1,(two_j1+two_j3-two_m1-two_m3)/2);
 }
 
 
@@ -264,203 +279,171 @@ int2eJK INT_SPH::get_h2e_JK_gauge_compact(const string& intType, const int& occM
             {
                 for(int LL = LmaxJ[0]-LminJ[0]; LL >= 0; LL-=2)
                 {
-                    int LLL = LL+LminJ[0];
-                    double fac = -2.0*(2.0*LLL+1.0)/(2.0*LLL-1.0);
-                    radial_2e_list_Jmm[LL][tt][0] = fac*int2e_get_radial(l_p,a_i_J,l_p+1,a_j_J,l_q,a_k_J,l_q+1,a_l_J,LLL-1);
+                    radial_2e_list_Jmm[LL][tt][0] = int2e_get_radial_gauge(l_p,a_i_J,l_p+1,a_j_J,l_q,a_k_J,l_q+1,a_l_J,LL+LminJ[0],-1,-1);
                     if(l_p != 0)
-                        radial_2e_list_Jmm[LL][tt][1] = fac*int2e_get_radial(l_p,a_i_J,l_p-1,a_j_J,l_q,a_k_J,l_q+1,a_l_J,LLL-1);
+                        radial_2e_list_Jmm[LL][tt][1] = int2e_get_radial_gauge(l_p,a_i_J,l_p-1,a_j_J,l_q,a_k_J,l_q+1,a_l_J,LL+LminJ[0],-1,-1);
                     if(l_q != 0)
-                        radial_2e_list_Jmm[LL][tt][2] = fac*int2e_get_radial(l_p,a_i_J,l_p+1,a_j_J,l_q,a_k_J,l_q-1,a_l_J,LLL-1);
+                        radial_2e_list_Jmm[LL][tt][2] = int2e_get_radial_gauge(l_p,a_i_J,l_p+1,a_j_J,l_q,a_k_J,l_q-1,a_l_J,LL+LminJ[0],-1,-1);
                     if(l_p != 0 && l_q != 0)
-                        radial_2e_list_Jmm[LL][tt][3] = fac*int2e_get_radial(l_p,a_i_J,l_p-1,a_j_J,l_q,a_k_J,l_q-1,a_l_J,LLL-1);
+                        radial_2e_list_Jmm[LL][tt][3] = int2e_get_radial_gauge(l_p,a_i_J,l_p-1,a_j_J,l_q,a_k_J,l_q-1,a_l_J,LL+LminJ[0],-1,-1);
                 }
                 for(int LL = LmaxK[0]-LminK[0]; LL >= 0; LL-=2)
                 {
-                    int LLL = LL+LminK[0];
-                    double fac = -2.0*(2.0*LLL+1.0)/(2.0*LLL-1.0);
-                    radial_2e_list_Kmm[LL][tt][0] =  fac*int2e_get_radial(l_p,a_i_K,l_q+1,a_j_K,l_q,a_k_K,l_p+1,a_l_K,LLL-1);
+                    radial_2e_list_Kmm[LL][tt][0] = int2e_get_radial_gauge(l_p,a_i_K,l_q+1,a_j_K,l_q,a_k_K,l_p+1,a_l_K,LL+LminK[0],-1,-1);
                     if(l_q != 0)
-                        radial_2e_list_Kmm[LL][tt][1] =  fac*int2e_get_radial(l_p,a_i_K,l_q-1,a_j_K,l_q,a_k_K,l_p+1,a_l_K,LLL-1);
+                        radial_2e_list_Kmm[LL][tt][1] = int2e_get_radial_gauge(l_p,a_i_K,l_q-1,a_j_K,l_q,a_k_K,l_p+1,a_l_K,LL+LminK[0],-1,-1);
                     if(l_p != 0)
-                        radial_2e_list_Kmm[LL][tt][2] =  fac*int2e_get_radial(l_p,a_i_K,l_q+1,a_j_K,l_q,a_k_K,l_p-1,a_l_K,LLL-1);
+                        radial_2e_list_Kmm[LL][tt][2] = int2e_get_radial_gauge(l_p,a_i_K,l_q+1,a_j_K,l_q,a_k_K,l_p-1,a_l_K,LL+LminK[0],-1,-1);
                     if(l_p != 0 && l_q != 0)
-                        radial_2e_list_Kmm[LL][tt][3] =  fac*int2e_get_radial(l_p,a_i_K,l_q-1,a_j_K,l_q,a_k_K,l_p-1,a_l_K,LLL-1);
+                        radial_2e_list_Kmm[LL][tt][3] = int2e_get_radial_gauge(l_p,a_i_K,l_q-1,a_j_K,l_q,a_k_K,l_p-1,a_l_K,LL+LminK[0],-1,-1);
                 }
                 for(int LL = LmaxJ[1]-LminJ[1]; LL >= 0; LL-=2)
                 {
-                    int LLL = LL+LminJ[1];
-                    double fac = -(2.0*LLL+1.0);
-                    radial_2e_list_Jmp[LL][tt][0] = fac*int2e_get_radial_Wmp(l_p,a_i_J,l_p+1,a_j_J,l_q,a_k_J,l_q+1,a_l_J,LLL);
+                    radial_2e_list_Jmp[LL][tt][0] = int2e_get_radial_gauge(l_p,a_i_J,l_p+1,a_j_J,l_q,a_k_J,l_q+1,a_l_J,LL+LminJ[1],-1,1);
                     if(l_p != 0)
-                        radial_2e_list_Jmp[LL][tt][1] = fac*int2e_get_radial_Wmp(l_p,a_i_J,l_p-1,a_j_J,l_q,a_k_J,l_q+1,a_l_J,LLL);
+                        radial_2e_list_Jmp[LL][tt][1] = int2e_get_radial_gauge(l_p,a_i_J,l_p-1,a_j_J,l_q,a_k_J,l_q+1,a_l_J,LL+LminJ[1],-1,1);
                     if(l_q != 0)
-                        radial_2e_list_Jmp[LL][tt][2] = fac*int2e_get_radial_Wmp(l_p,a_i_J,l_p+1,a_j_J,l_q,a_k_J,l_q-1,a_l_J,LLL);
+                        radial_2e_list_Jmp[LL][tt][2] = int2e_get_radial_gauge(l_p,a_i_J,l_p+1,a_j_J,l_q,a_k_J,l_q-1,a_l_J,LL+LminJ[1],-1,1);
                     if(l_p != 0 && l_q != 0)
-                        radial_2e_list_Jmp[LL][tt][3] = fac*int2e_get_radial_Wmp(l_p,a_i_J,l_p-1,a_j_J,l_q,a_k_J,l_q-1,a_l_J,LLL);
+                        radial_2e_list_Jmp[LL][tt][3] = int2e_get_radial_gauge(l_p,a_i_J,l_p-1,a_j_J,l_q,a_k_J,l_q-1,a_l_J,LL+LminJ[1],-1,1);
                 }
                 for(int LL = LmaxK[1]-LminK[1]; LL >= 0; LL-=2)
                 {
-                    int LLL = LL+LminK[1];
-                    double fac = -(2.0*LLL+1.0);
-                    radial_2e_list_Kmp[LL][tt][0] =  fac*int2e_get_radial_Wmp(l_p,a_i_K,l_q+1,a_j_K,l_q,a_k_K,l_p+1,a_l_K,LLL);
+                    radial_2e_list_Kmp[LL][tt][0] = int2e_get_radial_gauge(l_p,a_i_K,l_q+1,a_j_K,l_q,a_k_K,l_p+1,a_l_K,LL+LminK[1],-1,1);
                     if(l_q != 0)
-                        radial_2e_list_Kmp[LL][tt][1] =  fac*int2e_get_radial_Wmp(l_p,a_i_K,l_q-1,a_j_K,l_q,a_k_K,l_p+1,a_l_K,LLL);
+                        radial_2e_list_Kmp[LL][tt][1] = int2e_get_radial_gauge(l_p,a_i_K,l_q-1,a_j_K,l_q,a_k_K,l_p+1,a_l_K,LL+LminK[1],-1,1);
                     if(l_p != 0)
-                        radial_2e_list_Kmp[LL][tt][2] =  fac*int2e_get_radial_Wmp(l_p,a_i_K,l_q+1,a_j_K,l_q,a_k_K,l_p-1,a_l_K,LLL);
+                        radial_2e_list_Kmp[LL][tt][2] = int2e_get_radial_gauge(l_p,a_i_K,l_q+1,a_j_K,l_q,a_k_K,l_p-1,a_l_K,LL+LminK[1],-1,1);
                     if(l_p != 0 && l_q != 0)
-                        radial_2e_list_Kmp[LL][tt][3] =  fac*int2e_get_radial_Wmp(l_p,a_i_K,l_q-1,a_j_K,l_q,a_k_K,l_p-1,a_l_K,LLL);
+                        radial_2e_list_Kmp[LL][tt][3] = int2e_get_radial_gauge(l_p,a_i_K,l_q-1,a_j_K,l_q,a_k_K,l_p-1,a_l_K,LL+LminK[1],-1,1);
                 }
                 for(int LL = LmaxJ[2]-LminJ[2]; LL >= 0; LL-=2)
                 {
-                    int LLL = LL+LminJ[2];
-                    double fac = -(2.0*LLL+1.0);
-                    radial_2e_list_Jpm[LL][tt][0] = fac*int2e_get_radial_Wpm(l_p,a_i_J,l_p+1,a_j_J,l_q,a_k_J,l_q+1,a_l_J,LLL);
+                    radial_2e_list_Jpm[LL][tt][0] = int2e_get_radial_gauge(l_p,a_i_J,l_p+1,a_j_J,l_q,a_k_J,l_q+1,a_l_J,LL+LminJ[2],1,-1);
                     if(l_p != 0)
-                        radial_2e_list_Jpm[LL][tt][1] = fac*int2e_get_radial_Wpm(l_p,a_i_J,l_p-1,a_j_J,l_q,a_k_J,l_q+1,a_l_J,LLL);
+                        radial_2e_list_Jpm[LL][tt][1] = int2e_get_radial_gauge(l_p,a_i_J,l_p-1,a_j_J,l_q,a_k_J,l_q+1,a_l_J,LL+LminJ[2],1,-1);
                     if(l_q != 0)
-                        radial_2e_list_Jpm[LL][tt][2] = fac*int2e_get_radial_Wpm(l_p,a_i_J,l_p+1,a_j_J,l_q,a_k_J,l_q-1,a_l_J,LLL);
+                        radial_2e_list_Jpm[LL][tt][2] = int2e_get_radial_gauge(l_p,a_i_J,l_p+1,a_j_J,l_q,a_k_J,l_q-1,a_l_J,LL+LminJ[2],1,-1);
                     if(l_p != 0 && l_q != 0)
-                        radial_2e_list_Jpm[LL][tt][3] = fac*int2e_get_radial_Wpm(l_p,a_i_J,l_p-1,a_j_J,l_q,a_k_J,l_q-1,a_l_J,LLL);
+                        radial_2e_list_Jpm[LL][tt][3] = int2e_get_radial_gauge(l_p,a_i_J,l_p-1,a_j_J,l_q,a_k_J,l_q-1,a_l_J,LL+LminJ[2],1,-1);
                 }
                 for(int LL = LmaxK[2]-LminK[2]; LL >= 0; LL-=2)
                 {
-                    int LLL = LL+LminK[2];
-                    double fac = -(2.0*LLL+1.0);
-                    radial_2e_list_Kpm[LL][tt][0] =  fac*int2e_get_radial_Wpm(l_p,a_i_K,l_q+1,a_j_K,l_q,a_k_K,l_p+1,a_l_K,LLL);
+                    radial_2e_list_Kpm[LL][tt][0] = int2e_get_radial_gauge(l_p,a_i_K,l_q+1,a_j_K,l_q,a_k_K,l_p+1,a_l_K,LL+LminK[2],1,-1);
                     if(l_q != 0)
-                        radial_2e_list_Kpm[LL][tt][1] =  fac*int2e_get_radial_Wpm(l_p,a_i_K,l_q-1,a_j_K,l_q,a_k_K,l_p+1,a_l_K,LLL);
+                        radial_2e_list_Kpm[LL][tt][1] = int2e_get_radial_gauge(l_p,a_i_K,l_q-1,a_j_K,l_q,a_k_K,l_p+1,a_l_K,LL+LminK[2],1,-1);
                     if(l_p != 0)
-                        radial_2e_list_Kpm[LL][tt][2] =  fac*int2e_get_radial_Wpm(l_p,a_i_K,l_q+1,a_j_K,l_q,a_k_K,l_p-1,a_l_K,LLL);
+                        radial_2e_list_Kpm[LL][tt][2] = int2e_get_radial_gauge(l_p,a_i_K,l_q+1,a_j_K,l_q,a_k_K,l_p-1,a_l_K,LL+LminK[2],1,-1);
                     if(l_p != 0 && l_q != 0)
-                        radial_2e_list_Kpm[LL][tt][3] =  fac*int2e_get_radial_Wpm(l_p,a_i_K,l_q-1,a_j_K,l_q,a_k_K,l_p-1,a_l_K,LLL);
+                        radial_2e_list_Kpm[LL][tt][3] = int2e_get_radial_gauge(l_p,a_i_K,l_q-1,a_j_K,l_q,a_k_K,l_p-1,a_l_K,LL+LminK[2],1,-1);
                 }
                 for(int LL = LmaxJ[3]-LminJ[3]; LL >= 0; LL-=2)
                 {
-                    int LLL = LL+LminJ[3];
-                    double fac = -2.0*(2.0*LLL+1.0)/(2.0*LLL+3.0);
-                    radial_2e_list_Jpp[LL][tt][0] = fac*int2e_get_radial(l_p,a_i_J,l_p+1,a_j_J,l_q,a_k_J,l_q+1,a_l_J,LLL+1);
+                    radial_2e_list_Jpp[LL][tt][0] = int2e_get_radial_gauge(l_p,a_i_J,l_p+1,a_j_J,l_q,a_k_J,l_q+1,a_l_J,LL+LminJ[3],1,1);
                     if(l_p != 0)
-                        radial_2e_list_Jpp[LL][tt][1] = fac*int2e_get_radial(l_p,a_i_J,l_p-1,a_j_J,l_q,a_k_J,l_q+1,a_l_J,LLL+1);
+                        radial_2e_list_Jpp[LL][tt][1] = int2e_get_radial_gauge(l_p,a_i_J,l_p-1,a_j_J,l_q,a_k_J,l_q+1,a_l_J,LL+LminJ[3],1,1);
                     if(l_q != 0)
-                        radial_2e_list_Jpp[LL][tt][2] = fac*int2e_get_radial(l_p,a_i_J,l_p+1,a_j_J,l_q,a_k_J,l_q-1,a_l_J,LLL+1);
+                        radial_2e_list_Jpp[LL][tt][2] = int2e_get_radial_gauge(l_p,a_i_J,l_p+1,a_j_J,l_q,a_k_J,l_q-1,a_l_J,LL+LminJ[3],1,1);
                     if(l_p != 0 && l_q != 0)
-                        radial_2e_list_Jpp[LL][tt][3] = fac*int2e_get_radial(l_p,a_i_J,l_p-1,a_j_J,l_q,a_k_J,l_q-1,a_l_J,LLL+1);
+                        radial_2e_list_Jpp[LL][tt][3] = int2e_get_radial_gauge(l_p,a_i_J,l_p-1,a_j_J,l_q,a_k_J,l_q-1,a_l_J,LL+LminJ[3],1,1);
                 }
                 for(int LL = LmaxK[3]-LminK[3]; LL >= 0; LL-=2)
                 {
-                    int LLL = LL+LminK[3];
-                    double fac = -2.0*(2.0*LLL+1.0)/(2.0*LLL+3.0);
-                    radial_2e_list_Kpp[LL][tt][0] =  fac*int2e_get_radial(l_p,a_i_K,l_q+1,a_j_K,l_q,a_k_K,l_p+1,a_l_K,LLL+1);
+                    radial_2e_list_Kpp[LL][tt][0] = int2e_get_radial_gauge(l_p,a_i_K,l_q+1,a_j_K,l_q,a_k_K,l_p+1,a_l_K,LL+LminK[3],1,1);
                     if(l_q != 0)
-                        radial_2e_list_Kpp[LL][tt][1] =  fac*int2e_get_radial(l_p,a_i_K,l_q-1,a_j_K,l_q,a_k_K,l_p+1,a_l_K,LLL+1);
+                        radial_2e_list_Kpp[LL][tt][1] = int2e_get_radial_gauge(l_p,a_i_K,l_q-1,a_j_K,l_q,a_k_K,l_p+1,a_l_K,LL+LminK[3],1,1);
                     if(l_p != 0)
-                        radial_2e_list_Kpp[LL][tt][2] =  fac*int2e_get_radial(l_p,a_i_K,l_q+1,a_j_K,l_q,a_k_K,l_p-1,a_l_K,LLL+1);
+                        radial_2e_list_Kpp[LL][tt][2] = int2e_get_radial_gauge(l_p,a_i_K,l_q+1,a_j_K,l_q,a_k_K,l_p-1,a_l_K,LL+LminK[3],1,1);
                     if(l_p != 0 && l_q != 0)
-                        radial_2e_list_Kpp[LL][tt][3] =  fac*int2e_get_radial(l_p,a_i_K,l_q-1,a_j_K,l_q,a_k_K,l_p-1,a_l_K,LLL+1);
+                        radial_2e_list_Kpp[LL][tt][3] = int2e_get_radial_gauge(l_p,a_i_K,l_q-1,a_j_K,l_q,a_k_K,l_p-1,a_l_K,LL+LminK[3],1,1);
                 }
             }
             else if(intType.substr(0,4) == "LSSL")
             {
                 for(int LL = LmaxJ[0]-LminJ[0]; LL >= 0; LL-=2)
                 {
-                    int LLL = LL+LminJ[0];
-                    double fac = -2.0*(2.0*LLL+1.0)/(2.0*LLL-1.0);
-                    radial_2e_list_Jmm[LL][tt][0] =  fac*int2e_get_radial(l_p,a_i_J,l_p+1,a_j_J,l_q+1,a_k_J,l_q,a_l_J,LLL-1);
+                    radial_2e_list_Jmm[LL][tt][0] = int2e_get_radial_gauge(l_p,a_i_J,l_p+1,a_j_J,l_q+1,a_k_J,l_q,a_l_J,LL+LminJ[0],-1,-1);
                     if(l_p != 0)
-                        radial_2e_list_Jmm[LL][tt][1] =  fac*int2e_get_radial(l_p,a_i_J,l_p-1,a_j_J,l_q+1,a_k_J,l_q,a_l_J,LLL-1);
+                        radial_2e_list_Jmm[LL][tt][1] = int2e_get_radial_gauge(l_p,a_i_J,l_p-1,a_j_J,l_q+1,a_k_J,l_q,a_l_J,LL+LminJ[0],-1,-1);
                     if(l_q != 0)
-                        radial_2e_list_Jmm[LL][tt][2] =  fac*int2e_get_radial(l_p,a_i_J,l_p+1,a_j_J,l_q-1,a_k_J,l_q,a_l_J,LLL-1);
+                        radial_2e_list_Jmm[LL][tt][2] = int2e_get_radial_gauge(l_p,a_i_J,l_p+1,a_j_J,l_q-1,a_k_J,l_q,a_l_J,LL+LminJ[0],-1,-1);
                     if(l_p != 0 && l_q != 0)
-                        radial_2e_list_Jmm[LL][tt][3] =  fac*int2e_get_radial(l_p,a_i_J,l_p-1,a_j_J,l_q-1,a_k_J,l_q,a_l_J,LLL-1);
+                        radial_2e_list_Jmm[LL][tt][3] = int2e_get_radial_gauge(l_p,a_i_J,l_p-1,a_j_J,l_q-1,a_k_J,l_q,a_l_J,LL+LminJ[0],-1,-1);
                 }
                 for(int LL = LmaxK[0]-LminK[0]; LL >= 0; LL-=2)
                 {
-                    int LLL = LL+LminK[0];
-                    double fac = -2.0*(2.0*LLL+1.0)/(2.0*LLL-1.0);
-                    radial_2e_list_Kmm[LL][tt][0] =  fac*int2e_get_radial(l_p,a_i_K,l_q+1,a_j_K,l_q+1,a_k_K,l_p,a_l_K,LLL-1);
+                    radial_2e_list_Kmm[LL][tt][0] = int2e_get_radial_gauge(l_p,a_i_K,l_q+1,a_j_K,l_q+1,a_k_K,l_p,a_l_K,LL+LminK[0],-1,-1);
                     if(l_q != 0)
                     {
-                        radial_2e_list_Kmm[LL][tt][1] =  fac*int2e_get_radial(l_p,a_i_K,l_q-1,a_j_K,l_q+1,a_k_K,l_p,a_l_K,LLL-1);
-                        radial_2e_list_Kmm[LL][tt][2] =  fac*int2e_get_radial(l_p,a_i_K,l_q+1,a_j_K,l_q-1,a_k_K,l_p,a_l_K,LLL-1);
-                        radial_2e_list_Kmm[LL][tt][3] =  fac*int2e_get_radial(l_p,a_i_K,l_q-1,a_j_K,l_q-1,a_k_K,l_p,a_l_K,LLL-1);
+                        radial_2e_list_Kmm[LL][tt][1] = int2e_get_radial_gauge(l_p,a_i_K,l_q-1,a_j_K,l_q+1,a_k_K,l_p,a_l_K,LL+LminK[0],-1,-1);
+                        radial_2e_list_Kmm[LL][tt][2] = int2e_get_radial_gauge(l_p,a_i_K,l_q+1,a_j_K,l_q-1,a_k_K,l_p,a_l_K,LL+LminK[0],-1,-1);
+                        radial_2e_list_Kmm[LL][tt][3] = int2e_get_radial_gauge(l_p,a_i_K,l_q-1,a_j_K,l_q-1,a_k_K,l_p,a_l_K,LL+LminK[0],-1,-1);
                     }
                 }
                 for(int LL = LmaxJ[1]-LminJ[1]; LL >= 0; LL-=2)
                 {
-                    int LLL = LL+LminJ[1];
-                    double fac = -(2.0*LLL+1.0);
-                    radial_2e_list_Jmp[LL][tt][0] =  fac*int2e_get_radial_Wmp(l_p,a_i_J,l_p+1,a_j_J,l_q+1,a_k_J,l_q,a_l_J,LLL);
+                    radial_2e_list_Jmp[LL][tt][0] = int2e_get_radial_gauge(l_p,a_i_J,l_p+1,a_j_J,l_q+1,a_k_J,l_q,a_l_J,LL+LminJ[1],-1,1);
                     if(l_p != 0)
-                        radial_2e_list_Jmp[LL][tt][1] =  fac*int2e_get_radial_Wmp(l_p,a_i_J,l_p-1,a_j_J,l_q+1,a_k_J,l_q,a_l_J,LLL);
+                        radial_2e_list_Jmp[LL][tt][1] = int2e_get_radial_gauge(l_p,a_i_J,l_p-1,a_j_J,l_q+1,a_k_J,l_q,a_l_J,LL+LminJ[1],-1,1);
                     if(l_q != 0)
-                        radial_2e_list_Jmp[LL][tt][2] =  fac*int2e_get_radial_Wmp(l_p,a_i_J,l_p+1,a_j_J,l_q-1,a_k_J,l_q,a_l_J,LLL);
+                        radial_2e_list_Jmp[LL][tt][2] = int2e_get_radial_gauge(l_p,a_i_J,l_p+1,a_j_J,l_q-1,a_k_J,l_q,a_l_J,LL+LminJ[1],-1,1);
                     if(l_p != 0 && l_q != 0)
-                        radial_2e_list_Jmp[LL][tt][3] =  fac*int2e_get_radial_Wmp(l_p,a_i_J,l_p-1,a_j_J,l_q-1,a_k_J,l_q,a_l_J,LLL);
+                        radial_2e_list_Jmp[LL][tt][3] = int2e_get_radial_gauge(l_p,a_i_J,l_p-1,a_j_J,l_q-1,a_k_J,l_q,a_l_J,LL+LminJ[1],-1,1);
                 }
                 for(int LL = LmaxK[1]-LminK[1]; LL >= 0; LL-=2)
                 {
-                    int LLL = LL+LminK[1];
-                    double fac = -(2.0*LLL+1.0);
-                    radial_2e_list_Kmp[LL][tt][0] =  fac*int2e_get_radial_Wmp(l_p,a_i_K,l_q+1,a_j_K,l_q+1,a_k_K,l_p,a_l_K,LLL);
+                    radial_2e_list_Kmp[LL][tt][0] = int2e_get_radial_gauge(l_p,a_i_K,l_q+1,a_j_K,l_q+1,a_k_K,l_p,a_l_K,LL+LminK[1],-1,1);
                     if(l_q != 0)
                     {
-                        radial_2e_list_Kmp[LL][tt][1] =  fac*int2e_get_radial_Wmp(l_p,a_i_K,l_q-1,a_j_K,l_q+1,a_k_K,l_p,a_l_K,LLL);
-                        radial_2e_list_Kmp[LL][tt][2] =  fac*int2e_get_radial_Wmp(l_p,a_i_K,l_q+1,a_j_K,l_q-1,a_k_K,l_p,a_l_K,LLL);
-                        radial_2e_list_Kmp[LL][tt][3] =  fac*int2e_get_radial_Wmp(l_p,a_i_K,l_q-1,a_j_K,l_q-1,a_k_K,l_p,a_l_K,LLL);
+                        radial_2e_list_Kmp[LL][tt][1] = int2e_get_radial_gauge(l_p,a_i_K,l_q-1,a_j_K,l_q+1,a_k_K,l_p,a_l_K,LL+LminK[1],-1,1);
+                        radial_2e_list_Kmp[LL][tt][2] = int2e_get_radial_gauge(l_p,a_i_K,l_q+1,a_j_K,l_q-1,a_k_K,l_p,a_l_K,LL+LminK[1],-1,1);
+                        radial_2e_list_Kmp[LL][tt][3] = int2e_get_radial_gauge(l_p,a_i_K,l_q-1,a_j_K,l_q-1,a_k_K,l_p,a_l_K,LL+LminK[1],-1,1);
                     }
                 }
                 for(int LL = LmaxJ[2]-LminJ[2]; LL >= 0; LL-=2)
                 {
-                    int LLL = LL+LminJ[2];
-                    double fac = -(2.0*LLL+1.0);
-                    radial_2e_list_Jpm[LL][tt][0] =  fac*int2e_get_radial_Wpm(l_p,a_i_J,l_p+1,a_j_J,l_q+1,a_k_J,l_q,a_l_J,LLL);
+                    radial_2e_list_Jpm[LL][tt][0] = int2e_get_radial_gauge(l_p,a_i_J,l_p+1,a_j_J,l_q+1,a_k_J,l_q,a_l_J,LL+LminJ[2],1,-1);
                     if(l_p != 0)
-                        radial_2e_list_Jpm[LL][tt][1] =  fac*int2e_get_radial_Wpm(l_p,a_i_J,l_p-1,a_j_J,l_q+1,a_k_J,l_q,a_l_J,LLL);
+                        radial_2e_list_Jpm[LL][tt][1] = int2e_get_radial_gauge(l_p,a_i_J,l_p-1,a_j_J,l_q+1,a_k_J,l_q,a_l_J,LL+LminJ[2],1,-1);
                     if(l_q != 0)
-                        radial_2e_list_Jpm[LL][tt][2] =  fac*int2e_get_radial_Wpm(l_p,a_i_J,l_p+1,a_j_J,l_q-1,a_k_J,l_q,a_l_J,LLL);
+                        radial_2e_list_Jpm[LL][tt][2] = int2e_get_radial_gauge(l_p,a_i_J,l_p+1,a_j_J,l_q-1,a_k_J,l_q,a_l_J,LL+LminJ[2],1,-1);
                     if(l_p != 0 && l_q != 0)
-                        radial_2e_list_Jpm[LL][tt][3] =  fac*int2e_get_radial_Wpm(l_p,a_i_J,l_p-1,a_j_J,l_q-1,a_k_J,l_q,a_l_J,LLL);
+                        radial_2e_list_Jpm[LL][tt][3] = int2e_get_radial_gauge(l_p,a_i_J,l_p-1,a_j_J,l_q-1,a_k_J,l_q,a_l_J,LL+LminJ[2],1,-1);
                 }
                 for(int LL = LmaxK[2]-LminK[2]; LL >= 0; LL-=2)
                 {
-                    int LLL = LL+LminK[2];
-                    double fac = -(2.0*LLL+1.0);
-                    radial_2e_list_Kpm[LL][tt][0] =  fac*int2e_get_radial_Wpm(l_p,a_i_K,l_q+1,a_j_K,l_q+1,a_k_K,l_p,a_l_K,LLL);
+                    radial_2e_list_Kpm[LL][tt][0] = int2e_get_radial_gauge(l_p,a_i_K,l_q+1,a_j_K,l_q+1,a_k_K,l_p,a_l_K,LL+LminK[2],1,-1);
                     if(l_q != 0)
                     {
-                        radial_2e_list_Kpm[LL][tt][1] =  fac*int2e_get_radial_Wpm(l_p,a_i_K,l_q-1,a_j_K,l_q+1,a_k_K,l_p,a_l_K,LLL);
-                        radial_2e_list_Kpm[LL][tt][2] =  fac*int2e_get_radial_Wpm(l_p,a_i_K,l_q+1,a_j_K,l_q-1,a_k_K,l_p,a_l_K,LLL);
-                        radial_2e_list_Kpm[LL][tt][3] =  fac*int2e_get_radial_Wpm(l_p,a_i_K,l_q-1,a_j_K,l_q-1,a_k_K,l_p,a_l_K,LLL);
+                        radial_2e_list_Kpm[LL][tt][1] = int2e_get_radial_gauge(l_p,a_i_K,l_q-1,a_j_K,l_q+1,a_k_K,l_p,a_l_K,LL+LminK[2],1,-1);
+                        radial_2e_list_Kpm[LL][tt][2] = int2e_get_radial_gauge(l_p,a_i_K,l_q+1,a_j_K,l_q-1,a_k_K,l_p,a_l_K,LL+LminK[2],1,-1);
+                        radial_2e_list_Kpm[LL][tt][3] = int2e_get_radial_gauge(l_p,a_i_K,l_q-1,a_j_K,l_q-1,a_k_K,l_p,a_l_K,LL+LminK[2],1,-1);
                     }
                 }
                 for(int LL = LmaxJ[3]-LminJ[3]; LL >= 0; LL-=2)
                 {
-                    int LLL = LL+LminJ[3];
-                    double fac = -2.0*(2.0*LLL+1.0)/(2.0*LLL+3.0);
-                    radial_2e_list_Jpp[LL][tt][0] =  fac*int2e_get_radial(l_p,a_i_J,l_p+1,a_j_J,l_q+1,a_k_J,l_q,a_l_J,LLL+1);
+                    radial_2e_list_Jpp[LL][tt][0] = int2e_get_radial_gauge(l_p,a_i_J,l_p+1,a_j_J,l_q+1,a_k_J,l_q,a_l_J,LL+LminJ[3],1,1);
                     if(l_p != 0)
-                        radial_2e_list_Jpp[LL][tt][1] =  fac*int2e_get_radial(l_p,a_i_J,l_p-1,a_j_J,l_q+1,a_k_J,l_q,a_l_J,LLL+1);
+                        radial_2e_list_Jpp[LL][tt][1] = int2e_get_radial_gauge(l_p,a_i_J,l_p-1,a_j_J,l_q+1,a_k_J,l_q,a_l_J,LL+LminJ[3],1,1);
                     if(l_q != 0)
-                        radial_2e_list_Jpp[LL][tt][2] =  fac*int2e_get_radial(l_p,a_i_J,l_p+1,a_j_J,l_q-1,a_k_J,l_q,a_l_J,LLL+1);
+                        radial_2e_list_Jpp[LL][tt][2] = int2e_get_radial_gauge(l_p,a_i_J,l_p+1,a_j_J,l_q-1,a_k_J,l_q,a_l_J,LL+LminJ[3],1,1);
                     if(l_p != 0 && l_q != 0)
-                        radial_2e_list_Jpp[LL][tt][3] =  fac*int2e_get_radial(l_p,a_i_J,l_p-1,a_j_J,l_q-1,a_k_J,l_q,a_l_J,LLL+1);
+                        radial_2e_list_Jpp[LL][tt][3] = int2e_get_radial_gauge(l_p,a_i_J,l_p-1,a_j_J,l_q-1,a_k_J,l_q,a_l_J,LL+LminJ[3],1,1);
                 }
                 for(int LL = LmaxK[3]-LminK[3]; LL >= 0; LL-=2)
                 {
-                    int LLL = LL+LminK[3];
-                    double fac = -2.0*(2.0*LLL+1.0)/(2.0*LLL+3.0);
-                    radial_2e_list_Kpp[LL][tt][0] =  fac*int2e_get_radial(l_p,a_i_K,l_q+1,a_j_K,l_q+1,a_k_K,l_p,a_l_K,LLL+1);
+                    radial_2e_list_Kpp[LL][tt][0] = int2e_get_radial_gauge(l_p,a_i_K,l_q+1,a_j_K,l_q+1,a_k_K,l_p,a_l_K,LL+LminK[3],1,1);
                     if(l_q != 0)
                     {
-                        radial_2e_list_Kpp[LL][tt][1] =  fac*int2e_get_radial(l_p,a_i_K,l_q-1,a_j_K,l_q+1,a_k_K,l_p,a_l_K,LLL+1);
-                        radial_2e_list_Kpp[LL][tt][2] =  fac*int2e_get_radial(l_p,a_i_K,l_q+1,a_j_K,l_q-1,a_k_K,l_p,a_l_K,LLL+1);
-                        radial_2e_list_Kpp[LL][tt][3] =  fac*int2e_get_radial(l_p,a_i_K,l_q-1,a_j_K,l_q-1,a_k_K,l_p,a_l_K,LLL+1);
+                        radial_2e_list_Kpp[LL][tt][1] = int2e_get_radial_gauge(l_p,a_i_K,l_q-1,a_j_K,l_q+1,a_k_K,l_p,a_l_K,LL+LminK[3],1,1);
+                        radial_2e_list_Kpp[LL][tt][2] = int2e_get_radial_gauge(l_p,a_i_K,l_q+1,a_j_K,l_q-1,a_k_K,l_p,a_l_K,LL+LminK[3],1,1);
+                        radial_2e_list_Kpp[LL][tt][3] = int2e_get_radial_gauge(l_p,a_i_K,l_q-1,a_j_K,l_q-1,a_k_K,l_p,a_l_K,LL+LminK[3],1,1);
                     }
                 }
             }
             else
             {
-                cout << "ERROR: Unkonwn intType in get_h2e_JK_gaunt." << endl;
+                cout << "ERROR: Unkonwn intType in get_h2e_JK_gauge." << endl;
                 exit(99);
             }
         }
@@ -488,7 +471,7 @@ int2eJK INT_SPH::get_h2e_JK_gauge_compact(const string& intType, const int& occM
                         tmp_d += int2e_get_angular_gauge_LSSL(l_p, twojj_p, sym_ap, l_p, twojj_p, sym_ap, l_q, 2*mq-twojj_q, sym_aq, l_q, 2*mq-twojj_q, sym_aq, LL+LminJ[0], -1, -1);
                     else
                     {
-                        cout << "ERROR: Unkonwn intType in get_h2e_JK_gaunt." << endl;
+                        cout << "ERROR: Unkonwn intType in get_h2e_JK_gauge." << endl;
                         exit(99);
                     }
                 }
@@ -506,7 +489,7 @@ int2eJK INT_SPH::get_h2e_JK_gauge_compact(const string& intType, const int& occM
                         tmp_d += int2e_get_angular_gauge_LSSL(l_p, twojj_p, sym_ap, l_q, 2*mq-twojj_q, sym_aq, l_q, 2*mq-twojj_q, sym_aq, l_p, twojj_p, sym_ap, LL+LminK[0], -1, -1);
                     else
                     {
-                        cout << "ERROR: Unkonwn intType in get_h2e_JK_gaunt." << endl;
+                        cout << "ERROR: Unkonwn intType in get_h2e_JK_gauge." << endl;
                         exit(99);
                     }
                 }
@@ -524,7 +507,7 @@ int2eJK INT_SPH::get_h2e_JK_gauge_compact(const string& intType, const int& occM
                         tmp_d += int2e_get_angular_gauge_LSSL(l_p, twojj_p, sym_ap, l_p, twojj_p, sym_ap, l_q, 2*mq-twojj_q, sym_aq, l_q, 2*mq-twojj_q, sym_aq, LL+LminJ[1], -1, +1);
                     else
                     {
-                        cout << "ERROR: Unkonwn intType in get_h2e_JK_gaunt." << endl;
+                        cout << "ERROR: Unkonwn intType in get_h2e_JK_gauge." << endl;
                         exit(99);
                     }
                 }
@@ -542,7 +525,7 @@ int2eJK INT_SPH::get_h2e_JK_gauge_compact(const string& intType, const int& occM
                         tmp_d += int2e_get_angular_gauge_LSSL(l_p, twojj_p, sym_ap, l_q, 2*mq-twojj_q, sym_aq, l_q, 2*mq-twojj_q, sym_aq, l_p, twojj_p, sym_ap, LL+LminK[1], -1, 1);
                     else
                     {
-                        cout << "ERROR: Unkonwn intType in get_h2e_JK_gaunt." << endl;
+                        cout << "ERROR: Unkonwn intType in get_h2e_JK_gauge." << endl;
                         exit(99);
                     }
                 }
@@ -560,7 +543,7 @@ int2eJK INT_SPH::get_h2e_JK_gauge_compact(const string& intType, const int& occM
                         tmp_d += int2e_get_angular_gauge_LSSL(l_p, twojj_p, sym_ap, l_p, twojj_p, sym_ap, l_q, 2*mq-twojj_q, sym_aq, l_q, 2*mq-twojj_q, sym_aq, LL+LminJ[2], 1, -1);
                     else
                     {
-                        cout << "ERROR: Unkonwn intType in get_h2e_JK_gaunt." << endl;
+                        cout << "ERROR: Unkonwn intType in get_h2e_JK_gauge." << endl;
                         exit(99);
                     }
                 }
@@ -578,7 +561,7 @@ int2eJK INT_SPH::get_h2e_JK_gauge_compact(const string& intType, const int& occM
                         tmp_d += int2e_get_angular_gauge_LSSL(l_p, twojj_p, sym_ap, l_q, 2*mq-twojj_q, sym_aq, l_q, 2*mq-twojj_q, sym_aq, l_p, twojj_p, sym_ap, LL+LminK[2], 1, -1);
                     else
                     {
-                        cout << "ERROR: Unkonwn intType in get_h2e_JK_gaunt." << endl;
+                        cout << "ERROR: Unkonwn intType in get_h2e_JK_gauge." << endl;
                         exit(99);
                     }
                 }
@@ -596,7 +579,7 @@ int2eJK INT_SPH::get_h2e_JK_gauge_compact(const string& intType, const int& occM
                         tmp_d += int2e_get_angular_gauge_LSSL(l_p, twojj_p, sym_ap, l_p, twojj_p, sym_ap, l_q, 2*mq-twojj_q, sym_aq, l_q, 2*mq-twojj_q, sym_aq, LL+LminJ[3], 1, 1);
                     else
                     {
-                        cout << "ERROR: Unkonwn intType in get_h2e_JK_gaunt." << endl;
+                        cout << "ERROR: Unkonwn intType in get_h2e_JK_gauge." << endl;
                         exit(99);
                     }
                 }
@@ -614,7 +597,7 @@ int2eJK INT_SPH::get_h2e_JK_gauge_compact(const string& intType, const int& occM
                         tmp_d += int2e_get_angular_gauge_LSSL(l_p, twojj_p, sym_ap, l_q, 2*mq-twojj_q, sym_aq, l_q, 2*mq-twojj_q, sym_aq, l_p, twojj_p, sym_ap, LL+LminK[3], 1, 1);
                     else
                     {
-                        cout << "ERROR: Unkonwn intType in get_h2e_JK_gaunt." << endl;
+                        cout << "ERROR: Unkonwn intType in get_h2e_JK_gauge." << endl;
                         exit(99);
                     }
                 }

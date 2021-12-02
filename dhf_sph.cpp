@@ -124,19 +124,20 @@ irrep_list(int_sph_.irrep_list), with_gaunt(with_gaunt_), with_gauge(with_gauge_
     {
         int2eJK tmp1, tmp2;
         int_sph_.get_h2e_JK_gauge_direct(tmp1,tmp2);
-        for(int ir = 0; ir < occMax_irrep_compact; ir++)
-        for(int jr = 0; jr < occMax_irrep_compact; jr++)
+        for(int ir = 0; ir < Nirrep_compact; ir++)
+        for(int jr = 0; jr < Nirrep_compact; jr++)
         {
             int size_i = irrep_list(compact2all(ir)).size, size_j = irrep_list(compact2all(jr)).size;
-            #pragma omp parallel  for
-            for(int ii = 0; ii < size_i*size_i*size_j*size_j; ii++)
+            for(int mm = 0; mm < size_i; mm++)
+            for(int nn = 0; nn < size_i; nn++)
+            for(int ss = 0; ss < size_j; ss++)
+            for(int rr = 0; rr < size_j; rr++)
             {
-                int e1 = ii/size_j/size_j, e2 = ii-e1*size_j*size_j;
-                gauntLSLS_JK.J[ir][jr][e1][e2] += tmp1.J[ir][jr][e1][e2];
-                gauntLSSL_JK.J[ir][jr][e1][e2] += tmp2.J[ir][jr][e1][e2];
-                e1 = ii/size_i/size_j; e2 = ii-e1*size_i*size_j;
-                gauntLSLS_JK.K[ir][jr][e1][e2] += tmp1.K[ir][jr][e1][e2];
-                gauntLSSL_JK.K[ir][jr][e1][e2] += tmp2.K[ir][jr][e1][e2];
+                int emn = mm*size_i+nn, esr = ss*size_j+rr, emr = mm*size_j+rr, esn = ss*size_i+nn;
+                gauntLSLS_JK.J[ir][jr][emn][esr] += tmp1.J[ir][jr][emn][esr];
+                gauntLSLS_JK.K[ir][jr][emr][esn] += tmp1.K[ir][jr][emr][esn];
+                gauntLSSL_JK.J[ir][jr][emn][esr] += tmp2.J[ir][jr][emn][esr];
+                gauntLSSL_JK.K[ir][jr][emr][esn] += tmp2.K[ir][jr][emr][esn];
             }
         }
         EndTime = clock();
@@ -264,7 +265,9 @@ void DHF_SPH::symmetrize_JK_gaunt(int2eJK& h2e, const int& Ncompact)
         }
         for(int ii = 0; ii < size_i*size_i; ii++)
         for(int jj = 0; jj < size_j*size_j; jj++)
+        {
             h2e.J[ir][jr][ii][jj] = tmpJ1[ii][jj];
+        }
     }
     return;
 }
