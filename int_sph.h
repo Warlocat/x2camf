@@ -91,6 +91,7 @@ public:
     int2eJK get_h2e_JK_gauntSF_compact(const string& intType, const int& occMaxL = -1);
     void get_h2e_JK_gaunt_direct(int2eJK& LSLS, int2eJK& LSSL, const int& occMaxL = -1, const bool& spinFree = false);
     void get_h2eSD_JK_gaunt_direct(int2eJK& LSLS, int2eJK& LSSL, const int& occMaxL = -1);
+    int2eJK get_h2e_JK_gauge(const string& intType, const int& occMaxL = -1) const;
     int2eJK get_h2e_JK_gauge_compact(const string& intType, const int& occMaxL = -1) const;
     void get_h2e_JK_gauge_direct(int2eJK& LSLS, int2eJK& LSSL, const int& occMaxL = -1, const bool& spinFree = false);
     
