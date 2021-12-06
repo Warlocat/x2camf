@@ -6,6 +6,7 @@
 #include<cmath>
 #include<complex>
 #include<omp.h>
+#include<vector>
 #include<gsl/gsl_sf_coupling.h>
 #include"int_sph.h"
 using namespace std;
@@ -639,4 +640,87 @@ double INT_SPH::int2e_get_angularX_RME(const int& two_j1, const int& l1, const i
 {
     return sqrt(6.0 * (two_j1+1.0)*(two_j2+1.0)*(2*LL+1.0) * (2*l1+1.0)*(2*l2+1.0)) * threeJ
            * gsl_sf_coupling_9j(2*l1,2*l2,2*vv,1,1,2,two_j1,two_j2,2*LL) * pow(-1,l1);
+}
+
+int2eJK INT_SPH::compact_h2e(const int2eJK& h2eFull, const Matrix<irrep_jm, Dynamic, 1>& irrepList, const int& occMaxL) const
+{
+    int occMaxShell = 0, Nirrep_compact = 0;
+    if(occMaxL == -1)    occMaxShell = size_shell;
+    else
+    {
+        for(int ii = 0; ii < size_shell; ii++)
+        {
+            if(shell_list(ii).l <= occMaxL)
+                occMaxShell++;
+            else
+                break;
+        }
+    }
+    for(int ii = 0; ii < occMaxShell; ii++)
+    {
+        if(shell_list(ii).l == 0) Nirrep_compact += 1;
+        else Nirrep_compact += 2;
+    }
+    
+    int2eJK int_2e_JK;
+    int_2e_JK.J = new double***[Nirrep_compact];
+    int_2e_JK.K = new double***[Nirrep_compact];
+    for(int ii = 0; ii < Nirrep_compact; ii++)
+    {
+        int_2e_JK.J[ii] = new double**[Nirrep_compact];
+        int_2e_JK.K[ii] = new double**[Nirrep_compact];
+    }
+    int int_tmp1_p = 0, int_tmp1_pp = 0;
+    for(int pshell = 0; pshell < occMaxShell; pshell++)
+    {
+    int l_p = shell_list(pshell).l, int_tmp1_q = 0, int_tmp1_qq = 0;
+    for(int qshell = 0; qshell < occMaxShell; qshell++)
+    {
+        int l_q = shell_list(qshell).l;
+        int l_p_cycle = (l_p == 0) ? 1 : 2, l_q_cycle = (l_q == 0) ? 1 : 2;
+        int size_gtos_p = shell_list(pshell).coeff.rows(), size_gtos_q = shell_list(qshell).coeff.rows();
+        int size_tmp_p = (l_p == 0) ? 1 : 2, size_tmp_q = (l_q == 0) ? 1 : 2;
+        
+        for(int twojj_p = abs(2*l_p-1); twojj_p <= 2*l_p+1; twojj_p = twojj_p + 2)
+        for(int twojj_q = abs(2*l_q-1); twojj_q <= 2*l_q+1; twojj_q = twojj_q + 2)
+        {
+            int sym_ap = twojj_p - 2*l_p, sym_aq = twojj_q - 2*l_q;
+            int int_tmp2_p = (twojj_p - abs(2*l_p-1)) / 2, int_tmp2_q = (twojj_q - abs(2*l_q-1))/2;
+            int_2e_JK.J[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q] = new double*[size_gtos_p*size_gtos_p];
+            for(int iii = 0; iii < size_gtos_p*size_gtos_p; iii++)
+                int_2e_JK.J[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q][iii] = new double[size_gtos_q*size_gtos_q];
+            int_2e_JK.K[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q] = new double*[size_gtos_p*size_gtos_q];
+            for(int iii = 0; iii < size_gtos_p*size_gtos_q; iii++)
+                int_2e_JK.K[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q][iii] = new double[size_gtos_p*size_gtos_q];
+
+            // Radial 
+            #pragma omp parallel  for
+            for(int tt = 0; tt < size_gtos_p*size_gtos_p*size_gtos_q*size_gtos_q; tt++)
+            {
+                double radial_J_mm, radial_K_mm, radial_J_mp, radial_K_mp, radial_J_pm, radial_K_pm, radial_J_pp, radial_K_pp;
+                int e1J = tt/(size_gtos_q*size_gtos_q);
+                int e2J = tt - e1J*(size_gtos_q*size_gtos_q);
+                int e1K = tt/(size_gtos_p*size_gtos_q);
+                int e2K = tt - e1K*(size_gtos_p*size_gtos_q);
+
+                int_2e_JK.J[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q][e1J][e2J] = 0.0;
+                int_2e_JK.K[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q][e1K][e2K] = 0.0;
+                int add_p = int_tmp2_p*(irrep_list(int_tmp1_pp).two_j+1), add_q = int_tmp2_q*(irrep_list(int_tmp1_qq).two_j+1);
+                for(int mp = 0; mp < irrep_list(int_tmp1_pp+add_p).two_j + 1; mp++)
+                for(int mq = 0; mq < irrep_list(int_tmp1_qq+add_q).two_j + 1; mq++)
+                {
+                    int_2e_JK.J[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q][e1J][e2J] += h2eFull.J[int_tmp1_pp+add_p + mp][int_tmp1_qq+add_q + mq][e1J][e2J];
+                    int_2e_JK.K[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q][e1K][e2K] += h2eFull.K[int_tmp1_pp+add_p + mp][int_tmp1_qq+add_q + mq][e1K][e2K];
+                }
+                int_2e_JK.J[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q][e1J][e2J] /= (irrep_list(int_tmp1_qq+add_q).two_j + 1.0)*(irrep_list(int_tmp1_pp+add_p).two_j + 1.0);
+                int_2e_JK.K[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q][e1K][e2K] /= (irrep_list(int_tmp1_qq+add_q).two_j + 1.0)*(irrep_list(int_tmp1_pp+add_p).two_j + 1.0);
+            }
+        }
+        int_tmp1_q += (l_q == 0) ? 1 : 2;
+        int_tmp1_qq += 4*l_q+2;
+    }
+    int_tmp1_p += (l_p == 0) ? 1 : 2;
+    int_tmp1_pp += 4*l_p+2;
+    }
+    return int_2e_JK;
 }

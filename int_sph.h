@@ -94,6 +94,7 @@ public:
     int2eJK get_h2e_JK_gauge(const string& intType, const int& occMaxL = -1) const;
     int2eJK get_h2e_JK_gauge_compact(const string& intType, const int& occMaxL = -1) const;
     void get_h2e_JK_gauge_direct(int2eJK& LSLS, int2eJK& LSSL, const int& occMaxL = -1, const bool& spinFree = false);
+    int2eJK compact_h2e(const int2eJK& h2e, const Matrix<irrep_jm, Dynamic, 1>& irrepList, const int& occMaxL = -1) const;
     
     /* get contraction coefficients for uncontracted calculations */
     MatrixXd get_coeff_contraction_spinor();

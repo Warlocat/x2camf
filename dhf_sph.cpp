@@ -122,7 +122,16 @@ irrep_list(int_sph_.irrep_list), with_gaunt(with_gaunt_), with_gauge(with_gauge_
     }
     if(with_gauge && !twoC)
     {
-        int2eJK tmp1, tmp2;
+        if(!with_gaunt)
+        {
+            cout << "ERROR: When with_gauge is true, with_gaunt must be true." << endl;
+            exit(99);
+        }
+        int2eJK tmp1, tmp2, tmp3, tmp4;
+        // tmp3 = int_sph_.get_h2e_JK_gauge("LSLS",-1);
+        // tmp4 = int_sph_.get_h2e_JK_gauge("LSSL",-1);
+        // tmp1 = int_sph_.compact_h2e(tmp3,irrep_list,-1);
+        // tmp2 = int_sph_.compact_h2e(tmp4,irrep_list,-1);
         int_sph_.get_h2e_JK_gauge_direct(tmp1,tmp2);
         for(int ir = 0; ir < Nirrep_compact; ir++)
         for(int jr = 0; jr < Nirrep_compact; jr++)
@@ -134,10 +143,10 @@ irrep_list(int_sph_.irrep_list), with_gaunt(with_gaunt_), with_gauge(with_gauge_
             for(int rr = 0; rr < size_j; rr++)
             {
                 int emn = mm*size_i+nn, esr = ss*size_j+rr, emr = mm*size_j+rr, esn = ss*size_i+nn;
-                gauntLSLS_JK.J[ir][jr][emn][esr] += tmp1.J[ir][jr][emn][esr];
-                gauntLSLS_JK.K[ir][jr][emr][esn] += tmp1.K[ir][jr][emr][esn];
-                gauntLSSL_JK.J[ir][jr][emn][esr] += tmp2.J[ir][jr][emn][esr];
-                gauntLSSL_JK.K[ir][jr][emr][esn] += tmp2.K[ir][jr][emr][esn];
+                gauntLSLS_JK.J[ir][jr][emn][esr] -= tmp1.J[ir][jr][emn][esr];
+                gauntLSLS_JK.K[ir][jr][emr][esn] -= tmp1.K[ir][jr][emr][esn];
+                gauntLSSL_JK.J[ir][jr][emn][esr] -= tmp2.J[ir][jr][emn][esr];
+                gauntLSSL_JK.K[ir][jr][emr][esn] -= tmp2.K[ir][jr][emr][esn];
             }
         }
         EndTime = clock();
