@@ -248,11 +248,11 @@ void readZMAT(const string& filename, vector<string>& atoms, vector<string>& bas
             removeSpaces(flags);
             if(flags == "%amfiMethod*")
             {   
-                //aoc
+                //average-of-configuration
                 //spin-free
                 //two-component
                 //gaunt
-		//gauge
+		        //gauge
                 //Gaussian finite nuclear model
                 for(int ii = 0 ; ii < 5; ii++)
                 {
@@ -270,11 +270,11 @@ void readZMAT(const string& filename, vector<string>& atoms, vector<string>& bas
         }
         if(amfiMethod.size() == 0)
         {
-            cout << "%amfiMethod is not found in ZMAT and set to default frac-DHF-gaunt" << endl;
+            cout << "%amfiMethod is not found in ZMAT and set to default frac-DHF" << endl;
             amfiMethod.push_back(false); //aoc
             amfiMethod.push_back(false); //spin-free
             amfiMethod.push_back(false); //two-component
-            amfiMethod.push_back(true); //with gaunt
+            amfiMethod.push_back(false); //with gaunt
             amfiMethod.push_back(false); //with gauge
             amfiMethod.push_back(false); //without Gaussian nuclear model 
         }

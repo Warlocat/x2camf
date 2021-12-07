@@ -112,9 +112,6 @@ double INT_SPH::int2e_get_angular_gauge_LSLS(const int& l1, const int& two_m1, c
     double angular = 0.0;
     int l2p = l2+s2, l4p = l4+s4;
     int two_j1 = 2*l1+s1, two_j2 = 2*l2+s2, two_j3 = 2*l3+s3, two_j4 = 2*l4+s4;
-    
-
-
     double threeJ1 = gsl_sf_coupling_3j(2*l1,2*ll+2*v1,2*l2p,0,0,0), threeJ2 = gsl_sf_coupling_3j(2*l3,2*ll+2*v2,2*l4p,0,0,0), tmp;
     tmp = 0.0;
     double rme1 = int2e_get_angularX_RME(two_j1,l1,two_j2,l2p,ll,ll+v1,threeJ1);

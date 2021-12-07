@@ -285,6 +285,8 @@ double INT_SPH::auxiliary_1e(const int& l, const double& a) const
     int n = l / 2;
     if(l < 0)
     {
+        // l = -2 is special case in gauge term.
+        // It will not contribute to the final integral. 
         if(l == -2) return 0.0;
         cout << "ERROR: l = " << l << " for auxiliary 1e integral." << endl;
         exit(99);
