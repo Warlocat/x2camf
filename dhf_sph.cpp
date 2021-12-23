@@ -204,6 +204,7 @@ irrep_list(int_sph_.irrep_list), with_gaunt(with_gaunt_), with_gauge(with_gauge_
             x2cXXX(ir) = X2C::get_X(overlap(ir),kinetic(ir),WWW(ir),Vnuc(ir));
             x2cRRR(ir) = X2C::get_R(overlap(ir),kinetic(ir),x2cXXX(ir));
             h1e_4c(ir) = X2C::evaluate_h1e_x2c(overlap(ir),kinetic(ir),WWW(ir),Vnuc(ir),x2cXXX(ir),x2cRRR(ir));
+            // h1e_4c(ir) = kinetic(ir) + Vnuc(ir);
             overlap_4c(ir) = overlap(ir);
             overlap_half_i_4c(ir) = matrix_half_inverse(overlap_4c(ir));
         }   
@@ -1418,5 +1419,62 @@ void DHF_SPH::set_h1e_4c(const vMatrixXd& inputM)
         h1e_4c(ir) = inputM(ir);
     }
     return;
+}
+
+
+
+
+void DHF_SPH::basisGenerator(const string& basisName, const INT_SPH& intor)
+{
+    Matrix<VectorXi,-1,1> basisInfo;
+    int occL = 0;
+    
+    for(int ir = 0; ir < irrep_list.rows(); ir += 4*irrep_list(ir).l+2)
+    {
+        if(occNumberCore(ir).rows() == 0) break;
+        occL++;
+    }
+    basisInfo.resize(occL);
+    occL = 0;
+    for(int ir = 0; ir < irrep_list.rows(); ir += 4*irrep_list(ir).l+2)
+    {
+        int occN = 0;
+        if(occNumberCore(ir).rows() == 0) break;
+        for(int ii = 0; ii < occNumberCore(ir).rows(); ii++)
+        {
+            if(abs(occNumber(ir)(ii)-0) > 1e-2)
+                occN++;
+        }
+        basisInfo(occL).resize(occN);
+        occL++;
+    }
+
+    cout << basisName + "-X2C" << endl;
+    cout << "obtained from AOC-SFX2C1E atomic calculation" << endl;
+    cout << endl;
+    cout << basisInfo.rows() << endl;
+    for(int ii = 0; ii < basisInfo.rows(); ii++)
+        cout << "    " << ii;
+    cout << endl;
+    for(int ii = 0; ii < basisInfo.rows(); ii++)
+        cout << "    " << basisInfo(ii).rows();
+    cout << endl;
+    for(int ii = 0; ii < basisInfo.rows(); ii++)
+        cout << "    " << intor.shell_list(ii).coeff.rows();
+    cout << endl;
+    cout << fixed << setprecision(8);
+    for(int ir = 0; ir < irrep_list.rows(); ir += 4*irrep_list(ir).l+2)
+    {
+        if(occNumberCore(ir).rows() == 0) break;
+        int ii = irrep_list(ir).l;
+        for(int jj = 0; jj < intor.shell_list(ii).coeff.rows(); jj++)
+        {
+            if((jj+1) %5 == 1)  cout << endl;
+            cout << "    " << intor.shell_list(ii).exp_a(jj);
+        }
+        cout << endl;
+        cout << endl;
+        cout << coeff(ir).block(0,0,coeff(ir).rows(),basisInfo(ii).rows()) << endl;
+    }
 }
 

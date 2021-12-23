@@ -81,6 +81,8 @@ public:
     vMatrixXd get_X();
     vMatrixXd get_X_normalized();
     void set_h1e_4c(const vMatrixXd& inputM);
+
+    void basisGenerator(const string& basisName, const INT_SPH& intor);
 };
 
 

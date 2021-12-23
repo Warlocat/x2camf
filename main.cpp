@@ -246,7 +246,7 @@ void readZMAT(const string& filename, vector<string>& atoms, vector<string>& bas
             getline(ifs,flags);
             cout << flags << endl;
             removeSpaces(flags);
-            if(flags == "%amfiMethod*")
+            if(flags.substr(0,12) == "%amfiMethod*")
             {   
                 //average-of-configuration
                 //spin-free

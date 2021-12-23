@@ -779,3 +779,58 @@ vMatrixXd DHF_SPH_CA::get_amfi_unc_ca_2c(const int2eJK& h2eSSLL_SD, const int2eJ
     return amfi_unc;
 }
 
+
+
+void DHF_SPH_CA::basisGenerator(const string& basisName, const INT_SPH& intor)
+{
+    Matrix<VectorXi,-1,1> basisInfo;
+    int occL = 0;
+    
+    for(int ir = 0; ir < irrep_list.rows(); ir += 4*irrep_list(ir).l+2)
+    {
+        if(occNumberCore(ir).rows() == 0) break;
+        occL++;
+    }
+    basisInfo.resize(occL);
+    occL = 0;
+    for(int ir = 0; ir < irrep_list.rows(); ir += 4*irrep_list(ir).l+2)
+    {
+        int occN = 0;
+        if(occNumberCore(ir).rows() == 0) break;
+        for(int ii = 0; ii < occNumberCore(ir).rows(); ii++)
+        {
+            if(abs(occNumberCore(ir)(ii)-1) < 1e-4 || abs(occNumberDebug(ir)(ii)-1) < 1e-4)
+                occN++;
+        }
+        basisInfo(occL).resize(occN);
+        occL++;
+    }
+
+    cout << basisName + "-X2C" << endl;
+    cout << "obtained from AOC-SFX2C1E atomic calculation" << endl;
+    cout << endl;
+    cout << basisInfo.rows() << endl;
+    for(int ii = 0; ii < basisInfo.rows(); ii++)
+        cout << "    " << ii;
+    cout << endl;
+    for(int ii = 0; ii < basisInfo.rows(); ii++)
+        cout << "    " << basisInfo(ii).rows();
+    cout << endl;
+    for(int ii = 0; ii < basisInfo.rows(); ii++)
+        cout << "    " << intor.shell_list(ii).coeff.rows();
+    cout << endl;
+    cout << fixed << setprecision(8);
+    for(int ir = 0; ir < irrep_list.rows(); ir += 4*irrep_list(ir).l+2)
+    {
+        if(occNumberCore(ir).rows() == 0) break;
+        int ii = irrep_list(ir).l;
+        for(int jj = 0; jj < intor.shell_list(ii).coeff.rows(); jj++)
+        {
+            if((jj+1) %5 == 1)  cout << endl;
+            cout << "    " << intor.shell_list(ii).exp_a(jj);
+        }
+        cout << endl;
+        cout << endl;
+        cout << coeff(ir).block(0,0,coeff(ir).rows(),basisInfo(ii).rows()) << endl;
+    }
+}

@@ -6,6 +6,7 @@ EIGEN = ~/apps/Eigen3
 GSL = ~/apps/gsl-2.7
 FILES = int_sph_basic.o int_sph.o int_sph_gaunt.o int_sph_gauge.o general.o dhf_sph.o dhf_sph_ca.o dhf_sph_pcc.o wfile.o rfile.o prvecr.o
 MAIN = main.o ${FILES}
+BASIS = basisGenerator.o ${FILES}
 TEST = test.o ${FILES}
 PYSCF = pyscf_interface.o ${FILES}
 
@@ -14,6 +15,9 @@ main.exe: ${MAIN}
 
 py.exe: ${PYSCF}
 	${CPP} ${CPPFLAG} ${LIBSFLAG} ${PYSCF} -o py.exe
+
+basisGenerator.exe: ${BASIS}
+	${CPP} ${CPPFLAG} ${LIBSFLAG} ${BASIS} -o basisGenerator.exe
 
 test.exe: ${TEST}
 	${CPP} ${CPPFLAG} ${LIBSFLAG} ${TEST} -o test.exe
