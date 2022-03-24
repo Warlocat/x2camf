@@ -62,13 +62,11 @@ int main()
         cout << atomListUnique[ii] << "\t" << basisListUnique[ii] << endl;
     }
     string method = "";
-    if(amfiMethod[0])   method = method + "aoc-";
-    if(amfiMethod[1])   method = method + "spin-free-";
-    if(amfiMethod[2])   method = method + "x2c1e-";
-    else method = method + "Dirac Hatree Fock\n";
-    if(amfiMethod[3])   method = method + " with Gaunt interaction\n";
-    if(amfiMethod[4])   method = method + " with gauge interaction\n";
-    if(amfiMethod[5])   method = method + " with Gaussian nuclear model";
+    if(amfiMethod[0])   method = method + "aoc-HF with Dirac-Coulomb";
+    if(amfiMethod[1])   method = method + "-Gaunt";
+    if(amfiMethod[2])   method = method + "-gauge\n";
+    if(amfiMethod[4])   method = method + " with Gaussian nuclear model";
+    if(amfiMethod[3])   method = "NOTHING: special for x2c1e calculation";
     cout << "amfi Method input: " << method << endl;
 
     vector<MatrixXcd> amfiUnique, XUnique;
@@ -78,20 +76,20 @@ int main()
         if(amfiMethod[0])
         {
             /* Average of configuration */
-            DHF_SPH_CA scfer(intor, "ZMAT", amfiMethod[1], amfiMethod[2], amfiMethod[3], amfiMethod[4],true, amfiMethod[5]);
+            DHF_SPH_CA scfer(intor, "ZMAT", false, false, amfiMethod[1], amfiMethod[2],true, amfiMethod[4]);
             scfer.convControl = amfiSCFconv;
-            scfer.runSCF(amfiMethod[2]);
-            amfiUnique.push_back(Rotate::unite_irrep(scfer.get_amfi_unc_ca(intor,amfiMethod[2]), intor.irrep_list));
+            scfer.runSCF(false);
+            amfiUnique.push_back(Rotate::unite_irrep(scfer.get_amfi_unc_ca(intor,false), intor.irrep_list));
             XUnique.push_back(Rotate::unite_irrep(scfer.get_X(), intor.irrep_list));
         }
         else
         {
             /* Fractional occupation */
-            DHF_SPH scfer(intor, "ZMAT", amfiMethod[1], amfiMethod[2], amfiMethod[3], amfiMethod[4],true, amfiMethod[5]);
+            DHF_SPH scfer(intor, "ZMAT", false, false, amfiMethod[1], amfiMethod[2],true, amfiMethod[4]);
             scfer.convControl = amfiSCFconv;
-            scfer.runSCF(amfiMethod[2]);
+            scfer.runSCF(false);
             // amfiUnique.push_back(Rotate::unite_irrep(scfer.x2c2ePCC(),intor.irrep_list));
-            amfiUnique.push_back(Rotate::unite_irrep(scfer.get_amfi_unc(intor,amfiMethod[2]), intor.irrep_list));
+            amfiUnique.push_back(Rotate::unite_irrep(scfer.get_amfi_unc(intor,false), intor.irrep_list));
             XUnique.push_back(Rotate::unite_irrep(scfer.get_X(), intor.irrep_list));
         }
         MatrixXcd tmp = Rotate::jspinor2cfour_interface_old(intor.irrep_list);
@@ -146,6 +144,14 @@ int main()
     }
 
     int sizeAllReal = 2*sizeAll2;
+    if(amfiMethod[3])
+    {
+        for(int ii = 0; ii < sizeAll2; ii++)
+        {
+            amfiAll[ii].dr = 0.0;
+            amfiAll[ii].di = 0.0;
+        }
+    }
     cout << "Writing amfso integrals...." << endl;
     F_INTERFACE::wfile_("X2CMFSOM",(double*)amfiAll,&sizeAllReal);
     F_INTERFACE::wfile_("X2CATMXM",(double*)XAll,&sizeAllReal);
@@ -249,12 +255,11 @@ void readZMAT(const string& filename, vector<string>& atoms, vector<string>& bas
             if(flags.substr(0,12) == "%amfiMethod*")
             {   
                 //average-of-configuration
-                //spin-free
-                //two-component
                 //gaunt
 		        //gauge
+                //set all integrals to zero
                 //Gaussian finite nuclear model
-                for(int ii = 0 ; ii < 5; ii++)
+                for(int ii = 0 ; ii < 4; ii++)
                 {
                     bool tmp;
                     ifs >> tmp;
@@ -263,7 +268,7 @@ void readZMAT(const string& filename, vector<string>& atoms, vector<string>& bas
                 amfiMethod.push_back(GauNuc);
                 break;
             }
-            else if(flags == "%atmconv")
+            else if(flags.substr(0,8) == "%atmconv")
             {
                 ifs >> SCFconv;
             }
@@ -272,10 +277,9 @@ void readZMAT(const string& filename, vector<string>& atoms, vector<string>& bas
         {
             cout << "%amfiMethod is not found in ZMAT and set to default frac-DHF" << endl;
             amfiMethod.push_back(false); //aoc
-            amfiMethod.push_back(false); //spin-free
-            amfiMethod.push_back(false); //two-component
             amfiMethod.push_back(false); //with gaunt
             amfiMethod.push_back(false); //with gauge
+            amfiMethod.push_back(false); //normal integral
             amfiMethod.push_back(false); //without Gaussian nuclear model 
         }
     ifs.close();
