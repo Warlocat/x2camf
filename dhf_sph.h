@@ -10,9 +10,7 @@ using namespace Eigen;
 class DHF_SPH
 {
 protected:
-    Matrix<intShell, Dynamic, 1> shell_list;
-    int size_basis_spinor, Nirrep, Nirrep_compact, occMax_irrep, occMax_irrep_compact;
-    Matrix<irrep_jm, Dynamic, 1> irrep_list;
+    
     VectorXi all2compact,compact2all;
     vMatrixXd overlap, kinetic, WWW, Vnuc;
     int2eJK h2eLLLL_JK, h2eSSLL_JK, h2eSSSS_JK, gauntLSLS_JK, gauntLSSL_JK;
@@ -33,6 +31,9 @@ protected:
     double evaluateChange_irrep(const vMatrixXd& M1, const vMatrixXd& M2);
 
 public:
+Matrix<intShell, Dynamic, 1> shell_list;
+    int size_basis_spinor, Nirrep, Nirrep_compact, occMax_irrep, occMax_irrep_compact;
+    Matrix<irrep_jm, Dynamic, 1> irrep_list;
     int maxIter = 100, size_DIIS = 8;
     double convControl = 1e-8, ene_scf;
     vMatrixXd coeff;
@@ -63,6 +64,7 @@ public:
 
     /* x2c2e picture change */
     vMatrixXd x2c2ePCC(vMatrixXd* coeff2c = NULL);
+    vMatrixXd h_x2c2e(vMatrixXd* coeff2c = NULL);
     vMatrixXd x2c2ePCC_density();
     vMatrixXd x2c2ePCC_test();
     void evaluateFock_2e(MatrixXd& fock, const bool& twoC, const vMatrixXd& den, const int& size, const int& Iirrep);

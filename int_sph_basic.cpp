@@ -118,6 +118,21 @@ atomName(atomName_), basisSet(basisSet_)
     else if(atomName == "MD") atomNumber = 101;
     else if(atomName == "NO") atomNumber = 102;
     else if(atomName == "LR") atomNumber = 103; 
+    else if(atomName == "RF") atomNumber = 104; 
+    else if(atomName == "DB") atomNumber = 105; 
+    else if(atomName == "SG") atomNumber = 106; 
+    else if(atomName == "BH") atomNumber = 107; 
+    else if(atomName == "HS") atomNumber = 108; 
+    else if(atomName == "MT") atomNumber = 109; 
+    else if(atomName == "DS") atomNumber = 110; 
+    else if(atomName == "RG") atomNumber = 111; 
+    else if(atomName == "CN") atomNumber = 112; 
+    else if(atomName == "NH") atomNumber = 113; 
+    else if(atomName == "FL") atomNumber = 114; 
+    else if(atomName == "MC") atomNumber = 115; 
+    else if(atomName == "LV") atomNumber = 116; 
+    else if(atomName == "TS") atomNumber = 117; 
+    else if(atomName == "OG") atomNumber = 118; 
     else 
     {
         cout << "ERROR: Atom name is not supported." << endl;

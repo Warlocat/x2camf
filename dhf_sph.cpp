@@ -891,6 +891,8 @@ void DHF_SPH::readOCC(const string& filename, const string& atomName)
             else if(atomName == "SG") {int_tmp = 7; vecd_tmp(0) = 14.0; vecd_tmp(1) = 10.0; vecd_tmp(2) = 20.0; vecd_tmp(3) = 34.0/2.5; vecd_tmp(4) = 51.0/2.5; vecd_tmp(5) = 12.0; vecd_tmp(6) = 16.0;}
             else if(atomName == "BH") {int_tmp = 7; vecd_tmp(0) = 14.0; vecd_tmp(1) = 10.0; vecd_tmp(2) = 20.0; vecd_tmp(3) = 14.0; vecd_tmp(4) = 21.0; vecd_tmp(5) = 12.0; vecd_tmp(6) = 16.0;}
             else if(atomName == "HS") {int_tmp = 7; vecd_tmp(0) = 14.0; vecd_tmp(1) = 10.0; vecd_tmp(2) = 20.0; vecd_tmp(3) = 36.0/2.5; vecd_tmp(4) = 54.0/2.5; vecd_tmp(5) = 12.0; vecd_tmp(6) = 16.0;}
+
+            else if(atomName == "OG") {int_tmp = 7; vecd_tmp(0) = 14.0; vecd_tmp(1) = 12.0; vecd_tmp(2) = 24.0; vecd_tmp(3) = 16.0; vecd_tmp(4) = 24.0; vecd_tmp(5) = 12.0; vecd_tmp(6) = 16.0;}
             else
             {
                 cout << "ERROR: " << atomName << " does NOT have a default ON. Please input the occupation numbers by hand." << endl;
@@ -1426,6 +1428,8 @@ void DHF_SPH::set_h1e_4c(const vMatrixXd& inputM)
 
 void DHF_SPH::basisGenerator(const string& basisName, const INT_SPH& intor)
 {
+    cout << "You are calling the basisGenerator of fractional occupation HF." << endl;
+    cout << "This is DANGEROURS and should be used carefully." << endl;
     Matrix<VectorXi,-1,1> basisInfo;
     int occL = 0;
     
