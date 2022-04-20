@@ -1,25 +1,25 @@
-# amfso
-Spin-orbit coupling (SOC) integrals generator with atomic-mean-field (AMF) approximation 
-for both perturbative and non-perturbative treatment of SOC. This program aims to make 
-full use of spherical symmetry (take |J,mj> as an irrep) of atoms.
+# AMFSO
+An efficient implementation of atomic relativistic Hartree-Fock calculation to 
+generator spin-orbit integrals based on atomic-mean-field approach.
 
+AMFSO has been interfaced with CFOUR and PySCF.
+ 
+AMFSO is a free software, you can redistribute it and/or modify it under
+the terms of the GNU General Public License.
 
 It supports:
 
-    Various one-electron and two-electron (J,K) integrals in j-adapted spinor basis set for single atom;
+    Various one-electron and two-electron (J,K) integrals in j-adapted spinor basis set for single atom.
 
-    Spin-free exact-two-component in one-electron variant Hartree-Fock (SFX2C1E-HF) for single atom;
+    Four-component and two-component atomic Hartree-Fock calculation with two-electron Coulomb and Breit interaction.
 
-    Dirac-Coulomb Hartree-Fock (DCHF) and spin-free DCHF for single atom;
+    Generate spin-orbit and Breit integrals in spinor basis based on the X2CAMF approach, 
+    see Liu, J.; Cheng, L. J. Chem. Phys. 2018, 148, 144108. 
+    and Zhang, C.; Cheng, L. J. Phys. Chem. A. (in press)
 
-    Generate spin-orbit coupling integrals based on AMF approximation with density matrix from above methods.
 
-
-To use, you must have:
+To compile and use, you must have:
 
     Eigen3 C++
-
-    GSL library
-
 
 
