@@ -6,7 +6,7 @@
 #include<cmath>
 #include<complex>
 #include<omp.h>
-#include<gsl/gsl_sf_coupling.h>
+#include"gsl_functions.h"
 #include"int_sph.h"
 using namespace std;
 using namespace Eigen;

@@ -1,10 +1,9 @@
 CPP = icpc
 FF = ifort
-CPPFLAG = -O3 -std=c++11 -fopenmp -qmkl -DEIGEN_USE_MKL_ALL
-LIBSFLAG = -I ${EIGEN} -I ${GSL} -L ${GSL}/lib -l ifcore 
+CPPFLAG = -O3 -std=c++11 -fopenmp 
+LIBSFLAG = -I ${EIGEN} -l ifcore 
 EIGEN = ~/apps/Eigen3
-GSL = ~/apps/gsl-2.7.1
-FILES = int_sph_basic.o int_sph.o int_sph_gaunt.o int_sph_gauge.o general.o dhf_sph.o dhf_sph_ca.o dhf_sph_pcc.o wfile.o rfile.o prvecr.o ${GSL}/lib/libgsl.a
+FILES = int_sph_basic.o int_sph.o int_sph_gaunt.o int_sph_gauge.o general.o dhf_sph.o dhf_sph_ca.o dhf_sph_pcc.o wfile.o rfile.o prvecr.o gsl_functions.o
 MAIN = main.o ${FILES}
 BASIS = basisGenerator.o ${FILES}
 TEST = test.o ${FILES}
@@ -26,7 +25,7 @@ test.exe: ${TEST}
 	${CPP} ${CPPFLAG} ${LIBSFLAG} ${TEST} -o test.exe
 
 %.o: %.cpp
-	$(CPP) $(CPPFLAG) -c $< -o $@ -I ${EIGEN} -I ${GSL}
+	$(CPP) $(CPPFLAG) -c $< -o $@ -I ${EIGEN}
 
 %.o: %.f
 	${FF} -c $< -o $@

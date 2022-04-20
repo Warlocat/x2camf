@@ -4,6 +4,7 @@
 #include<Eigen/Dense>
 #include<complex>
 #include<string>
+#include<vector>
 #include<ctime>
 #include<iostream>
 #include<fstream>
@@ -141,7 +142,11 @@ MatrixXd matrix_half_inverse(const MatrixXd& inputM);
 MatrixXd matrix_half(const MatrixXd& inputM);
 /* solver for generalized eigen equation MC=SCE, s_h_i = S^{1/2} */
 void eigensolverG(const MatrixXd& inputM, const MatrixXd& s_h_i, VectorXd& values, MatrixXd& vectors);
-
+/* remove all spaces in a string) */
+string removeSpaces(const string& flags);
+/* Split function in python */
+vector<string> stringSplit(const string& flags);
+vector<string> stringSplit(const string& flags, const char delimiter);
 
 /* Static functions used in X2C */
 namespace X2C

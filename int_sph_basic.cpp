@@ -7,7 +7,7 @@
 #include<complex>
 #include<omp.h>
 #include<vector>
-#include<gsl/gsl_sf_coupling.h>
+#include"gsl_functions.h"
 #include"int_sph.h"
 using namespace std;
 using namespace Eigen;
@@ -196,13 +196,18 @@ void INT_SPH::readBasis()
             ifs >> size_shell;
             MatrixXi orbitalInfo(3,size_shell);
             shell_list.resize(size_shell);
+            getline(ifs,flags);
 
             for(int ii = 0; ii < 3; ii++)
-            for(int jj = 0; jj < size_shell; jj++)
             {
-                ifs >> orbitalInfo(ii,jj);
+                getline(ifs,flags);
+                vector<string> tmp_s = stringSplit(flags);
+                for(int jj = 0; jj < size_shell; jj++)
+                {
+                    orbitalInfo(ii,jj) = stoi(tmp_s[jj]);
+                }
             }
-
+            
             Nirrep = 0;
             for(int ii = 0; ii < size_shell; ii++)
             {

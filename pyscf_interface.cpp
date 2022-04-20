@@ -14,8 +14,6 @@ using namespace Eigen;
 using namespace std;
 
 void readPyInput(const string& filename, vector<string>& atoms, vector<string>& basis, vector<bool>& amfiMethod);
-string removeSpaces(const string& flags);
-vector<string> splitSrting(const string& flags, const char& targetChar);
 
 int main()
 {
@@ -158,42 +156,6 @@ void readPyInput(const string& filename, vector<string>& atoms, vector<string>& 
     ifs.close();
 
     return ;
-}
-
-
-string removeSpaces(const string& flags)
-{
-    string tmp_s = flags;
-    for(int ii = 0; ii < tmp_s.size(); ii++)
-    {
-        if(tmp_s[ii] == ' ')
-        {
-            tmp_s.erase(tmp_s.begin()+ii);
-            ii--;
-        }
-    }
-    return tmp_s;
-}
-
-vector<string> splitSrting(const string& flags, const char& targetChar)
-{
-    string tmp_s = flags;
-    vector<string> res;
-    while (true)
-    {
-        size_t found = tmp_s.find(targetChar);
-        if(found != string::npos)
-        {
-            res.push_back(tmp_s.substr(0,found));
-            tmp_s = tmp_s.substr(found+1,tmp_s.size()-found-1);
-        }
-        else
-        {
-            res.push_back(tmp_s);
-            break;
-        }
-    }
-    return res;
 }
 
 

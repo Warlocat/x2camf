@@ -781,11 +781,27 @@ vMatrixXd DHF_SPH_CA::get_amfi_unc_ca_2c(const int2eJK& h2eSSLL_SD, const int2eJ
 
 
 
-void DHF_SPH_CA::basisGenerator(const string& basisName, const INT_SPH& intor)
+void DHF_SPH_CA::basisGenerator(string basisName, string filename, const INT_SPH& intor, const INT_SPH& intorAll)
 {
-    Matrix<VectorXi,-1,1> basisInfo;
+    Matrix<VectorXi,-1,1> basisInfo, basisInput, basisAll;
+    basisInput.resize(intor.shell_list.rows());
+    for(int ll = 0; ll < basisInput.rows(); ll++)
+    {
+        basisInput(ll).resize(3);
+        basisInput(ll)(0) = ll;
+        basisInput(ll)(1) = intor.shell_list(ll).coeff.cols();
+        basisInput(ll)(2) = intor.shell_list(ll).coeff.rows();
+    }
+    basisAll.resize(intorAll.shell_list.rows());
+    for(int ll = 0; ll < basisAll.rows(); ll++)
+    {
+        basisAll(ll).resize(3);
+        basisAll(ll)(0) = ll;
+        basisAll(ll)(1) = intorAll.shell_list(ll).coeff.cols();
+        basisAll(ll)(2) = intorAll.shell_list(ll).coeff.rows();
+    }
+
     int occL = 0;
-    
     for(int ir = 0; ir < irrep_list.rows(); ir += 4*irrep_list(ir).l+2)
     {
         if(occNumberCore(ir).rows() == 0) break;
@@ -806,31 +822,106 @@ void DHF_SPH_CA::basisGenerator(const string& basisName, const INT_SPH& intor)
         occL++;
     }
 
-    cout << basisName + "-X2C" << endl;
-    cout << "obtained from AOC-SFX2C1E atomic calculation" << endl;
-    cout << endl;
-    cout << basisInfo.rows() << endl;
-    for(int ii = 0; ii < basisInfo.rows(); ii++)
-        cout << "    " << ii;
-    cout << endl;
-    for(int ii = 0; ii < basisInfo.rows(); ii++)
-        cout << "    " << basisInfo(ii).rows();
-    cout << endl;
-    for(int ii = 0; ii < basisInfo.rows(); ii++)
-        cout << "    " << intor.shell_list(ii).coeff.rows();
-    cout << endl;
-    cout << fixed << setprecision(8);
-    for(int ir = 0; ir < irrep_list.rows(); ir += 4*irrep_list(ir).l+2)
+    vMatrixXd coeff_final(intorAll.shell_list.rows());
+    Matrix<vector<double>,-1,1> exp_a_final(intorAll.shell_list.rows());
+    for(int ir = 0; ir < intorAll.irrep_list.rows(); ir += 4*intorAll.irrep_list(ir).l+2)
     {
-        if(occNumberCore(ir).rows() == 0) break;
-        int ii = irrep_list(ir).l;
-        for(int jj = 0; jj < intor.shell_list(ii).coeff.rows(); jj++)
+        int ll = intorAll.irrep_list(ir).l, nLD = 0;
+        int nPVXZ = ll < intor.shell_list.rows() ? intor.shell_list(ll).exp_a.rows() : 0;
+        int nAll = intorAll.shell_list(ll).exp_a.rows();
+        vector<int> n_closest;
+        for(int ii = 0; ii < nPVXZ; ii++)
+            exp_a_final(ll).push_back(intor.shell_list(ll).exp_a(ii));
+        for(int ii = nPVXZ; ii < nAll; ii++)
         {
-            if((jj+1) %5 == 1)  cout << endl;
-            cout << "    " << intor.shell_list(ii).exp_a(jj);
+            int tmp_i;
+            double closest = 100000000000.0;
+            double alpha = intorAll.shell_list(ll).exp_a(ii);
+            bool LD = false;
+            for(int jj = 0; jj < nPVXZ; jj++)
+            {
+                double tmp = max(alpha/intor.shell_list(ll).exp_a(jj),intor.shell_list(ll).exp_a(jj)/alpha);
+                if(tmp < 1.25)
+                    LD = true;
+                if(tmp < closest)
+                {
+                    closest = tmp;
+                    tmp_i = jj;
+                }
+            }
+            if(!LD)
+            {
+                exp_a_final(ll).push_back(alpha);
+            } 
+            else
+            {
+                nLD++;
+                n_closest.push_back(tmp_i);
+            } 
         }
-        cout << endl;
-        cout << endl;
-        cout << coeff(ir).block(0,0,coeff(ir).rows(),basisInfo(ii).rows()) << endl;
+        
+        if(ll < occL)
+        {
+            coeff_final(ll) = MatrixXd::Zero(exp_a_final(ll).size(),basisInput(ll)(1) + nLD + exp_a_final(ll).size() - nPVXZ);
+            for(int ii = 0; ii < coeff(ir).rows(); ii++)
+            {
+                for(int jj = 0; jj < basisInfo(ll).rows(); jj++)
+                    coeff_final(ll)(ii,jj) = coeff(ir)(ii,jj);
+                for(int jj = basisInfo(ll).rows(); jj < basisInput(ll)(1); jj++)
+                    coeff_final(ll)(ii,jj) = intor.shell_list(ll).coeff(ii,jj);
+            }
+            for(int jj = 0; jj < nLD; jj++)
+                coeff_final(ll)(n_closest[jj],basisInput(ll)(1)+jj) = 1.0;
+            for(int ii = 0; ii < exp_a_final(ll).size() - nPVXZ; ii++)
+                coeff_final(ll)(nPVXZ+ii,basisInput(ll)(1)+nLD+ii) = 1.0;
+        }
+        else
+        {
+            coeff_final(ll) = MatrixXd::Identity(exp_a_final(ll).size(),exp_a_final(ll).size());
+        }
     }
+    
+    int pos = basisName.find("X2C");
+    if(pos != string::npos)
+        basisName.erase(pos,3);
+    pos = basisName.find("DK3");
+    if(pos != string::npos)
+        basisName.erase(pos,3);
+    ofstream ofs;
+    ofs.open(filename,std::ofstream::app);
+        ofs << basisName + "DE4" << endl;
+        ofs << "obtained from AOC-SFX2C1E atomic calculation" << endl;
+        ofs << endl;
+        ofs << intorAll.shell_list.rows() << endl;
+        for(int jj = 0; jj < intorAll.shell_list.rows(); jj++)
+        {
+            ofs << "    " << jj;
+        }
+        ofs << endl;
+        for(int jj = 0; jj < intorAll.shell_list.rows(); jj++)
+        {
+            ofs << "    " << coeff_final(jj).cols();
+        }
+        ofs << endl;
+        for(int jj = 0; jj < intorAll.shell_list.rows(); jj++)
+        {
+            ofs << "    " << coeff_final(jj).rows();
+        }
+        ofs << endl;
+        ofs << fixed << setprecision(8);
+        for(int ll = 0; ll < intorAll.shell_list.rows(); ll++)
+        {
+            for(int ii = 0; ii < exp_a_final(ll).size(); ii++)
+            {
+                if((ii+1) %5 == 1)  ofs << endl;
+                ofs << "    " << exp_a_final(ll)[ii];
+            }
+            ofs << endl;
+            ofs << endl;
+            ofs << coeff_final(ll) << endl;
+        }
+        ofs << endl << endl;
+    ofs.close();
+
+    return;
 }

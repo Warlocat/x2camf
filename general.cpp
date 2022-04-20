@@ -6,7 +6,7 @@
 #include<cmath>
 #include<complex>
 #include<omp.h>
-#include<gsl/gsl_sf_coupling.h>
+#include"gsl_functions.h"
 #include"general.h"
 using namespace std;
 using namespace Eigen;
@@ -247,8 +247,63 @@ void eigensolverG(const MatrixXd& inputM, const MatrixXd& s_h_i, VectorXd& value
     return;
 }
 
+string removeSpaces(const string& flags)
+{
+    string tmp_s = flags;
+    for(int ii = 0; ii < tmp_s.size(); ii++)
+    {
+        if(tmp_s[ii] == ' ')
+        {
+            tmp_s.erase(tmp_s.begin()+ii);
+            ii--;
+        }
+    }
+    return tmp_s;
+}
 
-
+vector<string> stringSplit(const string& flags)
+{
+    string tmp_s = flags;
+    vector<string> output;
+    int pos = 0, pos2;
+    while ((pos = tmp_s.find(' ')) != string::npos || (pos2 = tmp_s.find('\t')) != string::npos)
+    {
+        pos = tmp_s.find(' ');
+        pos2 = tmp_s.find('\t');
+        if(pos >= 0 && pos2 >= 0)
+            pos = min(pos,pos2);
+        else if(pos < 0 && pos2 >= 0)
+            pos = pos2;
+        if(pos != 0)
+        {
+            output.push_back(tmp_s.substr(0,pos));
+            tmp_s.erase(0,pos);
+        }
+        else
+            tmp_s.erase(0,1);
+    }
+    if(tmp_s.size()>=1)
+    {
+        output.push_back(tmp_s);
+    }
+    return output;
+}
+vector<string> stringSplit(const string& flags, const char delimiter)
+{
+    string tmp_s = flags;
+    vector<string> output;
+    int pos = 0;
+    while ((pos = tmp_s.find(delimiter)) != string::npos)
+    {
+        // cout << pos << endl; exit(99);
+        if(pos != 0)
+        {
+            output.push_back(tmp_s.substr(0,pos));
+        }
+        tmp_s.erase(0,1);
+    }
+    return output;
+}
 
 
 /*

@@ -14,8 +14,6 @@ using namespace Eigen;
 using namespace std;
 
 void readZMAT(const string& filename, vector<string>& atoms, vector<string>& basis, vector<bool>& amfiMethod, double& SCFconv);
-string removeSpaces(const string& flags);
-vector<string> splitSrting(const string& flags, const char& targetChar);
 
 int main()
 {
@@ -62,7 +60,8 @@ int main()
         cout << atomListUnique[ii] << "\t" << basisListUnique[ii] << endl;
     }
     string method = "";
-    if(amfiMethod[0])   method = method + "aoc-HF with Dirac-Coulomb";
+    if(amfiMethod[0])   method = method + "aoc-HF Dirac-Coulomb";
+    else method = method + "fractional-occupation Dirac-Coulomb";
     if(amfiMethod[1])   method = method + "-Gaunt";
     if(amfiMethod[2])   method = method + "-gauge\n";
     if(amfiMethod[4])   method = method + " with Gaussian nuclear model";
@@ -88,7 +87,7 @@ int main()
             DHF_SPH scfer(intor, "ZMAT", false, false, amfiMethod[1], amfiMethod[2],true, amfiMethod[4]);
             scfer.convControl = amfiSCFconv;
             scfer.runSCF(false);
-            // amfiUnique.push_back(Rotate::unite_irrep(scfer.x2c2ePCC(),intor.irrep_list));
+            //amfiUnique.push_back(Rotate::unite_irrep(scfer.x2c2ePCC(),intor.irrep_list));
             amfiUnique.push_back(Rotate::unite_irrep(scfer.get_amfi_unc(intor,false), intor.irrep_list));
             XUnique.push_back(Rotate::unite_irrep(scfer.get_X(), intor.irrep_list));
         }
@@ -182,7 +181,7 @@ void readZMAT(const string& filename, vector<string>& atoms, vector<string>& bas
             flags2 = removeSpaces(flags);
             if(flags2.size() != 0 && readAtom)
             {
-                atoms.push_back(splitSrting(flags, ' ')[0]);
+                atoms.push_back(stringSplit(flags)[0]);
                 if(atoms[atoms.size()-1] == "X")
                 {
                     atoms.erase(atoms.end());
@@ -256,7 +255,7 @@ void readZMAT(const string& filename, vector<string>& atoms, vector<string>& bas
             {   
                 //average-of-configuration
                 //gaunt
-		        //gauge
+                //gauge
                 //set all integrals to zero
                 //Gaussian finite nuclear model
                 for(int ii = 0 ; ii < 4; ii++)
@@ -285,40 +284,4 @@ void readZMAT(const string& filename, vector<string>& atoms, vector<string>& bas
     ifs.close();
 
     return ;
-}
-
-
-string removeSpaces(const string& flags)
-{
-    string tmp_s = flags;
-    for(int ii = 0; ii < tmp_s.size(); ii++)
-    {
-        if(tmp_s[ii] == ' ')
-        {
-            tmp_s.erase(tmp_s.begin()+ii);
-            ii--;
-        }
-    }
-    return tmp_s;
-}
-
-vector<string> splitSrting(const string& flags, const char& targetChar)
-{
-    string tmp_s = flags;
-    vector<string> res;
-    while (true)
-    {
-        size_t found = tmp_s.find(targetChar);
-        if(found != string::npos)
-        {
-            res.push_back(tmp_s.substr(0,found));
-            tmp_s = tmp_s.substr(found+1,tmp_s.size()-found-1);
-        }
-        else
-        {
-            res.push_back(tmp_s);
-            break;
-        }
-    }
-    return res;
 }

@@ -30,7 +30,7 @@ public:
     vMatrixXd get_amfi_unc_ca(INT_SPH& int_sph_, const bool& twoC = false, const string& Xmethod = "partialFock", const bool& amfi_with_gaunt = false);
     vMatrixXd get_amfi_unc_ca_2c(const int2eJK& h2eSSLL_SD, const int2eJK& h2eSSSS_SD, const bool& amfi_with_gaunt = false);
 
-    void basisGenerator(const string& basisName, const INT_SPH& intor);
+    void basisGenerator(string basisName, string filename, const INT_SPH& intor, const INT_SPH& intorAll);
 };
 
 

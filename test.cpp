@@ -27,25 +27,38 @@ int main()
     readInput("input");
     INT_SPH intor(atomName, basisSet);
     //                          sf   2c   Gaunt gauge allint  gauNuc
-    DHF_SPH_CA sfx2c(intor,"input",true,true,false,false,true,false);
+    // DHF_SPH sfx2c(intor,"input",true,true,false,false,true,false);
     // DHF_SPH sf4c(intor,"input",true,false,false,false,true,false);
-    // DHF_SPH dc4c(intor,"input",false,false,false,false,true,false);
+     DHF_SPH_CA dc4c(intor,"input",false,false,false,false,true,false);
     // DHF_SPH dcg4c(intor,"input",false,false,true,false,true,false);
     // DHF_SPH dcb4c(intor,"input",false,false,true,true,true,false);
-    sfx2c.convControl = 1e-10;
+    // sfx2c.convControl = 1e-10;
     //  sf4c.convControl = 1e-10;
-    //  dc4c.convControl = 1e-10;
+      dc4c.convControl = 1e-10;
     // dcg4c.convControl = 1e-10;
     // dcb4c.convControl = 1e-10;
-    sfx2c.runSCF(true,false);
-    auto coeff = sfx2c.coeff;
-    for(int ir = 0; ir < coeff.rows(); ir += 2+4*intor.irrep_list(ir).l)
-    {
-        cout << coeff(ir) << endl << endl;
-    }
+    // sfx2c.runSCF(true,false);
+    
     //  sf4c.runSCF(false,false);
-    //  dc4c.runSCF(false,false);
-    // dcg4c.runSCF(false,false);
+     dc4c.runSCF(false,false);
+     //sfx2c.set_h1e_4c(dc4c.x2c2ePCC()); 
+    //sfx2c.runSCF(true,false);
+   // auto h2c2e = dc4c.h_x2c2e();
+   // auto den = sfx2c.get_density();
+   // auto fock = sfx2c.get_fock_4c();
+   // double ene_scf = 0.0;
+   // for(int ir = 0; ir < sfx2c.occMax_irrep; ir += sfx2c.irrep_list(ir).two_j+1)
+   // {
+   //     int size_tmp = sfx2c.irrep_list(ir).size;
+   //         for(int ii = 0; ii < size_tmp; ii++)
+   //         for(int jj = 0; jj < size_tmp; jj++)
+   //         {
+   //             // ene_scf += 0.5 * density(ir)(ii,jj) * (h1e_4c(ir)(jj,ii) + fock_4c(ir)(jj,ii)) * (irrep_list(ir).two_j+1.0);
+   //             ene_scf += 0.5 * den(ir)(ii,jj) * (fock(ir)(jj,ii) + h2c2e(ir)(jj,ii)) * (sfx2c.irrep_list(ir).two_j+1.0);
+   //         }
+   // }
+   // cout << ene_scf << endl;
+   // // dcg4c.runSCF(false,false);
     // dcb4c.runSCF(false,false);
     // 
     // int size = dc4c.ene_orb(0).rows();

@@ -60,7 +60,7 @@ vMatrixXd DHF_SPH::x2c2ePCC(vMatrixXd* coeff2c)
     }
     for(int ir = 0; ir < occMax_irrep; ir++)
     {  
-        fock_pcc(ir) = fock_x2c2e_2e(ir) - JK_x2c2c(ir) + h1e_x2c2e(ir);// - h1e_x2c1e(ir);
+        fock_pcc(ir) = fock_x2c2e_2e(ir) - JK_x2c2c(ir) + h1e_x2c2e(ir) - h1e_x2c1e(ir);
     }
 
     x2cXXX = XXX;
