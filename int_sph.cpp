@@ -819,6 +819,9 @@ void INT_SPH::get_h2e_JK_direct(int2eJK& LLLL, int2eJK& SSLL, int2eJK& SSSS, con
     for(int qshell = 0; qshell < occMaxShell; qshell++)
     {
         int l_q = shell_list(qshell).l, l_max = max(l_p,l_q), LmaxJ = min(l_p+l_p, l_q+l_q), LmaxK = l_p+l_q;
+        // This is correct for J (and not K) but the author did not understand.
+        // Same for Gaunt and gauge term. A very limited acceleration.
+        // LmaxJ = 0;
         int size_gtos_p = shell_list(pshell).coeff.rows(), size_gtos_q = shell_list(qshell).coeff.rows();
         int size_tmp_p = (l_p == 0) ? 1 : 2, size_tmp_q = (l_q == 0) ? 1 : 2; 
         double array_angular_J[LmaxJ+1][size_tmp_p][size_tmp_q], array_angular_K[LmaxK+1][size_tmp_p][size_tmp_q];

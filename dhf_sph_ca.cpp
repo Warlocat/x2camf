@@ -785,12 +785,33 @@ void DHF_SPH_CA::basisGenerator(string basisName, string filename, const INT_SPH
 {
     Matrix<VectorXi,-1,1> basisInfo, basisInput, basisAll;
     basisInput.resize(intor.shell_list.rows());
+    vMatrixXd resortedCoeffInput(basisInput.rows());
     for(int ll = 0; ll < basisInput.rows(); ll++)
     {
         basisInput(ll).resize(3);
         basisInput(ll)(0) = ll;
         basisInput(ll)(1) = intor.shell_list(ll).coeff.cols();
         basisInput(ll)(2) = intor.shell_list(ll).coeff.rows();
+        // reorganize coeff in intor
+        vector<int> vec_i;
+        for(int ii = 0; ii < intor.shell_list(ll).coeff.cols(); ii++)
+        {
+            if(abs(intor.shell_list(ll).coeff(0,ii)) >= 1e-12)
+                vec_i.push_back(ii);
+        }
+        for(int ii = 0; ii < intor.shell_list(ll).coeff.cols(); ii++)
+        {
+            if(abs(intor.shell_list(ll).coeff(0,ii)) < 1e-12)
+                vec_i.push_back(ii);
+        }
+        MatrixXd tmp;
+        tmp = MatrixXd::Zero(intor.shell_list(ll).coeff.rows(),intor.shell_list(ll).coeff.cols());
+        for(int ii = 0; ii < intor.shell_list(ll).coeff.cols(); ii++)
+        for(int jj = 0; jj < intor.shell_list(ll).coeff.rows(); jj++)
+        {
+            tmp(jj,ii) = intor.shell_list(ll).coeff(jj,vec_i[ii]);
+        }
+        resortedCoeffInput(ll) = tmp;
     }
     basisAll.resize(intorAll.shell_list.rows());
     for(int ll = 0; ll < basisAll.rows(); ll++)
@@ -868,7 +889,7 @@ void DHF_SPH_CA::basisGenerator(string basisName, string filename, const INT_SPH
                 for(int jj = 0; jj < basisInfo(ll).rows(); jj++)
                     coeff_final(ll)(ii,jj) = coeff(ir)(ii,jj);
                 for(int jj = basisInfo(ll).rows(); jj < basisInput(ll)(1); jj++)
-                    coeff_final(ll)(ii,jj) = intor.shell_list(ll).coeff(ii,jj);
+                    coeff_final(ll)(ii,jj) = resortedCoeffInput(ll)(ii,jj);
             }
             for(int jj = 0; jj < nLD; jj++)
                 coeff_final(ll)(n_closest[jj],basisInput(ll)(1)+jj) = 1.0;

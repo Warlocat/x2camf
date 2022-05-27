@@ -262,7 +262,6 @@ void INT_SPH::readBasis()
                     // shell_list(ishell).coeff(ii,jj) = shell_list(ishell).coeff(ii,jj) / sqrt(auxiliary_1e(2*shell_list(ishell).l + 2, 2 * shell_list(ishell).exp_a(ii)));
                 }
             }
-
         }       
     ifs.close();
 }

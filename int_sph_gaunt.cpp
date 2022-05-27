@@ -635,6 +635,8 @@ int2eJK INT_SPH::get_h2e_JK_gaunt_compact(const string& intType, const int& occM
     for(int qshell = 0; qshell < occMaxShell; qshell++)
     {
         int l_q = shell_list(qshell).l, l_max = max(l_p,l_q), LmaxJ = min(l_p+l_p, l_q+l_q)+1, LmaxK = l_p+l_q+1;
+        // This is correct but the author did not understand.
+        // LmaxJ = 1;
         int size_gtos_p = shell_list(pshell).coeff.rows(), size_gtos_q = shell_list(qshell).coeff.rows();
         int size_tmp_p = (l_p == 0) ? 1 : 2, size_tmp_q = (l_q == 0) ? 1 : 2;
         double array_angular_J[LmaxJ+1][size_tmp_p][size_tmp_q], array_angular_K[LmaxK+1][size_tmp_p][size_tmp_q];

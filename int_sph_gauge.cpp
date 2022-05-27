@@ -806,6 +806,11 @@ int2eJK INT_SPH::get_h2e_JK_gauge_compact(const string& intType, const int& occM
         LmaxJ[1] = min(l_p+l_p+2, l_q+l_q); LmaxK[1] = l_p+l_q  ; LminJ[1] = 1; LminK[1] = 1;
         LmaxJ[2] = min(l_p+l_p, l_q+l_q+2); LmaxK[2] = l_p+l_q  ; LminJ[2] = 1; LminK[2] = 1;
         LmaxJ[3] = min(l_p+l_p, l_q+l_q)  ; LmaxK[3] = l_p+l_q  ; LminJ[3] = 0; LminK[3] = 0;
+        // This is correct but the author did not understand.
+        // LmaxJ[0] = 1;
+        // LmaxJ[1] = 1;
+        // LmaxJ[2] = 1;
+        // LmaxJ[3] = 0;
         double radial;
         int size_gtos_p = shell_list(pshell).coeff.rows(), size_gtos_q = shell_list(qshell).coeff.rows();
         int size_tmp_p = (l_p == 0) ? 1 : 2, size_tmp_q = (l_q == 0) ? 1 : 2;

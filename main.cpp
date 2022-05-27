@@ -25,14 +25,14 @@ int main()
     
     readZMAT("ZMAT", atomList, basisList, amfiMethod, amfiSCFconv);
     // special treatment of PCVXZ and PWCVXZ basis
-    for(int ii = 0; ii < basisList.size(); ii++)
-    {
-        size_t found1 = basisList[ii].find("PCV"), found2 = basisList[ii].find("PWCV"), found3 = basisList[ii].find("UNC");
-        if((found1 != string::npos || found2 != string::npos) && found3 == string::npos)
-        {
-            basisList[ii] = basisList[ii] + "-unc";
-        }
-    }
+    // for(int ii = 0; ii < basisList.size(); ii++)
+    // {
+    //     size_t found1 = basisList[ii].find("PCV"), found2 = basisList[ii].find("PWCV"), found3 = basisList[ii].find("UNC");
+    //     if((found1 != string::npos || found2 != string::npos) && found3 == string::npos)
+    //     {
+    //         basisList[ii] = basisList[ii] + "-unc";
+    //     }
+    // }
     // find unique calculations
     for(int ii = 0; ii < basisList.size(); ii++)
     {
