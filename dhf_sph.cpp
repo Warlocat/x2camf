@@ -964,6 +964,7 @@ vMatrixXd DHF_SPH::get_amfi_unc(INT_SPH& int_sph_, const bool& twoC, const strin
     int2eJK gauntLSLS_SD, gauntLSSL_SD;
     if(amfi_with_gaunt_real)
     {
+        /* Enable SD gaunt */ 
         // int_sph_.get_h2e_JK_gaunt_direct(gauntLSLS_SD,gauntLSSL_SD,-1,true);
         // if(renormalizedSmall)
         // {
@@ -1198,7 +1199,7 @@ vMatrixXd DHF_SPH::get_amfi_unc(const int2eJK& h2eSSLL_SD, const int2eJK& h2eSSS
 
 /* 
     Evaluate amfi SOC integrals in j-adapted spinor basis for two-component calculation
-    X will always be calculated based on spin-free h1e.
+    X matrices are obtained from the corresponding (SF)X2C-1e procedure.
 */
 vMatrixXd DHF_SPH::get_amfi_unc_2c(const int2eJK& h2eSSLL_SD, const int2eJK& h2eSSSS_SD, const bool& amfi_with_gaunt)
 {
@@ -1229,7 +1230,7 @@ vMatrixXd DHF_SPH::get_amfi_unc_2c(const int2eJK& h2eSSLL_SD, const int2eJK& h2e
         Calculate 4-c density using approximate PES C_L and C_S
         C_L = R C_{2c}
         C_S = X C_L
-        This is used in L. Cheng, et al, J. Chem. Phys. 141, 164107 (2014)
+        Please see L. Cheng, et al, J. Chem. Phys. 141, 164107 (2014)
     */
     vMatrixXd coeff_tmp(occMax_irrep), density_tmp(occMax_irrep), coeff_L_tmp(occMax_irrep), coeff_S_tmp(occMax_irrep);
     for(int ir = 0; ir < occMax_irrep; ir++)

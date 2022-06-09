@@ -6,282 +6,68 @@
 #include<cmath>
 #include<ctime>
 #include<memory>
-#include<vector>
 #include"int_sph.h"
 #include"dhf_sph.h"
+#include"general.h"
 #include"dhf_sph_ca.h"
 using namespace Eigen;
 using namespace std;
 
-void readZMAT(const string& filename, vector<string>& atoms, vector<string>& basis, vector<bool>& amfiMethod, double& SCFconv);
+/* Global information */
+int charge, spin;
+string atomName, basisSet, flags, jobs;
+VectorXd occ;
+bool unc;
+
+/* Read input file and set global variables */
+void readInput(const string filename);
 
 int main()
 {
-    double amfiSCFconv = 1e-8;
-    vector<bool> amfiMethod;
-    vector<string> atomList, basisList;
-    vector<string> atomListUnique, basisListUnique;
-    vector<int> indexList;
-    
-    readZMAT("ZMAT", atomList, basisList, amfiMethod, amfiSCFconv);
-    // special treatment of PCVXZ and PWCVXZ basis
-    // for(int ii = 0; ii < basisList.size(); ii++)
-    // {
-    //     size_t found1 = basisList[ii].find("PCV"), found2 = basisList[ii].find("PWCV"), found3 = basisList[ii].find("UNC");
-    //     if((found1 != string::npos || found2 != string::npos) && found3 == string::npos)
-    //     {
-    //         basisList[ii] = basisList[ii] + "-unc";
-    //     }
-    // }
-    // find unique calculations
-    for(int ii = 0; ii < basisList.size(); ii++)
+    bool spinFree = false, twoC = false, Gaunt = true, gauge = true, allint = true, gauNuc = false, aoc = false, renormS = false;
+    readInput("input");
+    INT_SPH intor(atomName, basisSet);
+    DHF_SPH* scfer;
+    if(aoc)
     {
-        bool unique = true;
-        for(int jj = 0; jj < basisListUnique.size(); jj++)
-        {
-            if(atomList[ii] == atomListUnique[jj] && basisList[ii] == basisListUnique[jj])
-            {
-                unique = false;
-                indexList.push_back(jj);
-            }
-        }
-        if(unique)
-        {
-            indexList.push_back(atomListUnique.size());
-            atomListUnique.push_back(atomList[ii]);
-            basisListUnique.push_back(basisList[ii]);
-        }
-        cout << "index " << ii << ": " << indexList[ii] << endl;
+        scfer = new DHF_SPH_CA(intor,"input",spinFree,twoC,Gaunt,gauge,allint,gauNuc);
     }
+    else
+    {
+        scfer = new DHF_SPH(intor,"input",spinFree,twoC,Gaunt,gauge,allint,gauNuc);
+    }
+    scfer->convControl = 1e-10;
+    scfer->runSCF(twoC,renormS);
 
-    cout << "All unique calculations are:" << endl;
-    for(int ii = 0; ii < atomListUnique.size(); ii++)
-    {
-        cout << atomListUnique[ii] << "\t" << basisListUnique[ii] << endl;
-    }
-    string method = "";
-    if(amfiMethod[0])   method = method + "aoc-HF Dirac-Coulomb";
-    else method = method + "fractional-occupation Dirac-Coulomb";
-    if(amfiMethod[1])   method = method + "-Gaunt";
-    if(amfiMethod[2])   method = method + "-gauge\n";
-    if(amfiMethod[4])   method = method + " with Gaussian nuclear model";
-    if(amfiMethod[3])   method = "NOTHING: special for x2c1e calculation";
-    cout << "amfi Method input: " << method << endl;
-
-    vector<MatrixXcd> amfiUnique, XUnique;
-    for(int ii = 0; ii < atomListUnique.size(); ii++)
-    {
-        INT_SPH intor(atomListUnique[ii],basisListUnique[ii]);
-        if(amfiMethod[0])
-        {
-            /* Average of configuration */
-            DHF_SPH_CA scfer(intor, "ZMAT", false, false, amfiMethod[1], amfiMethod[2],true, amfiMethod[4]);
-            scfer.convControl = amfiSCFconv;
-            scfer.runSCF(false);
-            amfiUnique.push_back(Rotate::unite_irrep(scfer.get_amfi_unc_ca(intor,false), intor.irrep_list));
-            XUnique.push_back(Rotate::unite_irrep(scfer.get_X(), intor.irrep_list));
-        }
-        else
-        {
-            /* Fractional occupation */
-            DHF_SPH scfer(intor, "ZMAT", false, false, amfiMethod[1], amfiMethod[2],true, amfiMethod[4]);
-            scfer.convControl = amfiSCFconv;
-            scfer.runSCF(false);
-            //amfiUnique.push_back(Rotate::unite_irrep(scfer.x2c2ePCC(),intor.irrep_list));
-            amfiUnique.push_back(Rotate::unite_irrep(scfer.get_amfi_unc(intor,false), intor.irrep_list));
-            XUnique.push_back(Rotate::unite_irrep(scfer.get_X(), intor.irrep_list));
-        }
-        MatrixXcd tmp = Rotate::jspinor2cfour_interface_old(intor.irrep_list);
-        amfiUnique[ii] = tmp.adjoint() * amfiUnique[ii] * tmp;
-        amfiUnique[ii] = Rotate::separate2mCompact(amfiUnique[ii],intor.irrep_list);
-        XUnique[ii] = tmp.adjoint() * XUnique[ii] * tmp;
-        XUnique[ii] = Rotate::separate2mCompact(XUnique[ii],intor.irrep_list);
-    }
-
-    cout << "Constructing amfso integrals...." << endl;
-    int sizeAll = 0, int_tmp = 0;
-    for(int ii = 0; ii < atomList.size(); ii++)
-    {
-        sizeAll += amfiUnique[indexList[ii]].rows();
-    }
-    int sizeAll2 = sizeAll*sizeAll, sizeHalf = sizeAll/2;
-    F_INTERFACE::f_dcomplex amfiAll[sizeAll*sizeAll], XAll[sizeAll*sizeAll];
-    for(int ii = 0; ii < sizeAll2; ii++)
-    {
-        amfiAll[ii].dr = 0.0;
-        amfiAll[ii].di = 0.0;
-        XAll[ii].dr = 0.0;
-        XAll[ii].di = 0.0;
-    }
-    for(int ii = 0; ii < atomList.size(); ii++)
-    {
-        int size_tmp_half = amfiUnique[indexList[ii]].rows()/2;
-        for(int mm = 0; mm < size_tmp_half; mm++)
-        for(int nn = 0; nn < size_tmp_half; nn++)
-        {
-            // transpose for Fortran interface
-            // separate alpha and beta
-            amfiAll[(int_tmp+mm)*sizeAll + int_tmp+nn].dr = amfiUnique[indexList[ii]](nn,mm).real();
-            amfiAll[(int_tmp+mm)*sizeAll + int_tmp+nn].di = amfiUnique[indexList[ii]](nn,mm).imag();
-            amfiAll[(int_tmp+mm+sizeHalf)*sizeAll + int_tmp+nn].dr = amfiUnique[indexList[ii]](nn,size_tmp_half+mm).real();
-            amfiAll[(int_tmp+mm+sizeHalf)*sizeAll + int_tmp+nn].di = amfiUnique[indexList[ii]](nn,size_tmp_half+mm).imag();
-            amfiAll[(int_tmp+mm)*sizeAll + int_tmp+nn+sizeHalf].dr = amfiUnique[indexList[ii]](size_tmp_half+nn,mm).real();
-            amfiAll[(int_tmp+mm)*sizeAll + int_tmp+nn+sizeHalf].di = amfiUnique[indexList[ii]](size_tmp_half+nn,mm).imag();
-            amfiAll[(int_tmp+mm+sizeHalf)*sizeAll + int_tmp+nn+sizeHalf].dr = amfiUnique[indexList[ii]](size_tmp_half+nn,size_tmp_half+mm).real();
-            amfiAll[(int_tmp+mm+sizeHalf)*sizeAll + int_tmp+nn+sizeHalf].di = amfiUnique[indexList[ii]](size_tmp_half+nn,size_tmp_half+mm).imag();
-
-            XAll[(int_tmp+mm)*sizeAll + int_tmp+nn].dr = XUnique[indexList[ii]](nn,mm).real();
-            XAll[(int_tmp+mm)*sizeAll + int_tmp+nn].di = XUnique[indexList[ii]](nn,mm).imag();
-            XAll[(int_tmp+mm+sizeHalf)*sizeAll + int_tmp+nn].dr = XUnique[indexList[ii]](nn,size_tmp_half+mm).real();
-            XAll[(int_tmp+mm+sizeHalf)*sizeAll + int_tmp+nn].di = XUnique[indexList[ii]](nn,size_tmp_half+mm).imag();
-            XAll[(int_tmp+mm)*sizeAll + int_tmp+nn+sizeHalf].dr = XUnique[indexList[ii]](size_tmp_half+nn,mm).real();
-            XAll[(int_tmp+mm)*sizeAll + int_tmp+nn+sizeHalf].di = XUnique[indexList[ii]](size_tmp_half+nn,mm).imag();
-            XAll[(int_tmp+mm+sizeHalf)*sizeAll + int_tmp+nn+sizeHalf].dr = XUnique[indexList[ii]](size_tmp_half+nn,size_tmp_half+mm).real();
-            XAll[(int_tmp+mm+sizeHalf)*sizeAll + int_tmp+nn+sizeHalf].di = XUnique[indexList[ii]](size_tmp_half+nn,size_tmp_half+mm).imag();
-        }
-        int_tmp += amfiUnique[indexList[ii]].rows()/2;
-    }
-
-    int sizeAllReal = 2*sizeAll2;
-    if(amfiMethod[3])
-    {
-        for(int ii = 0; ii < sizeAll2; ii++)
-        {
-            amfiAll[ii].dr = 0.0;
-            amfiAll[ii].di = 0.0;
-        }
-    }
-    cout << "Writing amfso integrals...." << endl;
-    F_INTERFACE::wfile_("X2CMFSOM",(double*)amfiAll,&sizeAllReal);
-    F_INTERFACE::wfile_("X2CATMXM",(double*)XAll,&sizeAllReal);
+    /*
+        amfi_all contains all the AMFSO integrals in the j-spinor basis
+        The transformations to spherical harmonics and real spherical harmonics basis 
+        can be found in namespace Rotate.
+    */
+    vMatrixXd amfi = scfer->get_amfi_unc(intor,twoC);
+    MatrixXd amfi_all = Rotate::unite_irrep(amfi,intor.irrep_list);
+    for(int ii = 0; ii < amfi_all.rows(); ii++)
+    for(int jj = 0; jj < amfi_all.cols(); jj++)
+        cout << ii << "\t" << jj << "\t" << amfi_all(ii,jj) << endl;
 
     return 0;
 }
 
 
 
-void readZMAT(const string& filename, vector<string>& atoms, vector<string>& basis, vector<bool>& amfiMethod, double& SCFconv)
+void readInput(const string filename)
 {
-    bool readAtom = true, readBasis = true, GauNuc = false;
     ifstream ifs;
-    string flags, flags2, basisSet;
     ifs.open(filename);
     if(!ifs)
     {
         cout << "ERROR opening file " << filename << endl;
         exit(99);
     }
-        cout << "Reading ZMAT..." << endl;
-        getline(ifs,flags);
-        cout << flags << endl;
-        while (!ifs.eof())
-        {
-            getline(ifs,flags);
-            cout << flags << endl;
-            flags2 = removeSpaces(flags);
-            if(flags2.size() != 0 && readAtom)
-            {
-                atoms.push_back(stringSplit(flags)[0]);
-                if(atoms[atoms.size()-1] == "X")
-                {
-                    atoms.erase(atoms.end());
-                }
-                for(int ii = 0; ii < atoms[atoms.size()-1].size(); ii++)
-                {
-                    if(atoms[atoms.size()-1][ii] >= 97 && atoms[atoms.size()-1][ii] <= 122)
-                        atoms[atoms.size()-1][ii] = atoms[atoms.size()-1][ii] - 32;
-                }
-            }
-            else
-            {
-                readAtom = false;
-            }
-            if(flags.substr(0,7) == "*CFOUR(" || flags.substr(0,7) == "*ACES2(")    break;
-        }
-        while (!ifs.eof())
-        {
-            getline(ifs,flags);
-            cout << flags << endl;
-            removeSpaces(flags);
-            size_t found = flags.find("BASIS=");
-            if(found != string::npos)
-            {
-                string tmp_s = flags.substr(found+6,flags.size()-6);
-                if(tmp_s.substr(0,7) != "SPECIAL")
-                {
-                    for(int ii = 0; ii < atoms.size(); ii++)
-                    {
-                        basis.push_back(atoms[ii]+":"+tmp_s);
-                    }
-                    readBasis = false;
-                }
-            }
-            found = flags.find("NUC_MODEL=GAUSSIAN");
-            if(found != string::npos)
-            {
-                GauNuc = true;
-            }
-            found = flags.find(")");
-            if(found != string::npos)
-            {
-                break;
-            }
-        }
-        while (!ifs.eof() && readBasis)
-        {
-            getline(ifs,flags);
-            cout << flags << endl;
-            size_t found = flags.find(":");
-            if(found != string::npos)
-            {
-                flags = removeSpaces(flags);
-                basis.push_back(flags);
-                for(int ii = 1; ii < atoms.size(); ii++)
-                {
-                    getline(ifs,flags);
-                    cout << flags << endl;
-                    flags = removeSpaces(flags);
-                    basis.push_back(flags);
-                }
-                break;
-            }
-        }
-        while (!ifs.eof())
-        {
-            getline(ifs,flags);
-            cout << flags << endl;
-            removeSpaces(flags);
-            if(flags.substr(0,12) == "%amfiMethod*")
-            {   
-                //average-of-configuration
-                //gaunt
-                //gauge
-                //set all integrals to zero
-                //Gaussian finite nuclear model
-                for(int ii = 0 ; ii < 4; ii++)
-                {
-                    bool tmp;
-                    ifs >> tmp;
-                    amfiMethod.push_back(tmp);
-                }
-                amfiMethod.push_back(GauNuc);
-                break;
-            }
-            else if(flags.substr(0,8) == "%atmconv")
-            {
-                ifs >> SCFconv;
-            }
-        }
-        if(amfiMethod.size() == 0)
-        {
-            cout << "%amfiMethod is not found in ZMAT and set to default frac-DHF" << endl;
-            amfiMethod.push_back(false); //aoc
-            amfiMethod.push_back(false); //with gaunt
-            amfiMethod.push_back(false); //with gauge
-            amfiMethod.push_back(false); //normal integral
-            amfiMethod.push_back(false); //without Gaussian nuclear model 
-        }
+        ifs >> atomName >> flags;
+        ifs >> basisSet >> flags;
+        ifs >> jobs >> flags;
+        cout << atomName << endl << basisSet << endl << jobs <<endl;
     ifs.close();
-
-    return ;
 }
+

@@ -16,6 +16,7 @@ static clock_t StartTime, EndTime;
 const double speedOfLight = 137.0359991;
 
 typedef Matrix<MatrixXd,-1,1> vMatrixXd;
+typedef Matrix<MatrixXcd,-1,1> vMatrixXcd;
 typedef Matrix<VectorXd,-1,1> vVectorXd;
 typedef Matrix<MatrixXd,-1,-1> mMatrixXd;
 

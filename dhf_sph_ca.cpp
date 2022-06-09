@@ -583,7 +583,7 @@ void DHF_SPH_CA::evaluateFock(MatrixXd& fock_c, MatrixXd& fock_o, const bool& tw
 }
 
 
-vMatrixXd DHF_SPH_CA::get_amfi_unc_ca(INT_SPH& int_sph_, const bool& twoC, const string& Xmethod, const bool& amfi_with_gaunt)
+vMatrixXd DHF_SPH_CA::get_amfi_unc(INT_SPH& int_sph_, const bool& twoC, const string& Xmethod, const bool& amfi_with_gaunt)
 {
     bool amfi_with_gaunt_real = amfi_with_gaunt;
     if(with_gaunt && !amfi_with_gaunt)
@@ -640,7 +640,7 @@ vMatrixXd DHF_SPH_CA::get_amfi_unc_ca(INT_SPH& int_sph_, const bool& twoC, const
     }
     if(twoC)
     {
-        return get_amfi_unc_ca_2c(SSLL_SD, SSSS_SD, amfi_with_gaunt_real);
+        return get_amfi_unc_2c(SSLL_SD, SSSS_SD, amfi_with_gaunt_real);
     }
     else 
     {
@@ -665,12 +665,12 @@ vMatrixXd DHF_SPH_CA::get_amfi_unc_ca(INT_SPH& int_sph_, const bool& twoC, const
         {
             density_t(ir) = density(ir) + f_NM*density_o(ir);
         }
-        return get_amfi_unc(SSLL_SD, SSSS_SD, gauntLSLS_SD, gauntLSSL_SD, density_t, Xmethod, amfi_with_gaunt_real);
+        return DHF_SPH::get_amfi_unc(SSLL_SD, SSSS_SD, gauntLSLS_SD, gauntLSSL_SD, density_t, Xmethod, amfi_with_gaunt_real);
     }
 }
 
 
-vMatrixXd DHF_SPH_CA::get_amfi_unc_ca_2c(const int2eJK& h2eSSLL_SD, const int2eJK& h2eSSSS_SD, const bool& amfi_with_gaunt)
+vMatrixXd DHF_SPH_CA::get_amfi_unc_2c(const int2eJK& h2eSSLL_SD, const int2eJK& h2eSSSS_SD, const bool& amfi_with_gaunt)
 {
     if(!converged)
     {
