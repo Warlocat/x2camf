@@ -77,6 +77,7 @@ public:
     int size_gtoc_spinor, size_gtou_spinor;
 
     INT_SPH(const string& atomName_, const string& basisSet_);
+    INT_SPH(const int atom_number, const int nshell, const int nbas, const Eigen::VectorXi & shell, const Eigen::VectorXd & exp_a);
     ~INT_SPH();
 
     /* Evaluate one-electron integral */

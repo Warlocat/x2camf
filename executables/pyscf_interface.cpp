@@ -68,7 +68,7 @@ int main()
             exit(99);
             DHF_SPH_CA scfer(intor, "amf_input", false, false, amfiMethod[1], amfiMethod[2]);
             scfer.runSCF(false,false);
-            amfiUnique.push_back(Rotate::unite_irrep(scfer.get_amfi_unc_ca(intor,false), irrep_list_main));
+            amfiUnique.push_back(Rotate::unite_irrep(scfer.get_amfi_unc(intor,false), irrep_list_main));
         }
         else
         {

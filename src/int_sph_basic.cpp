@@ -7,6 +7,7 @@
 #include<complex>
 #include<omp.h>
 #include<vector>
+#include "element.h"
 #include"gsl_functions.h"
 #include"int_sph.h"
 using namespace std;
@@ -15,124 +16,11 @@ using namespace Eigen;
 INT_SPH::INT_SPH(const string& atomName_, const string& basisSet_):
 atomName(atomName_), basisSet(basisSet_)
 {
-    if(atomName == "H") atomNumber = 1;
-    else if(atomName == "HE") atomNumber = 2;
-    else if(atomName == "LI") atomNumber = 3;
-    else if(atomName == "BE") atomNumber = 4;
-    else if(atomName == "B") atomNumber = 5;
-    else if(atomName == "C") atomNumber = 6;
-    else if(atomName == "N") atomNumber = 7;
-    else if(atomName == "O") atomNumber = 8;
-    else if(atomName == "F") atomNumber = 9;
-    else if(atomName == "NE") atomNumber = 10;
-    else if(atomName == "NA") atomNumber = 11;
-    else if(atomName == "MG") atomNumber = 12;
-    else if(atomName == "AL") atomNumber = 13;
-    else if(atomName == "SI") atomNumber = 14;
-    else if(atomName == "P") atomNumber = 15;
-    else if(atomName == "S") atomNumber = 16;
-    else if(atomName == "CL") atomNumber = 17;
-    else if(atomName == "AR") atomNumber = 18;
-    else if(atomName == "K") atomNumber = 19;
-    else if(atomName == "CA") atomNumber = 20;
-    else if(atomName == "SC") atomNumber = 21;
-    else if(atomName == "TI") atomNumber = 22;
-    else if(atomName == "V") atomNumber = 23;
-    else if(atomName == "CR") atomNumber = 24;
-    else if(atomName == "MN") atomNumber = 25;
-    else if(atomName == "FE") atomNumber = 26;
-    else if(atomName == "CO") atomNumber = 27;
-    else if(atomName == "NI") atomNumber = 28;
-    else if(atomName == "CU") atomNumber = 29;
-    else if(atomName == "ZN") atomNumber = 30;
-    else if(atomName == "GA") atomNumber = 31;
-    else if(atomName == "GE") atomNumber = 32;
-    else if(atomName == "AS") atomNumber = 33;
-    else if(atomName == "SE") atomNumber = 34;
-    else if(atomName == "BR") atomNumber = 35;
-    else if(atomName == "KR") atomNumber = 36;
-    else if(atomName == "RB") atomNumber = 37;
-    else if(atomName == "SR") atomNumber = 38;
-    else if(atomName == "Y") atomNumber = 39;
-    else if(atomName == "ZR") atomNumber = 40;
-    else if(atomName == "NB") atomNumber = 41;
-    else if(atomName == "MO") atomNumber = 42;
-    else if(atomName == "TC") atomNumber = 43;
-    else if(atomName == "RU") atomNumber = 44;
-    else if(atomName == "RH") atomNumber = 45;
-    else if(atomName == "PD") atomNumber = 46;
-    else if(atomName == "AG") atomNumber = 47;
-    else if(atomName == "CD") atomNumber = 48;
-    else if(atomName == "IN") atomNumber = 49;
-    else if(atomName == "SN") atomNumber = 50;
-    else if(atomName == "SB") atomNumber = 51;
-    else if(atomName == "TE") atomNumber = 52;
-    else if(atomName == "I") atomNumber = 53;
-    else if(atomName == "XE") atomNumber = 54;
-    else if(atomName == "CS") atomNumber = 55;
-    else if(atomName == "BA") atomNumber = 56;
-    else if(atomName == "LA") atomNumber = 57;
-    else if(atomName == "CE") atomNumber = 58;
-    else if(atomName == "PR") atomNumber = 59;
-    else if(atomName == "ND") atomNumber = 60;
-    else if(atomName == "PM") atomNumber = 61;
-    else if(atomName == "SM") atomNumber = 62;
-    else if(atomName == "EU") atomNumber = 63;
-    else if(atomName == "GD") atomNumber = 64;
-    else if(atomName == "TB") atomNumber = 65;
-    else if(atomName == "DY") atomNumber = 66;
-    else if(atomName == "HO") atomNumber = 67;
-    else if(atomName == "ER") atomNumber = 68;
-    else if(atomName == "TM") atomNumber = 69;
-    else if(atomName == "YB") atomNumber = 70;
-    else if(atomName == "LU") atomNumber = 71;
-    else if(atomName == "HF") atomNumber = 72;
-    else if(atomName == "TA") atomNumber = 73;
-    else if(atomName == "W") atomNumber = 74;
-    else if(atomName == "RE") atomNumber = 75;
-    else if(atomName == "OS") atomNumber = 76;
-    else if(atomName == "IR") atomNumber = 77;
-    else if(atomName == "PT") atomNumber = 78;
-    else if(atomName == "AU") atomNumber = 79;
-    else if(atomName == "HG") atomNumber = 80;
-    else if(atomName == "TL") atomNumber = 81;
-    else if(atomName == "PB") atomNumber = 82;
-    else if(atomName == "BI") atomNumber = 83;
-    else if(atomName == "PO") atomNumber = 84;
-    else if(atomName == "AT") atomNumber = 85;
-    else if(atomName == "RN") atomNumber = 86;
-    else if(atomName == "FR") atomNumber = 87;
-    else if(atomName == "RA") atomNumber = 88;
-    else if(atomName == "AC") atomNumber = 89;
-    else if(atomName == "TH") atomNumber = 90;
-    else if(atomName == "PA") atomNumber = 91;
-    else if(atomName == "U") atomNumber = 92;
-    else if(atomName == "NP") atomNumber = 93;
-    else if(atomName == "PU") atomNumber = 94;
-    else if(atomName == "AM") atomNumber = 95;
-    else if(atomName == "CM") atomNumber = 96;
-    else if(atomName == "BK") atomNumber = 97;
-    else if(atomName == "CF") atomNumber = 98;
-    else if(atomName == "ES") atomNumber = 99;
-    else if(atomName == "FM") atomNumber = 100;
-    else if(atomName == "MD") atomNumber = 101;
-    else if(atomName == "NO") atomNumber = 102;
-    else if(atomName == "LR") atomNumber = 103; 
-    else if(atomName == "RF") atomNumber = 104; 
-    else if(atomName == "DB") atomNumber = 105; 
-    else if(atomName == "SG") atomNumber = 106; 
-    else if(atomName == "BH") atomNumber = 107; 
-    else if(atomName == "HS") atomNumber = 108; 
-    else if(atomName == "MT") atomNumber = 109; 
-    else if(atomName == "DS") atomNumber = 110; 
-    else if(atomName == "RG") atomNumber = 111; 
-    else if(atomName == "CN") atomNumber = 112; 
-    else if(atomName == "NH") atomNumber = 113; 
-    else if(atomName == "FL") atomNumber = 114; 
-    else if(atomName == "MC") atomNumber = 115; 
-    else if(atomName == "LV") atomNumber = 116; 
-    else if(atomName == "TS") atomNumber = 117; 
-    else if(atomName == "OG") atomNumber = 118; 
+    auto iter = elem_map.find(atomName);
+    if (iter != elem_map.end())
+    {
+        atomNumber = iter->second;
+    }   
     else 
     {
         cout << "ERROR: Atom name is not supported." << endl;
@@ -145,6 +33,78 @@ atomName(atomName_), basisSet(basisSet_)
     size_gtou_spinor = 2 * size_gtou;
     cout << endl << "Total number of uncontracted spinor: " << size_gtou_spinor << endl;
     cout << "Total number of irreducible representation: " << Nirrep << endl << endl;
+}
+
+INT_SPH::INT_SPH(const int atom_number, const int nshell, const int nbas, const Eigen::VectorXi & shell, const Eigen::VectorXd & exp_a):
+atomNumber(atom_number), size_gtoc(nbas), size_gtou(nbas), size_shell(nshell)
+{
+    atomName = elem_list[atomNumber];
+    MatrixXi orbitalInfo(3, size_shell);
+    shell_list.resize(size_shell);
+    vector<int> shell_info(0, size_shell);
+    vector<int> accumu(0, size_shell);
+    for (int ibas = 0; ibas < nbas; ibas++) {
+        shell_info[shell(ibas)] += 1;
+    }
+    for (int ii = 0; ii < size_shell; ii++) {
+        orbitalInfo(0, ii) = ii;
+        orbitalInfo(1, ii) = shell_info[ii];
+        orbitalInfo(2, ii) = shell_info[ii];
+        if (ii == 0) continue;
+        else {
+            accumu[ii] = accumu[ii - 1] + shell_info[ii - 1];
+        }
+    }
+
+    Nirrep = 0;
+    for(int ii = 0; ii < size_shell; ii++)
+    {
+        Nirrep += 2*(2*orbitalInfo(0,ii)+1);
+    }
+    irrep_list.resize(Nirrep);
+    int tmp_i = 0;
+    for(int ii = 0; ii < size_shell; ii++)
+    {
+        int two_jj = 2*orbitalInfo(0,ii)+1;
+        if(orbitalInfo(0,ii) != 0)
+        {
+            int two_jj = 2*orbitalInfo(0,ii)-1;
+            for(int two_mj = -two_jj; two_mj <= two_jj; two_mj += 2)
+            {
+                irrep_list(tmp_i).l = orbitalInfo(0,ii);
+                irrep_list(tmp_i).size = orbitalInfo(2,ii);
+                irrep_list(tmp_i).two_j = two_jj;
+                irrep_list(tmp_i).two_mj = two_mj;
+                tmp_i++;
+            }
+        }
+        for(int two_mj = -two_jj; two_mj <= two_jj; two_mj += 2)
+        {
+            irrep_list(tmp_i).l = orbitalInfo(0,ii);
+            irrep_list(tmp_i).size = orbitalInfo(2,ii);
+            irrep_list(tmp_i).two_j = two_jj;
+            irrep_list(tmp_i).two_mj = two_mj;
+            tmp_i++;
+        }             
+    }
+
+    size_gtoc = 0;
+    size_gtou = 0;
+    for (int ishell = 0; ishell < size_shell; ishell++) {
+        size_gtou += (2 * orbitalInfo(0,ishell) + 1) * orbitalInfo(2,ishell);
+        size_gtoc += (2 * orbitalInfo(0,ishell) + 1) * orbitalInfo(1,ishell);
+        shell_list(ishell).l = orbitalInfo(0,ishell);
+        shell_list(ishell).coeff.resize(orbitalInfo(2,ishell),orbitalInfo(1,ishell));
+        shell_list(ishell).exp_a.resize(orbitalInfo(2,ishell));
+        shell_list(ishell).norm.resize(orbitalInfo(2,ishell));
+        int offset = accumu[ishell];
+        for (int ii = 0; ii < orbitalInfo(2, ishell); ii++)
+        {
+            shell_list(ishell).exp_a(ii) = exp_a(ii + offset);
+            shell_list(ishell).coeff(ii, ii) = 1.0; // assumes only uncontracted basis given.
+            shell_list(ishell).norm(ii) = sqrt(auxiliary_1e(2*shell_list(ishell).l + 2, 2 * shell_list(ishell).exp_a(ii)));
+        }
+    }
 }
 
 INT_SPH::~INT_SPH()
