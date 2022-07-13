@@ -9,6 +9,9 @@
 #include <pybind11/eigen.h>
 #include <pybind11/pybind11.h>
 
+using namespace Eigen;
+using namespace std;
+
 namespace py = pybind11;
 
 Eigen::MatrixXd amfi(const int input_string, const int atom_number,
@@ -25,6 +28,13 @@ Eigen::MatrixXd amfi(const int input_string, const int atom_number,
     bool gauNuc = input_config[4];
     bool aoc = input_config[5];
     bool allint = true, renormS = false; // internal parameters, don't change.
+    Eigen::VectorXi shell_vec(nbas);
+    Eigen::VectorXd exp_a_vec(nbas);
+    for (int i = 0; i < nbas; i++){
+        shell_vec(i) = shell(i,0);
+        exp_a_vec(i) = exp_a(i,0);
+        cout << shell(i,0) << " " << exp_a(i,0) << endl;
+    }
     INT_SPH intor(atom_number, nshell, nbas, shell, exp_a);
     DHF_SPH *scfer;
     if (aoc)
@@ -34,8 +44,8 @@ Eigen::MatrixXd amfi(const int input_string, const int atom_number,
     }
     else
     {
-        scfer = new DHF_SPH_CA(intor, "input", spinFree, twoC, Gaunt, gauge, allint,
-                               gauNuc);
+        scfer = new DHF_SPH(intor, "input", spinFree, twoC, Gaunt, gauge, allint,
+                            gauNuc);
     }
     scfer->convControl = 1e-10;
     scfer->runSCF(twoC, renormS);
@@ -44,9 +54,8 @@ Eigen::MatrixXd amfi(const int input_string, const int atom_number,
     return amfi_all;
 }
 
-PYBIND11_MODULE(example, m)
+PYBIND11_MODULE(libx2camf, m)
 {
-    m.doc() = "pybind11 example plugin"; // optional module docstring
-
-    m.def("amfi", &amfi, "A function to test");
+    m.doc() = "Python Interface to X2CAMF code."; // optional module docstring
+    m.def("amfi", &amfi, "Compute the AMFI matrix");
 }

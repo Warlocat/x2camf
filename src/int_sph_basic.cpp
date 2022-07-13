@@ -41,8 +41,8 @@ atomNumber(atom_number), size_gtoc(nbas), size_gtou(nbas), size_shell(nshell)
     atomName = elem_list[atomNumber];
     MatrixXi orbitalInfo(3, size_shell);
     shell_list.resize(size_shell);
-    vector<int> shell_info(0, size_shell);
-    vector<int> accumu(0, size_shell);
+    vector<int> shell_info(10, 0);
+    vector<int> accumu(10, 0);
     for (int ibas = 0; ibas < nbas; ibas++) {
         shell_info[shell(ibas)] += 1;
     }
