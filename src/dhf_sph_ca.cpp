@@ -583,52 +583,85 @@ void DHF_SPH_CA::evaluateFock(MatrixXd& fock_c, MatrixXd& fock_o, const bool& tw
 }
 
 
-vMatrixXd DHF_SPH_CA::get_amfi_unc(INT_SPH& int_sph_, const bool& twoC, const string& Xmethod, const bool& amfi_with_gaunt)
+vMatrixXd DHF_SPH_CA::get_amfi_unc(INT_SPH& int_sph_, const bool& twoC, const string& Xmethod, bool amfi_with_gaunt, bool amfi_with_gauge)
 {
-    bool amfi_with_gaunt_real = amfi_with_gaunt;
     if(with_gaunt && !amfi_with_gaunt)
     {
         cout << endl << "ATTENTION! Since gaunt terms are included in SCF, they are automatically calculated in amfi integrals." << endl << endl;
-        amfi_with_gaunt_real = true;
+        amfi_with_gaunt = true;
+        if(with_gauge && !amfi_with_gauge)
+            amfi_with_gauge = true;
     }
-    else if (!with_gaunt && amfi_with_gaunt)
+    if(!with_gaunt && amfi_with_gaunt || twoC)
     {
         StartTime = clock();
         int_sph_.get_h2e_JK_gaunt_direct(gauntLSLS_JK,gauntLSSL_JK);
+        EndTime = clock();
+        cout << "2e-integral-Gaunt finished in " << (EndTime - StartTime) / (double)CLOCKS_PER_SEC << " seconds." << endl << endl; 
+        if(amfi_with_gauge)
+        {
+            int2eJK tmp1, tmp2, tmp3, tmp4;
+            int_sph_.get_h2e_JK_gauge_direct(tmp1,tmp2);
+            for(int ir = 0; ir < Nirrep_compact; ir++)
+            for(int jr = 0; jr < Nirrep_compact; jr++)
+            {
+                int size_i = irrep_list(compact2all(ir)).size, size_j = irrep_list(compact2all(jr)).size;
+                for(int mm = 0; mm < size_i; mm++)
+                for(int nn = 0; nn < size_i; nn++)
+                for(int ss = 0; ss < size_j; ss++)
+                for(int rr = 0; rr < size_j; rr++)
+                {
+                    int emn = mm*size_i+nn, esr = ss*size_j+rr, emr = mm*size_j+rr, esn = ss*size_i+nn;
+                    gauntLSLS_JK.J[ir][jr][emn][esr] -= tmp1.J[ir][jr][emn][esr];
+                    gauntLSLS_JK.K[ir][jr][emr][esn] -= tmp1.K[ir][jr][emr][esn];
+                    gauntLSSL_JK.J[ir][jr][emn][esr] -= tmp2.J[ir][jr][emn][esr];
+                    gauntLSSL_JK.K[ir][jr][emr][esn] -= tmp2.K[ir][jr][emr][esn];
+                }
+            }
+            EndTime = clock();
+            cout << "2e-integral-gauge finished in " << (EndTime - StartTime) / (double)CLOCKS_PER_SEC << " seconds." << endl << endl;  
+        }
         symmetrize_JK_gaunt(gauntLSLS_JK,Nirrep_compact);
         if(renormalizedSmall)
         {
             renormalize_h2e(gauntLSLS_JK,"LSLS");
             renormalize_h2e(gauntLSSL_JK,"LSSL");
         }
-        EndTime = clock();
-        cout << "2e-integral-Gaunt finished in " << (EndTime - StartTime) / (double)CLOCKS_PER_SEC << " seconds." << endl << endl; 
+        
+    }
+    if(amfi_with_gauge && !amfi_with_gaunt)
+    {
+        cout << "ERROR: When gauge term is included, the Gaunt term must be included." << endl;
+        exit(99);
     }
     int2eJK gauntLSLS_SD, gauntLSSL_SD;
-    if(amfi_with_gaunt_real)
+    if(amfi_with_gaunt)
     {
-        int_sph_.get_h2e_JK_gaunt_direct(gauntLSLS_SD,gauntLSSL_SD,-1,true);
-        if(renormalizedSmall)
-        {
-            renormalize_h2e(gauntLSLS_SD,"LSLS");
-            renormalize_h2e(gauntLSSL_SD,"LSSL");
-        }
-        symmetrize_JK_gaunt(gauntLSLS_SD,Nirrep_compact);
-        for(int ir = 0; ir < Nirrep_compact; ir++)
-        for(int jr = 0; jr < Nirrep_compact; jr++)
-        {
-            int size_i = irrep_list(compact2all(ir)).size, size_j = irrep_list(compact2all(jr)).size;
-            #pragma omp parallel  for
-            for(int nn = 0; nn < size_i*size_i*size_j*size_j; nn++)
-            {
-                int kk = nn / (size_j * size_j), ll = nn - kk*size_j*size_j;
-                gauntLSLS_SD.J[ir][jr][kk][ll] = gauntLSLS_JK.J[ir][jr][kk][ll] - gauntLSLS_SD.J[ir][jr][kk][ll];
-                gauntLSSL_SD.J[ir][jr][kk][ll] = gauntLSSL_JK.J[ir][jr][kk][ll] - gauntLSSL_SD.J[ir][jr][kk][ll];
-                kk = nn / (size_i * size_j), ll = nn - kk*size_i*size_j;
-                gauntLSLS_SD.K[ir][jr][kk][ll] = gauntLSLS_JK.K[ir][jr][kk][ll] - gauntLSLS_SD.K[ir][jr][kk][ll];
-                gauntLSSL_SD.K[ir][jr][kk][ll] = gauntLSSL_JK.K[ir][jr][kk][ll] - gauntLSSL_SD.K[ir][jr][kk][ll];
-            }
-        }
+        /* Enable SD gaunt */ 
+        // int_sph_.get_h2e_JK_gaunt_direct(gauntLSLS_SD,gauntLSSL_SD,-1,true);
+        // if(renormalizedSmall)
+        // {
+        //     renormalize_h2e(gauntLSLS_SD,"LSLS");
+        //     renormalize_h2e(gauntLSSL_SD,"LSSL");
+        // }
+        // symmetrize_JK_gaunt(gauntLSLS_SD,Nirrep_compact);
+        // for(int ir = 0; ir < Nirrep_compact; ir++)
+        // for(int jr = 0; jr < Nirrep_compact; jr++)
+        // {
+        //     int size_i = irrep_list(compact2all(ir)).size, size_j = irrep_list(compact2all(jr)).size;
+        //     #pragma omp parallel  for
+        //     for(int nn = 0; nn < size_i*size_i*size_j*size_j; nn++)
+        //     {
+        //         int kk = nn / (size_j * size_j), ll = nn - kk*size_j*size_j;
+        //         gauntLSLS_SD.J[ir][jr][kk][ll] = gauntLSLS_JK.J[ir][jr][kk][ll] - gauntLSLS_SD.J[ir][jr][kk][ll];
+        //         gauntLSSL_SD.J[ir][jr][kk][ll] = gauntLSSL_JK.J[ir][jr][kk][ll] - gauntLSSL_SD.J[ir][jr][kk][ll];
+        //         kk = nn / (size_i * size_j), ll = nn - kk*size_i*size_j;
+        //         gauntLSLS_SD.K[ir][jr][kk][ll] = gauntLSLS_JK.K[ir][jr][kk][ll] - gauntLSLS_SD.K[ir][jr][kk][ll];
+        //         gauntLSSL_SD.K[ir][jr][kk][ll] = gauntLSSL_JK.K[ir][jr][kk][ll] - gauntLSSL_SD.K[ir][jr][kk][ll];
+        //     }
+        // }
+        gauntLSLS_SD = gauntLSLS_JK;
+        gauntLSSL_SD = gauntLSSL_JK;
     }
     int2eJK SSLL_SD, SSSS_SD;
     int_sph_.get_h2eSD_JK_direct(SSLL_SD, SSSS_SD);
@@ -640,7 +673,7 @@ vMatrixXd DHF_SPH_CA::get_amfi_unc(INT_SPH& int_sph_, const bool& twoC, const st
     }
     if(twoC)
     {
-        return get_amfi_unc_2c(SSLL_SD, SSSS_SD, amfi_with_gaunt_real);
+        return get_amfi_unc_2c(SSLL_SD, SSSS_SD, amfi_with_gaunt);
     }
     else 
     {
@@ -665,7 +698,7 @@ vMatrixXd DHF_SPH_CA::get_amfi_unc(INT_SPH& int_sph_, const bool& twoC, const st
         {
             density_t(ir) = density(ir) + f_NM*density_o(ir);
         }
-        return DHF_SPH::get_amfi_unc(SSLL_SD, SSSS_SD, gauntLSLS_SD, gauntLSSL_SD, density_t, Xmethod, amfi_with_gaunt_real);
+        return DHF_SPH::get_amfi_unc(SSLL_SD, SSSS_SD, gauntLSLS_SD, gauntLSSL_SD, density_t, Xmethod, amfi_with_gaunt);
     }
 }
 
