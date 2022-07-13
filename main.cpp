@@ -24,7 +24,7 @@ void readInput(const string filename);
 
 int main()
 {
-    bool spinFree = false, twoC = false, Gaunt = true, gauge = true, allint = true, gauNuc = false, aoc = false, renormS = false;
+    bool spinFree = false, twoC = false, Gaunt = true, gauge = true, allint = true, gauNuc = false, aoc = true, renormS = false;
     readInput("input");
     INT_SPH intor(atomName, basisSet);
     DHF_SPH* scfer;

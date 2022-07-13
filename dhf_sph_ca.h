@@ -27,7 +27,7 @@ public:
     virtual ~DHF_SPH_CA();
     virtual void runSCF(const bool& twoC = false, const bool& renormSmall = true);
 
-    vMatrixXd get_amfi_unc(INT_SPH& int_sph_, const bool& twoC = false, const string& Xmethod = "partialFock", const bool& amfi_with_gaunt = false);
+    vMatrixXd get_amfi_unc(INT_SPH& int_sph_, const bool& twoC = false, const string& Xmethod = "partialFock", bool amfi_with_gaunt = false, bool amfi_with_gauge = false);
     vMatrixXd get_amfi_unc_2c(const int2eJK& h2eSSLL_SD, const int2eJK& h2eSSSS_SD, const bool& amfi_with_gaunt = false);
 
     void basisGenerator(string basisName, string filename, const INT_SPH& intor, const INT_SPH& intorAll);
