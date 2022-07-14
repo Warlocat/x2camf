@@ -6,7 +6,6 @@
 #include<cmath>
 #include<complex>
 #include<omp.h>
-#include"gsl_functions.h"
 #include"general.h"
 using namespace std;
 using namespace Eigen;
@@ -67,67 +66,6 @@ double factorial(const int& n)
             exit(99);
         }
         return n * factorial(n - 1);
-    }
-}
-
-/*
-    Wigner 3j coefficients with J = l1 + l2 + l3 is even
-*/
-double wigner_3j(const int& l1, const int& l2, const int& l3, const int& m1, const int& m2, const int& m3)
-{
-    // return gsl_sf_coupling_3j(2*l1,2*l2,2*l3,2*m1,2*m2,2*m3);
-
-    if(l3 > l1 + l2 || l3 < abs(l1 - l2) || m1 + m2 + m3 != 0 || abs(m1) > abs(l1) || abs(m2) > abs(l2) || abs(m3) > abs(l3))
-    {
-        return 0.0;
-    }
-    else if(m1 == 0 && m2 == 0 && m3 == 0)
-    {
-        return wigner_3j_zeroM(l1,l2,l3);
-    }
-    else
-    {
-        Vector3i L(l1,l2,l3), M(m1,m2,m3);
-        int tmp, Lmax = L.maxCoeff();
-        for(int ii = 0; ii <= 1; ii++)
-        {
-            if(L(ii) == Lmax)
-            {
-                tmp = L(ii);
-                L(ii) = L(2);
-                L(2) = tmp;
-                tmp = M(ii);
-                M(ii) = M(2);
-                M(2) = tmp;
-                break;
-            }
-        }
-
-        if(L(2) == L(0) + L(1))
-        {
-            return pow(-1, L(0) - L(1) - M(2)) * sqrt(factorial(2*L(0)) * factorial(2*L(1)) / factorial(2*L(2) + 1) * factorial(L(2) - M(2)) * factorial(L(2) + M(2)) / factorial(L(0)+M(0)) / factorial(L(0)-M(0)) / factorial(L(1)+M(1)) / factorial(L(1)-M(1)));
-        }
-        else
-        {
-            return gsl_sf_coupling_3j(2*L(0),2*L(1),2*L(2),2*M(0),2*M(1),2*M(2));
-        }
-        
-    }
-}
-/*
-    Wigner 3j coefficients with m1 = m2 = m3 = 0
-*/
-double wigner_3j_zeroM(const int& l1, const int& l2, const int& l3)
-{
-    int J = l1+l2+l3, g = J/2;
-    if(J%2 || l3 > l1 + l2 || l3 < abs(l1 - l2))
-    {
-        return 0.0;
-    }
-    else
-    {
-        return pow(-1,g) * sqrt(factorial(J - 2*l1) * factorial(J - 2*l2) * factorial(J - 2*l3) / factorial(J + 1)) 
-                * factorial(g) / factorial(g-l1) / factorial(g-l2) / factorial(g-l3);
     }
 }
 
@@ -635,3 +573,165 @@ MatrixXcd Rotate::jspinor2cfour_interface_old(const Matrix<irrep_jm, Dynamic, 1>
 }
 
 
+
+bool CG::triangle_fails(const int two_j1, const int two_j2, const int two_j3)
+{
+    return ( (( two_j1 + two_j2 + two_j3 ) % 2 != 0 ) || 
+             ( two_j1 + two_j2 < two_j3 ) || 
+             ( abs( two_j1 - two_j2 ) > two_j3 ) );
+}
+double CG::sqrt_delta(const int two_j1, const int two_j2, const int two_j3)
+{
+    return ( CG::sqrt_fact[ ( two_j1 + two_j2 - two_j3 ) / 2 ]
+           * CG::sqrt_fact[ ( two_j1 - two_j2 + two_j3 ) / 2 ]
+           * CG::sqrt_fact[ (-two_j1 + two_j2 + two_j3 ) / 2 ]
+           / CG::sqrt_fact[ ( two_j1 + two_j2 + two_j3 ) / 2 + 1 ] );
+}
+/*
+    Wigner 3j coefficients with l1,l2,l3 are integers
+*/
+double CG::wigner_3j_int(const int& l1, const int& l2, const int& l3, const int& m1, const int& m2, const int& m3)
+{
+    // return CG::wigner_3j(2*l1,2*l2,2*l3,2*m1,2*m2,2*m3);
+
+    if(l3 > l1 + l2 || l3 < abs(l1 - l2) || m1 + m2 + m3 != 0 || abs(m1) > abs(l1) || abs(m2) > abs(l2) || abs(m3) > abs(l3))
+    {
+        return 0.0;
+    }
+    else if(m1 == 0 && m2 == 0 && m3 == 0)
+    {
+        return wigner_3j_zeroM(l1,l2,l3);
+    }
+    else
+    {
+        Vector3i L(l1,l2,l3), M(m1,m2,m3);
+        int tmp, Lmax = L.maxCoeff();
+        for(int ii = 0; ii <= 1; ii++)
+        {
+            if(L(ii) == Lmax)
+            {
+                tmp = L(ii);
+                L(ii) = L(2);
+                L(2) = tmp;
+                tmp = M(ii);
+                M(ii) = M(2);
+                M(2) = tmp;
+                break;
+            }
+        }
+
+        if(L(2) == L(0) + L(1))
+        {
+            return pow(-1, L(0) - L(1) - M(2)) * sqrt(factorial(2*L(0)) * factorial(2*L(1)) / factorial(2*L(2) + 1) * factorial(L(2) - M(2)) * factorial(L(2) + M(2)) / factorial(L(0)+M(0)) / factorial(L(0)-M(0)) / factorial(L(1)+M(1)) / factorial(L(1)-M(1)));
+        }
+        else
+        {
+            return CG::wigner_3j(2*L(0),2*L(1),2*L(2),2*M(0),2*M(1),2*M(2));
+        }
+        
+    }
+}
+/*
+    Wigner 3j coefficients with m1 = m2 = m3 = 0
+*/
+double CG::wigner_3j_zeroM(const int& l1, const int& l2, const int& l3)
+{
+    int J = l1+l2+l3, g = J/2;
+    if(J%2 || l3 > l1 + l2 || l3 < abs(l1 - l2))
+    {
+        return 0.0;
+    }
+    else
+    {
+        return pow(-1,g) * sqrt(factorial(J - 2*l1) * factorial(J - 2*l2) * factorial(J - 2*l3) / factorial(J + 1)) 
+                * factorial(g) / factorial(g-l1) / factorial(g-l2) / factorial(g-l3);
+    }
+}
+/*
+    General Wigner nj coefficients
+*/
+double CG::wigner_3j(const int& tj1, const int& tj2, const int& tj3, const int& tm1, const int& tm2, const int& tm3)
+{
+    /* Formula (C.21) in Albert Messiah - Quantum Mechanics */
+    assert(tj1 >= 0 && tj2 >= 0 && tj3 >= 0);
+    if ( triangle_fails(tj1, tj2, tj3) || (tm1 + tm2 + tm3 != 0) ||
+         (tj1 + tm1) % 2 != 0 || (tj2 + tm2 ) % 2 != 0 || (tj3 + tm3) % 2 != 0 ||
+         abs(tm1) > tj1 || abs(tm2) > tj2 || abs(tm3) > tj3)    return 0.0;
+
+    int tmp_p1 = (tj3 - tj2 + tm1) / 2;
+    int tmp_p2 = (tj3 - tj1 - tm2) / 2;
+    int tmp_m1 = (tj1 + tj2 - tj3) / 2;
+    int tmp_m2 = (tj1 - tm1) / 2;
+    int tmp_m3 = (tj2 + tm2) / 2;
+    int max_p = max(0,max(-tmp_p1,-tmp_p2));
+    int min_m = min(tmp_m1,min(tmp_m2,tmp_m3));
+    if(min_m < max_p) return 0.0;
+    
+    double result = 0.0, tmp_d;
+    for(int tt = max_p; tt <= min_m; tt++)
+    {
+        tmp_d = CG::sqrt_fact[tt]*CG::sqrt_fact[tmp_p1+tt]*CG::sqrt_fact[tmp_p2+tt]*CG::sqrt_fact[tmp_m1-tt]*CG::sqrt_fact[tmp_m2-tt]*CG::sqrt_fact[tmp_m3-tt];
+        tmp_d = pow(-1,tt)/tmp_d/tmp_d;
+        // tmp_d = pow(-1,tt)/factorial(tt)/factorial(tmp_p1+tt)/factorial(tmp_p2+tt)/factorial(tmp_m1-tt)/factorial(tmp_m2-tt)/factorial(tmp_m3-tt);
+        result += tmp_d;
+    }
+
+    return result * pow(-1,(tj1-tj2-tm3)/2) * CG::sqrt_delta(tj1,tj2,tj3) 
+    * CG::sqrt_fact[(tj1+tm1)/2] * CG::sqrt_fact[(tj1-tm1)/2] * CG::sqrt_fact[(tj2+tm2)/2]
+    * CG::sqrt_fact[(tj2-tm2)/2] * CG::sqrt_fact[(tj3+tm3)/2] * CG::sqrt_fact[(tj3-tm3)/2];
+}
+double CG::wigner_6j(const int& tj1, const int& tj2, const int& tj3, const int& tj4, const int& tj5, const int& tj6)
+{
+    /* Formula (C.36) in Albert Messiah - Quantum Mechanics */
+    assert(tj1 >= 0 && tj2 >= 0 && tj3 >= 0 && tj4 >= 0 && tj5 >= 0 && tj6 >= 0);
+    if( CG::triangle_fails(tj1, tj2, tj3) ||
+        CG::triangle_fails(tj4, tj5, tj3) ||
+        CG::triangle_fails(tj4, tj2, tj6) ||
+        CG::triangle_fails(tj1, tj5, tj6) )  return 0.0; 
+    
+    int tmp_p1 = (- tj1 - tj2 - tj3) / 2;
+    int tmp_p2 = (- tj1 - tj5 - tj6) / 2;
+    int tmp_p3 = (- tj4 - tj2 - tj6) / 2;
+    int tmp_p4 = (- tj4 - tj5 - tj3) / 2;
+    int tmp_m1 = (tj1 + tj2 + tj4 + tj5) / 2;
+    int tmp_m2 = (tj1 + tj3 + tj4 + tj6) / 2;
+    int tmp_m3 = (tj2 + tj3 + tj5 + tj6) / 2;
+    int max_p = max(-tmp_p1,max(-tmp_p2,max(-tmp_p3,-tmp_p4)));
+    int min_m = min(tmp_m1,min(tmp_m2,tmp_m3));
+    if(min_m < max_p) return 0.0;
+
+    double result = 0.0, tmp_d;
+    for(int tt = max_p; tt <= min_m; tt++)
+    {
+        tmp_d = CG::sqrt_fact[tmp_p1+tt]*CG::sqrt_fact[tmp_p2+tt]*CG::sqrt_fact[tmp_p3+tt]*CG::sqrt_fact[tmp_p4+tt]*CG::sqrt_fact[tmp_m1-tt]*CG::sqrt_fact[tmp_m2-tt]*CG::sqrt_fact[tmp_m3-tt];
+        tmp_d = pow(-1,tt)*factorial(tt+1)/tmp_d/tmp_d;
+        result += tmp_d;
+    }
+
+    return result * CG::sqrt_delta(tj1,tj2,tj3) * CG::sqrt_delta(tj1,tj5,tj6) 
+                  * CG::sqrt_delta(tj4,tj2,tj6) * CG::sqrt_delta(tj4,tj5,tj3);
+}
+double CG::wigner_9j(const int& tj1, const int& tj2, const int& tj3, const int& tj4, const int& tj5, const int& tj6, const int& tj7, const int& tj8, const int& tj9)
+{
+    /* Formula (C.41) in Albert Messiah - Quantum Mechanics */
+    assert(tj1 >= 0 && tj2 >= 0 && tj3 >= 0 && tj4 >= 0 && tj5 >= 0 && tj6 >= 0 && tj7 >= 0 && tj8 >= 0 && tj9 >= 0);
+    if( CG::triangle_fails(tj1, tj2, tj3) ||
+        CG::triangle_fails(tj4, tj5, tj6) ||
+        CG::triangle_fails(tj7, tj8, tj9) ||
+        CG::triangle_fails(tj1, tj4, tj7) ||
+        CG::triangle_fails(tj2, tj5, tj8) ||
+        CG::triangle_fails(tj3, tj6, tj9) )  return 0.0;
+
+    int min_tg = max(abs(tj1-tj9),max(abs(tj2-tj6),abs(tj4-tj8)));
+    int max_tg = min(tj1+tj9,min(tj2+tj6,tj4+tj8));
+    int sign = pow(-1,min_tg);
+
+    double result = 0.0, tmp_d;
+    for(int tg = min_tg; tg <= max_tg; tg += 2)
+    {
+        tmp_d = CG::wigner_6j(tj1,tj2,tj3,tj6,tj9,tg)*CG::wigner_6j(tj4,tj5,tj6,tj2,tg,tj8)*CG::wigner_6j(tj7,tj8,tj9,tg,tj1,tj4);
+        result += (tg+1) * tmp_d;
+    }
+
+    return result * sign;
+}

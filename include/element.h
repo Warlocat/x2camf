@@ -1,3 +1,6 @@
+#ifndef ELEMENT_H_
+#define ELEMENT_H_
+
 #include <map>
 #include <string>
 #include <vector>
@@ -20,3 +23,5 @@ const vector<string> elem_list {
     "MD", "NO", "LR", "RF", "DB", "SG", "BH", "HS", "MT", "DS",
     "RG", "CN", "NH", "FL", "MC", "LV", "TS", "OG"
 };
+
+#endif

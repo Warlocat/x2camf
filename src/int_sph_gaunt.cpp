@@ -6,7 +6,6 @@
 #include<cmath>
 #include<complex>
 #include<omp.h>
-#include"gsl_functions.h"
 #include"int_sph.h"
 using namespace std;
 using namespace Eigen;
@@ -50,17 +49,17 @@ double INT_SPH::int2e_get_angular_gaunt_LSLS(const int& l1, const int& two_m1, c
     int l2p = l2+s2, l4p = l4+s4;
     for(int MM = -LL; MM <= LL; MM++)
     {
-        double tmp1 = s1*sqrt(l1+0.5+s1*two_m1/2.0)*sqrt(l2p+0.5+s2*two_m2/2.0)*wigner_3j(l1,LL,l2p,(-two_m1+1)/2,-MM,(two_m2+1)/2);
-        double tmp2 = s2*sqrt(l1+0.5-s1*two_m1/2.0)*sqrt(l2p+0.5-s2*two_m2/2.0)*wigner_3j(l1,LL,l2p,(-two_m1-1)/2,-MM,(two_m2-1)/2);
-        double tmp3 = s3*sqrt(l3+0.5+s3*two_m3/2.0)*sqrt(l4p+0.5+s4*two_m4/2.0)*wigner_3j(l3,LL,l4p,(-two_m3+1)/2,MM,(two_m4+1)/2);
-        double tmp4 = s4*sqrt(l3+0.5-s3*two_m3/2.0)*sqrt(l4p+0.5-s4*two_m4/2.0)*wigner_3j(l3,LL,l4p,(-two_m3-1)/2,MM,(two_m4-1)/2);
-        double tmp5 = s1*s2*sqrt(l1+0.5+s1*two_m1/2.0)*sqrt(l2p+0.5-s2*two_m2/2.0)*wigner_3j(l1,LL,l2p,(-two_m1+1)/2,-MM,(two_m2-1)/2);
-        double tmp6 = sqrt(l1+0.5-s1*two_m1/2.0)*sqrt(l2p+0.5+s2*two_m2/2.0)*wigner_3j(l1,LL,l2p,(-two_m1-1)/2,-MM,(two_m2+1)/2);
-        double tmp7 = s3*s4*sqrt(l3+0.5+s3*two_m3/2.0)*sqrt(l4p+0.5-s4*two_m4/2.0)*wigner_3j(l3,LL,l4p,(-two_m3+1)/2,MM,(two_m4-1)/2);
-        double tmp8 = sqrt(l3+0.5-s3*two_m3/2.0)*sqrt(l4p+0.5+s4*two_m4/2.0)*wigner_3j(l3,LL,l4p,(-two_m3-1)/2,MM,(two_m4+1)/2);
+        double tmp1 = s1*sqrt(l1+0.5+s1*two_m1/2.0)*sqrt(l2p+0.5+s2*two_m2/2.0)*CG::wigner_3j_int(l1,LL,l2p,(-two_m1+1)/2,-MM,(two_m2+1)/2);
+        double tmp2 = s2*sqrt(l1+0.5-s1*two_m1/2.0)*sqrt(l2p+0.5-s2*two_m2/2.0)*CG::wigner_3j_int(l1,LL,l2p,(-two_m1-1)/2,-MM,(two_m2-1)/2);
+        double tmp3 = s3*sqrt(l3+0.5+s3*two_m3/2.0)*sqrt(l4p+0.5+s4*two_m4/2.0)*CG::wigner_3j_int(l3,LL,l4p,(-two_m3+1)/2,MM,(two_m4+1)/2);
+        double tmp4 = s4*sqrt(l3+0.5-s3*two_m3/2.0)*sqrt(l4p+0.5-s4*two_m4/2.0)*CG::wigner_3j_int(l3,LL,l4p,(-two_m3-1)/2,MM,(two_m4-1)/2);
+        double tmp5 = s1*s2*sqrt(l1+0.5+s1*two_m1/2.0)*sqrt(l2p+0.5-s2*two_m2/2.0)*CG::wigner_3j_int(l1,LL,l2p,(-two_m1+1)/2,-MM,(two_m2-1)/2);
+        double tmp6 = sqrt(l1+0.5-s1*two_m1/2.0)*sqrt(l2p+0.5+s2*two_m2/2.0)*CG::wigner_3j_int(l1,LL,l2p,(-two_m1-1)/2,-MM,(two_m2+1)/2);
+        double tmp7 = s3*s4*sqrt(l3+0.5+s3*two_m3/2.0)*sqrt(l4p+0.5-s4*two_m4/2.0)*CG::wigner_3j_int(l3,LL,l4p,(-two_m3+1)/2,MM,(two_m4-1)/2);
+        double tmp8 = sqrt(l3+0.5-s3*two_m3/2.0)*sqrt(l4p+0.5+s4*two_m4/2.0)*CG::wigner_3j_int(l3,LL,l4p,(-two_m3-1)/2,MM,(two_m4+1)/2);
         angular += pow(-1,MM)*(2.0*tmp1*tmp4 + 2.0*tmp2*tmp3 + (-tmp5+tmp6)*(-tmp7+tmp8) );
     }
-    return angular * pow(-1,(two_m1+two_m3)/2+1) * wigner_3j_zeroM(l1,LL,l2p)*wigner_3j_zeroM(l3,LL,l4p);
+    return angular * pow(-1,(two_m1+two_m3)/2+1) * CG::wigner_3j_zeroM(l1,LL,l2p)*CG::wigner_3j_zeroM(l3,LL,l4p);
 }
 double INT_SPH::int2e_get_angular_gaunt_LSSL(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& l3, const int& two_m3, const int& s3, const int& l4, const int& two_m4, const int& s4, const int& LL) const
 {
@@ -68,17 +67,17 @@ double INT_SPH::int2e_get_angular_gaunt_LSSL(const int& l1, const int& two_m1, c
     int l2p = l2+s2, l3p = l3+s3;
     for(int MM = -LL; MM <= LL; MM++)
     {
-        double tmp1 = s1*sqrt(l1+0.5+s1*two_m1/2.0)*sqrt(l2p+0.5+s2*two_m2/2.0)*wigner_3j(l1,LL,l2p,(-two_m1+1)/2,-MM,(two_m2+1)/2);
-        double tmp2 = s2*sqrt(l1+0.5-s1*two_m1/2.0)*sqrt(l2p+0.5-s2*two_m2/2.0)*wigner_3j(l1,LL,l2p,(-two_m1-1)/2,-MM,(two_m2-1)/2);
-        double tmp3 = s3*sqrt(l3p+0.5-s3*two_m3/2.0)*sqrt(l4+0.5-s4*two_m4/2.0)*wigner_3j(l3p,LL,l4,(-two_m3+1)/2,MM,(two_m4+1)/2);
-        double tmp4 = s4*sqrt(l3p+0.5+s3*two_m3/2.0)*sqrt(l4+0.5+s4*two_m4/2.0)*wigner_3j(l3p,LL,l4,(-two_m3-1)/2,MM,(two_m4-1)/2);
-        double tmp5 = s1*s2*sqrt(l1+0.5+s1*two_m1/2.0)*sqrt(l2p+0.5-s2*two_m2/2.0)*wigner_3j(l1,LL,l2p,(-two_m1+1)/2,-MM,(two_m2-1)/2);
-        double tmp6 = sqrt(l1+0.5-s1*two_m1/2.0)*sqrt(l2p+0.5+s2*two_m2/2.0)*wigner_3j(l1,LL,l2p,(-two_m1-1)/2,-MM,(two_m2+1)/2);
-        double tmp7 = s3*s4*sqrt(l3p+0.5-s3*two_m3/2.0)*sqrt(l4+0.5+s4*two_m4/2.0)*wigner_3j(l3p,LL,l4,(-two_m3+1)/2,MM,(two_m4-1)/2);
-        double tmp8 = sqrt(l3p+0.5+s3*two_m3/2.0)*sqrt(l4+0.5-s4*two_m4/2.0)*wigner_3j(l3p,LL,l4,(-two_m3-1)/2,MM,(two_m4+1)/2);
+        double tmp1 = s1*sqrt(l1+0.5+s1*two_m1/2.0)*sqrt(l2p+0.5+s2*two_m2/2.0)*CG::wigner_3j_int(l1,LL,l2p,(-two_m1+1)/2,-MM,(two_m2+1)/2);
+        double tmp2 = s2*sqrt(l1+0.5-s1*two_m1/2.0)*sqrt(l2p+0.5-s2*two_m2/2.0)*CG::wigner_3j_int(l1,LL,l2p,(-two_m1-1)/2,-MM,(two_m2-1)/2);
+        double tmp3 = s3*sqrt(l3p+0.5-s3*two_m3/2.0)*sqrt(l4+0.5-s4*two_m4/2.0)*CG::wigner_3j_int(l3p,LL,l4,(-two_m3+1)/2,MM,(two_m4+1)/2);
+        double tmp4 = s4*sqrt(l3p+0.5+s3*two_m3/2.0)*sqrt(l4+0.5+s4*two_m4/2.0)*CG::wigner_3j_int(l3p,LL,l4,(-two_m3-1)/2,MM,(two_m4-1)/2);
+        double tmp5 = s1*s2*sqrt(l1+0.5+s1*two_m1/2.0)*sqrt(l2p+0.5-s2*two_m2/2.0)*CG::wigner_3j_int(l1,LL,l2p,(-two_m1+1)/2,-MM,(two_m2-1)/2);
+        double tmp6 = sqrt(l1+0.5-s1*two_m1/2.0)*sqrt(l2p+0.5+s2*two_m2/2.0)*CG::wigner_3j_int(l1,LL,l2p,(-two_m1-1)/2,-MM,(two_m2+1)/2);
+        double tmp7 = s3*s4*sqrt(l3p+0.5-s3*two_m3/2.0)*sqrt(l4+0.5+s4*two_m4/2.0)*CG::wigner_3j_int(l3p,LL,l4,(-two_m3+1)/2,MM,(two_m4-1)/2);
+        double tmp8 = sqrt(l3p+0.5+s3*two_m3/2.0)*sqrt(l4+0.5-s4*two_m4/2.0)*CG::wigner_3j_int(l3p,LL,l4,(-two_m3-1)/2,MM,(two_m4+1)/2);
         angular += pow(-1,MM)*(2.0*tmp1*tmp4 + 2.0*tmp2*tmp3 + (-tmp5+tmp6)*(tmp7-tmp8) );
     }
-    return angular * pow(-1,(two_m1+two_m3)/2) * wigner_3j_zeroM(l1,LL,l2p)*wigner_3j_zeroM(l3p,LL,l4);
+    return angular * pow(-1,(two_m1+two_m3)/2) * CG::wigner_3j_zeroM(l1,LL,l2p)*CG::wigner_3j_zeroM(l3p,LL,l4);
 }
 /*
     Another implementation using wigner-9j symbol
@@ -89,7 +88,7 @@ double INT_SPH::int2e_get_angular_gaunt_LSLS_9j(const int& l1, const int& two_m1
     double angular = 0.0;
     int l2p = l2+s2, l4p = l4+s4;
     int two_j1 = 2*l1+s1, two_j2 = 2*l2+s2, two_j3 = 2*l3+s3, two_j4 = 2*l4+s4, vv = LL;
-    double threeJ1 = wigner_3j_zeroM(l2p,vv,l1), threeJ2 = wigner_3j_zeroM(l3,vv,l4p), tmp;
+    double threeJ1 = CG::wigner_3j_zeroM(l2p,vv,l1), threeJ2 = CG::wigner_3j_zeroM(l3,vv,l4p), tmp;
     for(int LLL = abs(LL-1); LLL <= LL+1; LLL++)
     {
         tmp = 0.0;
@@ -97,8 +96,8 @@ double INT_SPH::int2e_get_angular_gaunt_LSLS_9j(const int& l1, const int& two_m1
         double rme2 = int2e_get_angularX_RME(two_j3,l3,two_j4,l4p,LLL,vv,threeJ2);
         for(int MMM = -LLL; MMM <= LLL; MMM++)
         {
-            tmp += gsl_sf_coupling_3j(two_j2,2*LLL,two_j1,-two_m2,2*MMM,two_m1)
-                 * gsl_sf_coupling_3j(two_j3,2*LLL,two_j4,-two_m3,2*MMM,two_m4);
+            tmp += CG::wigner_3j(two_j2,2*LLL,two_j1,-two_m2,2*MMM,two_m1)
+                 * CG::wigner_3j(two_j3,2*LLL,two_j4,-two_m3,2*MMM,two_m4);
         }
         angular += tmp*rme1*rme2;
     }
@@ -110,7 +109,7 @@ double INT_SPH::int2e_get_angular_gaunt_LSSL_9j(const int& l1, const int& two_m1
     double angular = 0.0;
     int l2p = l2+s2, l3p = l3+s3;
     int two_j1 = 2*l1+s1, two_j2 = 2*l2+s2, two_j3 = 2*l3+s3, two_j4 = 2*l4+s4, vv = LL;
-    double threeJ1 = wigner_3j_zeroM(l2p,vv,l1), threeJ2 = wigner_3j_zeroM(l3p,vv,l4), tmp;
+    double threeJ1 = CG::wigner_3j_zeroM(l2p,vv,l1), threeJ2 = CG::wigner_3j_zeroM(l3p,vv,l4), tmp;
     for(int LLL = abs(LL-1); LLL <= LL+1; LLL++)
     {
         tmp = 0.0;
@@ -118,8 +117,8 @@ double INT_SPH::int2e_get_angular_gaunt_LSSL_9j(const int& l1, const int& two_m1
         double rme2 = int2e_get_angularX_RME(two_j3,l3p,two_j4,l4,LLL,vv,threeJ2);
         for(int MMM = -LLL; MMM <= LLL; MMM++)
         {
-            tmp += gsl_sf_coupling_3j(two_j2,2*LLL,two_j1,-two_m2,2*MMM,two_m1)
-                 * gsl_sf_coupling_3j(two_j3,2*LLL,two_j4,-two_m3,2*MMM,two_m4);
+            tmp += CG::wigner_3j(two_j2,2*LLL,two_j1,-two_m2,2*MMM,two_m1)
+                 * CG::wigner_3j(two_j3,2*LLL,two_j4,-two_m3,2*MMM,two_m4);
         }
         angular += tmp*rme1*rme2;
     }
@@ -132,7 +131,7 @@ double INT_SPH::int2e_get_angular_gaunt_LSSL_9j(const int& l1, const int& two_m1
 */
 double INT_SPH::int2e_get_angular_gauntSF_p1_LS(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& LL, const int& MM) const
 {
-    double threeJ = wigner_3j_zeroM(l1,LL,l2-1);
+    double threeJ = CG::wigner_3j_zeroM(l1,LL,l2-1);
     double tmp = 0.0;
     if(abs((two_m2+1)/2) <= l2-1)
         tmp += s1*s2*sqrt((l1+0.5+s1*two_m1/2.0)*(l2+0.5+s2*two_m2/2.0))*factor_p1(l2,(two_m2-1)/2)*int2e_get_threeSH(l1,(two_m1-1)/2,LL,MM,l2-1,(two_m2+1)/2,threeJ);
@@ -143,7 +142,7 @@ double INT_SPH::int2e_get_angular_gauntSF_p1_LS(const int& l1, const int& two_m1
 }
 double INT_SPH::int2e_get_angular_gauntSF_p2_LS(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& LL, const int& MM) const
 {
-    double threeJ = wigner_3j_zeroM(l1,LL,l2+1);
+    double threeJ = CG::wigner_3j_zeroM(l1,LL,l2+1);
     double tmp = 0.0;
     if(abs((two_m2+1)/2) <= l2+1)
         tmp += s1*s2*sqrt((l1+0.5+s1*two_m1/2.0)*(l2+0.5+s2*two_m2/2.0))*factor_p2(l2,(two_m2-1)/2)*int2e_get_threeSH(l1,(two_m1-1)/2,LL,MM,l2+1,(two_m2+1)/2,threeJ);
@@ -154,7 +153,7 @@ double INT_SPH::int2e_get_angular_gauntSF_p2_LS(const int& l1, const int& two_m1
 }
 double INT_SPH::int2e_get_angular_gauntSF_m1_LS(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& LL, const int& MM) const
 {
-    double threeJ = wigner_3j_zeroM(l1,LL,l2-1);
+    double threeJ = CG::wigner_3j_zeroM(l1,LL,l2-1);
     double tmp = 0.0;
     if(abs((two_m2-3)/2) <= l2-1)
         tmp += s1*s2*sqrt((l1+0.5+s1*two_m1/2.0)*(l2+0.5+s2*two_m2/2.0))*factor_m1(l2,(two_m2-1)/2)*int2e_get_threeSH(l1,(two_m1-1)/2,LL,MM,l2-1,(two_m2-3)/2,threeJ);
@@ -165,7 +164,7 @@ double INT_SPH::int2e_get_angular_gauntSF_m1_LS(const int& l1, const int& two_m1
 }
 double INT_SPH::int2e_get_angular_gauntSF_m2_LS(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& LL, const int& MM) const
 {
-    double threeJ = wigner_3j_zeroM(l1,LL,l2+1);
+    double threeJ = CG::wigner_3j_zeroM(l1,LL,l2+1);
     double tmp = 0.0;
     if(abs((two_m2-3)/2) <= l2+1)
         tmp += s1*s2*sqrt((l1+0.5+s1*two_m1/2.0)*(l2+0.5+s2*two_m2/2.0))*factor_m2(l2,(two_m2-1)/2)*int2e_get_threeSH(l1,(two_m1-1)/2,LL,MM,l2+1,(two_m2-3)/2,threeJ);
@@ -176,7 +175,7 @@ double INT_SPH::int2e_get_angular_gauntSF_m2_LS(const int& l1, const int& two_m1
 }
 double INT_SPH::int2e_get_angular_gauntSF_z1_LS(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& LL, const int& MM) const
 {
-    double threeJ = wigner_3j_zeroM(l1,LL,l2-1);
+    double threeJ = CG::wigner_3j_zeroM(l1,LL,l2-1);
     double tmp = 0.0;
     if(abs((two_m2-1)/2) <= l2-1)
         tmp += s1*s2*sqrt((l1+0.5+s1*two_m1/2.0)*(l2+0.5+s2*two_m2/2.0))*factor_z1(l2,(two_m2-1)/2)*int2e_get_threeSH(l1,(two_m1-1)/2,LL,MM,l2-1,(two_m2-1)/2,threeJ);
@@ -187,7 +186,7 @@ double INT_SPH::int2e_get_angular_gauntSF_z1_LS(const int& l1, const int& two_m1
 }
 double INT_SPH::int2e_get_angular_gauntSF_z2_LS(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& LL, const int& MM) const
 {
-    double threeJ = wigner_3j_zeroM(l1,LL,l2+1);
+    double threeJ = CG::wigner_3j_zeroM(l1,LL,l2+1);
     double tmp = 0.0;
     if(abs((two_m2-1)/2) <= l2+1)
         tmp += s1*s2*sqrt((l1+0.5+s1*two_m1/2.0)*(l2+0.5+s2*two_m2/2.0))*factor_z2(l2,(two_m2-1)/2)*int2e_get_threeSH(l1,(two_m1-1)/2,LL,MM,l2+1,(two_m2-1)/2,threeJ);
@@ -199,7 +198,7 @@ double INT_SPH::int2e_get_angular_gauntSF_z2_LS(const int& l1, const int& two_m1
 
 double INT_SPH::int2e_get_angular_gauntSF_p1_SL(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& LL, const int& MM) const
 {
-    double threeJ = wigner_3j_zeroM(l1-1,LL,l2);
+    double threeJ = CG::wigner_3j_zeroM(l1-1,LL,l2);
     double tmp = 0.0;
     if(abs((two_m1+1)/2) <= l1-1)
         tmp += s1*s2*sqrt((l1+0.5+s1*two_m1/2.0)*(l2+0.5+s2*two_m2/2.0))*factor_p1(l1,(two_m1-1)/2)*int2e_get_threeSH(l1-1,(two_m1+1)/2,LL,MM,l2,(two_m2-1)/2,threeJ);
@@ -210,7 +209,7 @@ double INT_SPH::int2e_get_angular_gauntSF_p1_SL(const int& l1, const int& two_m1
 }
 double INT_SPH::int2e_get_angular_gauntSF_p2_SL(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& LL, const int& MM) const
 {
-    double threeJ = wigner_3j_zeroM(l1+1,LL,l2);
+    double threeJ = CG::wigner_3j_zeroM(l1+1,LL,l2);
     double tmp = 0.0;
     if(abs((two_m1+1)/2) <= l1+1) 
         tmp += s1*s2*sqrt((l1+0.5+s1*two_m1/2.0)*(l2+0.5+s2*two_m2/2.0))*factor_p2(l1,(two_m1-1)/2)*int2e_get_threeSH(l1+1,(two_m1+1)/2,LL,MM,l2,(two_m2-1)/2,threeJ);
@@ -221,7 +220,7 @@ double INT_SPH::int2e_get_angular_gauntSF_p2_SL(const int& l1, const int& two_m1
 }
 double INT_SPH::int2e_get_angular_gauntSF_m1_SL(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& LL, const int& MM) const
 {
-    double threeJ = wigner_3j_zeroM(l1-1,LL,l2);
+    double threeJ = CG::wigner_3j_zeroM(l1-1,LL,l2);
     double tmp = 0.0;
     if(abs((two_m1-3)/2) <= l1-1)
         tmp += s1*s2*sqrt((l1+0.5+s1*two_m1/2.0)*(l2+0.5+s2*two_m2/2.0))*factor_m1(l1,(two_m1-1)/2)*int2e_get_threeSH(l1-1,(two_m1-3)/2,LL,MM,l2,(two_m2-1)/2,threeJ);
@@ -232,7 +231,7 @@ double INT_SPH::int2e_get_angular_gauntSF_m1_SL(const int& l1, const int& two_m1
 }
 double INT_SPH::int2e_get_angular_gauntSF_m2_SL(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& LL, const int& MM) const
 {
-    double threeJ = wigner_3j_zeroM(l1+1,LL,l2);
+    double threeJ = CG::wigner_3j_zeroM(l1+1,LL,l2);
     double tmp = 0.0;
     if(abs((two_m1-3)/2) <= l1+1)
         tmp += s1*s2*sqrt((l1+0.5+s1*two_m1/2.0)*(l2+0.5+s2*two_m2/2.0))*factor_m2(l1,(two_m1-1)/2)*int2e_get_threeSH(l1+1,(two_m1-3)/2,LL,MM,l2,(two_m2-1)/2,threeJ);
@@ -243,7 +242,7 @@ double INT_SPH::int2e_get_angular_gauntSF_m2_SL(const int& l1, const int& two_m1
 }
 double INT_SPH::int2e_get_angular_gauntSF_z1_SL(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& LL, const int& MM) const
 {
-    double threeJ = wigner_3j_zeroM(l1-1,LL,l2);
+    double threeJ = CG::wigner_3j_zeroM(l1-1,LL,l2);
     double tmp = 0.0;
     if(abs((two_m1-1)/2) <= l1-1)
         tmp += s1*s2*sqrt((l1+0.5+s1*two_m1/2.0)*(l2+0.5+s2*two_m2/2.0))*factor_z1(l1,(two_m1-1)/2)*int2e_get_threeSH(l1-1,(two_m1-1)/2,LL,MM,l2,(two_m2-1)/2,threeJ);
@@ -254,7 +253,7 @@ double INT_SPH::int2e_get_angular_gauntSF_z1_SL(const int& l1, const int& two_m1
 }
 double INT_SPH::int2e_get_angular_gauntSF_z2_SL(const int& l1, const int& two_m1, const int& s1, const int& l2, const int& two_m2, const int& s2, const int& LL, const int& MM) const
 {
-    double threeJ = wigner_3j_zeroM(l1+1,LL,l2);
+    double threeJ = CG::wigner_3j_zeroM(l1+1,LL,l2);
     double tmp = 0.0;
     if(abs((two_m1-1)/2) <= l1+1)
         tmp += s1*s2*sqrt((l1+0.5+s1*two_m1/2.0)*(l2+0.5+s2*two_m2/2.0))*factor_z2(l1,(two_m1-1)/2)*int2e_get_threeSH(l1+1,(two_m1-1)/2,LL,MM,l2,(two_m2-1)/2,threeJ);

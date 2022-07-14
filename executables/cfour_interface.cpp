@@ -10,6 +10,7 @@
 #include"int_sph.h"
 #include"dhf_sph.h"
 #include"dhf_sph_ca.h"
+#include"finterface.h"
 using namespace Eigen;
 using namespace std;
 
