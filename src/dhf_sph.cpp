@@ -760,22 +760,26 @@ void DHF_SPH::readOCC(const string& filename, const string& atomName)
     int int_tmp, int_tmp2, int_tmp3;
     ifstream ifs;
     ifs.open(filename);
-
-    while(!ifs.eof())
+    cout << ifs.eof() << endl;
+    if (!ifs.fail())
     {
-        ifs >> flags;
-        if(flags == "%occAMFI_" + atomName)
+        while(!ifs.eof())
         {
-            cout << "Found input occupation number for " << atomName << endl;
-            ifs >> int_tmp;
-            for(int ii = 0; ii < int_tmp; ii++)
+            ifs >> flags;
+            if(flags == "%occAMFI_" + atomName)
             {
-                ifs >> vecd_tmp(ii);
+                cout << "Found input occupation number for " << atomName <<     endl;
+                ifs >> int_tmp;
+                for(int ii = 0; ii < int_tmp; ii++)
+                {
+                    ifs >> vecd_tmp(ii);
+                }
+                break;
             }
-            break;
         }
     }
-    if(ifs.eof())
+    
+    if(ifs.eof() or ifs.fail())
     {
         cout << "Did NOT find %occAMFI in " << filename << endl;
         cout << "Using default occupation number for " << atomName << endl;
