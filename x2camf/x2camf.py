@@ -5,7 +5,7 @@ from pyscf.x2c import x2c
 from pyscf.gto import mole
 import numpy
 
-def x2camf(x2cobj, spin_free = True, two_c = True, with_gaunt = True, with_gauge = True, gaussian_nuclear = False, aoc = False):
+def amfi(x2cobj, spin_free = True, two_c = True, with_gaunt = True, with_gauge = True, gaussian_nuclear = False, aoc = False):
     mol = x2cobj.mol
     #computes the internal integer for soc integral flavor.
     soc_int_flavor = 0
@@ -62,28 +62,27 @@ if __name__ == '__main__':
     mol = gto.Mole()
     mol.verbose = 5
     mol.atom = '''
-O        0.000000    0.000000    0.117790
-H        0.000000    0.755453   -0.471161
-H        0.000000   -0.755453   -0.471161'''
+S        0.000000    0.000000    0.117790
+'''
     mol.basis = 'unc-cc-pvtz'
     mol.symmetry = 0
     mol.build()
 
     x2cobj = x2c.X2C(mol)
-    amfint = x2camf(x2cobj, spin_free=True, two_c=False, with_gaunt=True, with_gauge=True)
+    amfint = x2camf(x2cobj, spin_free=True, two_c=True, with_gaunt=True, with_gauge=True)
 
-    #import oldamf
-    #mf = oldamf.X2CAMF_RHF(mol, with_gaunt=True, with_breit=True, prog='sph_atm')
-    #mf.max_cycle = 1
-    #mf.kernel()
-    #hcore = numpy.zeros((mol.nao_2c(), mol.nao_2c()), dtype=complex)
-    #with open("amf_int", "r") as ifs:
-    #    lines = ifs.readlines()
-    #    if(len(lines) != hcore.shape[0]**2):
-    #        print("Something went wrong. The dimension of hcore and amfi calculations do NOT match.")
-    #    else:
-    #        for ii in range(hcore.shape[0]):
-    #            for jj in range(hcore.shape[1]):
-    #                hcore[ii][jj] = hcore[ii][jj] + complex(lines[ii*hcore.shape[0]+jj])
+    import oldamf
+    mf = oldamf.X2CAMF_RHF(mol, with_gaunt=True, with_breit=True, prog='sph_atm')
+    mf.max_cycle = 1
+    mf.kernel()
+    hcore = numpy.zeros((mol.nao_2c(), mol.nao_2c()), dtype=complex)
+    with open("amf_int", "r") as ifs:
+        lines = ifs.readlines()
+        if(len(lines) != hcore.shape[0]**2):
+            print("Something went wrong. The dimension of hcore and amfi calculations do NOT match.")
+        else:
+            for ii in range(hcore.shape[0]):
+                for jj in range(hcore.shape[1]):
+                    hcore[ii][jj] = hcore[ii][jj] + complex(lines[ii*hcore.shape[0]+jj])
 
-    #print(max(amfint - hcore))
+    print(amfint - hcore)
