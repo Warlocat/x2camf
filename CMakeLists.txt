@@ -14,6 +14,7 @@ set(SHARED_SRC
   src/int_sph.cpp
 )
 
+set(CMAKE_CXX_FLAGS "-fPIC")
 
 add_subdirectory(pybind11)
 include_directories(include)
@@ -22,10 +23,11 @@ link_libraries(OpenMP::OpenMP_CXX)
 
 add_library(shared_objects OBJECT ${SHARED_SRC})
 
-pybind11_add_module(libx2camf SHARED ${SHARED_SRC} executables/pyx2camf.cpp)
+pybind11_add_module(libx2camf $<TARGET_OBJECTS:shared_objects> executables/pyx2camf.cpp)
 #pybind11_add_module(libx2camf ${SHARED_SRC} executables/pyx2camf.cpp)
 add_executable(amf_pyscf $<TARGET_OBJECTS:shared_objects> executables/pyscf_interface.cpp)
-add_executable(main      $<TARGET_OBJECTS:shared_objects> executables/main.cpp)
+add_executable(xray      $<TARGET_OBJECTS:shared_objects> executables/xrayCorrection.cpp)
+# add_executable(main      $<TARGET_OBJECTS:shared_objects> executables/main.cpp)
 #add_executable(test      $<TARGET_OBJECTS:shared_objects> executables/test.cpp)
 
 enable_language (Fortran)

@@ -14,6 +14,10 @@ using namespace Eigen;
 static clock_t StartTime, EndTime; 
 
 const double speedOfLight = 137.0359991;
+const double au2cm_1 = 219474.63;
+const double au2ev = 27.21138386;
+
+const string orbL[8] = {"S","P","D","F","G","H","I","K"};
 
 typedef Matrix<MatrixXd,-1,1> vMatrixXd;
 typedef Matrix<MatrixXcd,-1,1> vMatrixXcd;
