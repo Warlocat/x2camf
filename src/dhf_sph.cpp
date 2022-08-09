@@ -816,7 +816,7 @@ void DHF_SPH::readOCC(const string& filename, const string& atomName)
         else if(atomName == "GA") {int_tmp = 5; vecd_tmp(0) = 8.0; vecd_tmp(1) = 13.0/3.0; vecd_tmp(2) = 26.0/3.0; vecd_tmp(3) = 4.0; vecd_tmp(4) = 6.0;}
         else if(atomName == "GE") {int_tmp = 5; vecd_tmp(0) = 8.0; vecd_tmp(1) = 14.0/3.0; vecd_tmp(2) = 28.0/3.0; vecd_tmp(3) = 4.0; vecd_tmp(4) = 6.0;}
         else if(atomName == "AS") {int_tmp = 5; vecd_tmp(0) = 8.0; vecd_tmp(1) = 5.0; vecd_tmp(2) = 10.0; vecd_tmp(3) = 4.0; vecd_tmp(4) = 6.0;}
-        else if(atomName == "SR") {int_tmp = 5; vecd_tmp(0) = 8.0; vecd_tmp(1) = 16.0/3.0; vecd_tmp(2) = 32.0/3.0; vecd_tmp(3) = 4.0; vecd_tmp(4) = 6.0;}
+        else if(atomName == "SE") {int_tmp = 5; vecd_tmp(0) = 8.0; vecd_tmp(1) = 16.0/3.0; vecd_tmp(2) = 32.0/3.0; vecd_tmp(3) = 4.0; vecd_tmp(4) = 6.0;}
         else if(atomName == "BR") {int_tmp = 5; vecd_tmp(0) = 8.0; vecd_tmp(1) = 17.0/3.0; vecd_tmp(2) = 34.0/3.0; vecd_tmp(3) = 4.0; vecd_tmp(4) = 6.0;}
         else if(atomName == "KR") {int_tmp = 5; vecd_tmp(0) = 8.0; vecd_tmp(1) = 6.0; vecd_tmp(2) = 12.0; vecd_tmp(3) = 4.0; vecd_tmp(4) = 6.0;}
         else if(atomName == "RB") {int_tmp = 5; vecd_tmp(0) = 9.0; vecd_tmp(1) = 6.0; vecd_tmp(2) = 12.0; vecd_tmp(3) = 4.0; vecd_tmp(4) = 6.0;}
