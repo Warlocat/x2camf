@@ -21,7 +21,7 @@ irrep_list(int_sph_.irrep_list), with_gaunt(with_gaunt_), with_gauge(with_gauge_
     occNumber.resize(Nirrep);
     occNumberCore.resize(Nirrep);
     occMax_irrep = 0;
-    readOCC(filename, int_sph_.atomName);
+    setOCC(filename, int_sph_.atomName);
 
     if(allInt)
     {
@@ -193,7 +193,7 @@ irrep_list(int_sph_.irrep_list), with_gaunt(with_gaunt_), with_gauge(with_gauge_
     else
     {
         /* 
-            In SFX2C-1e, h1e_4c, fock_4c, overlap_4c, and overlap_half_i_4c are the corresponding 2-c matrices. 
+            In X2C-1e, h1e_4c, fock_4c, overlap_4c, and overlap_half_i_4c are the corresponding 2-c matrices. 
             spin free 4-c 1-e Hamiltonian is diagonalized to calculate X and R
             
             h1e_4c = [[V, T], [T, W_sf/4c^2 - T]]
@@ -337,6 +337,10 @@ MatrixXd DHF_SPH::evaluateErrorDIIS(const MatrixXd& den_old, const MatrixXd& den
 /*
     SCF procedure for 4-c and 2-c calculation
 */
+void DHF_SPH::runSCF(const bool& twoC, const bool& renormSmall)
+{
+    DHF_SPH::runSCF(twoC,renormSmall,NULL);
+}
 void DHF_SPH::runSCF(const bool& twoC, const bool& renormSmall, vMatrixXd* initialGuess)
 {
     if(renormSmall)
@@ -346,7 +350,7 @@ void DHF_SPH::runSCF(const bool& twoC, const bool& renormSmall, vMatrixXd* initi
     vector<MatrixXd> error4DIIS[occMax_irrep], fock4DIIS[occMax_irrep];
     StartTime = clock();
     cout << endl;
-    if(twoC) cout << "Start SFX2C-1e Hartree-Fock iterations..." << endl;
+    if(twoC) cout << "Start X2C-1e Hartree-Fock iterations..." << endl;
     else cout << "Start Dirac Hartree-Fock iterations..." << endl;
     cout << "with SCF convergence = " << convControl << endl;
     cout << endl;
@@ -450,7 +454,7 @@ void DHF_SPH::runSCF(const bool& twoC, const bool& renormSmall, vMatrixXd* initi
                     }
                 }
             }
-            if(twoC) cout << "Final SFX2C-1e HF energy is " << setprecision(15) << ene_scf << " hartree." << endl;
+            if(twoC) cout << "Final X2C-1e HF energy is " << setprecision(15) << ene_scf << " hartree." << endl;
             else cout << "Final DHF energy is " << setprecision(15) << ene_scf << " hartree." << endl;
             break;            
         }
@@ -753,7 +757,7 @@ void DHF_SPH::evaluateFock(MatrixXd& fock, const bool& twoC, const vMatrixXd& de
 /* 
     Read occupation numbers 
 */
-void DHF_SPH::readOCC(const string& filename, const string& atomName)
+void DHF_SPH::setOCC(const string& filename, const string& atomName)
 {
     string flags;
     VectorXd vecd_tmp = VectorXd::Zero(10);
@@ -942,6 +946,7 @@ void DHF_SPH::readOCC(const string& filename, const string& atomName)
 */
 vMatrixXd DHF_SPH::get_amfi_unc(INT_SPH& int_sph_, const bool& twoC, const string& Xmethod, bool amfi_with_gaunt, bool amfi_with_gauge)
 {
+    cout << "Running DHF_SPH::get_amfi_unc" << endl;
     if(with_gaunt && !amfi_with_gaunt)
     {
         cout << endl << "ATTENTION! Since gaunt terms are included in SCF, they are automatically calculated in amfi integrals." << endl << endl;
@@ -1455,60 +1460,230 @@ void DHF_SPH::set_h1e_4c(const vMatrixXd& inputM)
 
 
 
+/*
+    basisGenerator to generate relativistic (j-adapted) contracted basis sets.
+    WARNING: This method was implemented for CFOUR format of basis sets only!
+*/
+void DHF_SPH::basisGenerator(string basisName, string filename, const INT_SPH& intor, const INT_SPH& intorAll, const bool& sf, const string& tag)
+{
+    cout << "Running DHF_SPH::basisGenerator" << endl;
+    Matrix<VectorXi,-1,1> basisInfo, basisSmall, basisAll;
+    basisSmall.resize(intor.shell_list.rows());
+    vMatrixXd resortedCoeffInput(basisSmall.rows());
+    for(int ll = 0; ll < basisSmall.rows(); ll++)
+    {
+        basisSmall(ll).resize(3);
+        basisSmall(ll)(0) = ll;
+        basisSmall(ll)(1) = intor.shell_list(ll).coeff.cols();
+        basisSmall(ll)(2) = intor.shell_list(ll).coeff.rows();
+        /*  
+            Reorganize coeff in intor
+            make sure all the contracted coefficients are put to the left 
+        */
+        vector<int> vec_i;
+        for(int ii = 0; ii < intor.shell_list(ll).coeff.cols(); ii++)
+        {
+            if(abs(intor.shell_list(ll).coeff(0,ii)) >= 1e-12)
+                vec_i.push_back(ii);
+        }
+        for(int ii = 0; ii < intor.shell_list(ll).coeff.cols(); ii++)
+        {
+            if(abs(intor.shell_list(ll).coeff(0,ii)) < 1e-12)
+                vec_i.push_back(ii);
+        }
+        MatrixXd tmp;
+        tmp = MatrixXd::Zero(intor.shell_list(ll).coeff.rows(),intor.shell_list(ll).coeff.cols());
+        for(int ii = 0; ii < intor.shell_list(ll).coeff.cols(); ii++)
+        for(int jj = 0; jj < intor.shell_list(ll).coeff.rows(); jj++)
+        {
+            tmp(jj,ii) = intor.shell_list(ll).coeff(jj,vec_i[ii]);
+        }
+        resortedCoeffInput(ll) = tmp;
+    }
+    basisAll.resize(intorAll.shell_list.rows());
+    for(int ll = 0; ll < basisAll.rows(); ll++)
+    {
+        basisAll(ll).resize(3);
+        basisAll(ll)(0) = ll;
+        basisAll(ll)(1) = intorAll.shell_list(ll).coeff.cols();
+        basisAll(ll)(2) = intorAll.shell_list(ll).coeff.rows();
+    }
 
-// void DHF_SPH::basisGenerator(const string& basisName, const INT_SPH& intor)
-// {
-//     cout << "You are calling the basisGenerator of fractional occupation HF." << endl;
-//     cout << "This is DANGEROURS and should be used carefully." << endl;
-//     Matrix<VectorXi,-1,1> basisInfo;
-//     int occL = 0;
+    // Count how many l-shells containing electrons to resize basisInfo
+    int occL = 0;
+    for(int ir = 0; ir < irrep_list.rows(); ir += 4*irrep_list(ir).l+2)
+    {
+        if(occNumber(ir).rows() == 0) break;
+        occL++;
+    }
+    basisInfo.resize(occL);
     
-//     for(int ir = 0; ir < irrep_list.rows(); ir += 4*irrep_list(ir).l+2)
-//     {
-//         if(occNumberCore(ir).rows() == 0) break;
-//         occL++;
-//     }
-//     basisInfo.resize(occL);
-//     occL = 0;
-//     for(int ir = 0; ir < irrep_list.rows(); ir += 4*irrep_list(ir).l+2)
-//     {
-//         int occN = 0;
-//         if(occNumberCore(ir).rows() == 0) break;
-//         for(int ii = 0; ii < occNumberCore(ir).rows(); ii++)
-//         {
-//             if(abs(occNumber(ir)(ii)-0) > 1e-2)
-//                 occN++;
-//         }
-//         basisInfo(occL).resize(occN);
-//         occL++;
-//     }
+    // For each l-shell, count how many orbitals are fully or partially occupied
+    // and resize basisInfo(l)
+    occL = 0;
+    for(int ir = 0; ir < irrep_list.rows(); ir += 4*irrep_list(ir).l+2)
+    {
+        int occN = 0;
+        if(occNumber(ir).rows() == 0) break;
+        for(int ii = 0; ii < occNumber(ir).rows(); ii++)
+        {
+            if(abs(occNumber(ir)(ii)) > 1e-4)
+                occN++;
+        }
+        basisInfo(occL).resize(occN);
+        occL++;
+    }
 
-//     cout << basisName + "-X2C" << endl;
-//     cout << "obtained from AOC-SFX2C1E atomic calculation" << endl;
-//     cout << endl;
-//     cout << basisInfo.rows() << endl;
-//     for(int ii = 0; ii < basisInfo.rows(); ii++)
-//         cout << "    " << ii;
-//     cout << endl;
-//     for(int ii = 0; ii < basisInfo.rows(); ii++)
-//         cout << "    " << basisInfo(ii).rows();
-//     cout << endl;
-//     for(int ii = 0; ii < basisInfo.rows(); ii++)
-//         cout << "    " << intor.shell_list(ii).coeff.rows();
-//     cout << endl;
-//     cout << fixed << setprecision(8);
-//     for(int ir = 0; ir < irrep_list.rows(); ir += 4*irrep_list(ir).l+2)
-//     {
-//         if(occNumberCore(ir).rows() == 0) break;
-//         int ii = irrep_list(ir).l;
-//         for(int jj = 0; jj < intor.shell_list(ii).coeff.rows(); jj++)
-//         {
-//             if((jj+1) %5 == 1)  cout << endl;
-//             cout << "    " << intor.shell_list(ii).exp_a(jj);
-//         }
-//         cout << endl;
-//         cout << endl;
-//         cout << coeff(ir).block(0,0,coeff(ir).rows(),basisInfo(ii).rows()) << endl;
-//     }
-// }
+    /* 
+        Construct the final contraction coefficients
+        
+        The contraction coefficients were firsly obtained using HF with intor.
+        They were combined with other basis functions to form the coeff_final, including
+            other decontracted functions in intor, stored in resortedCoeffInput
+            extra diffuse or core-correlating functions in intorAll
+        
+        The linearly dependent core-correlating functions are replaced by the basis function
+        with the closet alpha.
 
+        For j-adapted basis, the number of contracted basis sets doubles for l >= 1.
+    */
+    vMatrixXd coeff_final(intorAll.shell_list.rows());
+    Matrix<vector<double>,-1,1> exp_a_final(intorAll.shell_list.rows());
+    for(int ir = 0; ir < intorAll.irrep_list.rows(); ir += 4*intorAll.irrep_list(ir).l+2)
+    {
+        // nLD is the number of linearly dependent basis functions in this shell whose alpha value
+        // is close to that of another basis function with a threshold of 1.25 
+        int ll = intorAll.irrep_list(ir).l, nLD = 0;
+        // nPVXZ is the number of primitive Gaussian functions in original basis set
+        // and is likely to be smaller than ll, which comes from the basisAll
+        int nPVXZ = (ll < intor.shell_list.rows() ? intor.shell_list(ll).exp_a.rows() : 0);
+        int nAll = intorAll.shell_list(ll).exp_a.rows();
+        vector<int> n_closest;
+        for(int ii = 0; ii < nPVXZ; ii++)
+            exp_a_final(ll).push_back(intor.shell_list(ll).exp_a(ii));
+
+        // Here we assume that the first nPVXZ basis functions are the same in intor and intorAll
+        for(int ii = nPVXZ; ii < nAll; ii++)
+        {
+            // tmp_i'th function is the linearly dependent core-correlating function
+            int tmp_i;
+            double closest = 100000000000.0;
+            double alpha = intorAll.shell_list(ll).exp_a(ii);
+            bool LD = false;
+            for(int jj = 0; jj < nPVXZ; jj++)
+            {
+                double tmp = max(alpha/intor.shell_list(ll).exp_a(jj),intor.shell_list(ll).exp_a(jj)/alpha);
+                if(tmp < 1.25)
+                    LD = true;
+                if(tmp < closest)
+                {
+                    closest = tmp;
+                    tmp_i = jj;
+                }
+            }
+            // Add the basis function only if it is not liearly dependent with others
+            if(!LD)
+            {
+                exp_a_final(ll).push_back(alpha);
+            } 
+            else
+            {
+                nLD++;
+                n_closest.push_back(tmp_i);
+            } 
+        }
+        
+        if(ll < occL)
+        {
+            if(sf || ll == 0)
+            {
+                // (exp_a_final(ll).size() - nPVXZ) is the number of extra linearly independent Gaussian functions
+                coeff_final(ll) = MatrixXd::Zero(exp_a_final(ll).size(), basisSmall(ll)(1) + nLD + exp_a_final(ll).size() - nPVXZ);
+                for(int ii = 0; ii < coeff(ir).rows(); ii++)
+                {
+                    for(int jj = 0; jj < basisInfo(ll).rows(); jj++)
+                        coeff_final(ll)(ii,jj) = coeff(ir)(ii,jj);
+                    for(int jj = basisInfo(ll).rows(); jj < basisSmall(ll)(1); jj++)
+                        coeff_final(ll)(ii,jj) = resortedCoeffInput(ll)(ii,jj);
+                }
+                for(int jj = 0; jj < nLD; jj++)
+                    coeff_final(ll)(n_closest[jj],basisSmall(ll)(1)+jj) = 1.0;
+                for(int ii = 0; ii < exp_a_final(ll).size() - nPVXZ; ii++)
+                    coeff_final(ll)(nPVXZ+ii,basisSmall(ll)(1)+nLD+ii) = 1.0;
+            }
+            else
+            {
+                // (exp_a_final(ll).size() - nPVXZ) is the number of extra linearly independent Gaussian functions
+                coeff_final(ll) = MatrixXd::Zero(exp_a_final(ll).size(), basisSmall(ll)(1) + basisInfo(ll).rows() + nLD + exp_a_final(ll).size() - nPVXZ);
+                for(int ii = 0; ii < coeff(ir).rows(); ii++)
+                {
+                    for(int jj = 0; jj < basisInfo(ll).rows(); jj++)
+                        coeff_final(ll)(ii,jj) = coeff(ir)(ii,jj);
+                    for(int jj = 0; jj < basisInfo(ll).rows(); jj++)
+                        coeff_final(ll)(ii,jj+basisInfo(ll).rows()) = coeff(ir + irrep_list(ir).two_j + 1)(ii,jj);
+                    for(int jj = 2*basisInfo(ll).rows(); jj < basisSmall(ll)(1) + basisInfo(ll).rows(); jj++)
+                        coeff_final(ll)(ii,jj) = resortedCoeffInput(ll)(ii,jj - basisInfo(ll).rows());
+                }
+                for(int jj = 0; jj < nLD; jj++)
+                    coeff_final(ll)(n_closest[jj],basisSmall(ll)(1)+basisInfo(ll).rows()+jj) = 1.0;
+                for(int jj = 0; jj < exp_a_final(ll).size() - nPVXZ; jj++)
+                    coeff_final(ll)(nPVXZ+jj,basisSmall(ll)(1)+basisInfo(ll).rows()+nLD+jj) = 1.0;
+            }
+            
+        }
+        else
+        {
+            coeff_final(ll) = MatrixXd::Identity(exp_a_final(ll).size(),exp_a_final(ll).size());
+        }
+    }
+    
+    int pos = basisName.find("-X2C");
+    if(pos != string::npos)
+        basisName.erase(pos,4);
+    pos = basisName.find("-DK3");
+    if(pos != string::npos)
+        basisName.erase(pos,4);
+    pos = basisName.find("_X2C");
+    if(pos != string::npos)
+        basisName.erase(pos,4);
+    pos = basisName.find("_DK3");
+    if(pos != string::npos)
+        basisName.erase(pos,4);
+    ofstream ofs;
+    ofs.open(filename,std::ofstream::app);
+        ofs << basisName + tag << endl;
+        ofs << "obtained from atomic calculation" << endl;
+        ofs << endl;
+        ofs << intorAll.shell_list.rows() << endl;
+        for(int jj = 0; jj < intorAll.shell_list.rows(); jj++)
+        {
+            ofs << "    " << jj;
+        }
+        ofs << endl;
+        for(int jj = 0; jj < intorAll.shell_list.rows(); jj++)
+        {
+            ofs << "    " << coeff_final(jj).cols();
+        }
+        ofs << endl;
+        for(int jj = 0; jj < intorAll.shell_list.rows(); jj++)
+        {
+            ofs << "    " << coeff_final(jj).rows();
+        }
+        ofs << endl;
+        ofs << fixed << setprecision(8);
+        for(int ll = 0; ll < intorAll.shell_list.rows(); ll++)
+        {
+            for(int ii = 0; ii < exp_a_final(ll).size(); ii++)
+            {
+                if((ii+1) %5 == 1)  ofs << endl;
+                ofs << "    " << exp_a_final(ll)[ii];
+            }
+            ofs << endl;
+            ofs << endl;
+            ofs << coeff_final(ll) << endl;
+        }
+        ofs << endl << endl;
+    ofs.close();
+
+    return;
+}

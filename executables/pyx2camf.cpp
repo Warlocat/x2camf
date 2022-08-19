@@ -39,6 +39,13 @@ Eigen::MatrixXd amfi(const int input_string, const int atom_number,
     DHF_SPH *scfer;
     if (aoc)
     {
+        cout << endl << endl;
+        cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << endl;
+        cout << "!!  WARNING: Average-of-configuration calculations are INCORRECT   !!" << endl;
+        cout << "!!  for atoms with more than one partially occupied l-shell, e.g., !!" << endl;
+        cout << "!!  uranium atom with both 5f and 6d partially occupied.           !!" << endl;
+        cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << endl;
+        cout << endl << endl;
         scfer = new DHF_SPH_CA(intor, "input", spinFree, twoC, Gaunt, gauge, allint,
                                gauNuc);
     }

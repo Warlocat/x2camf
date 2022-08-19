@@ -10,7 +10,7 @@
 using namespace std;
 using namespace Eigen;
 
-vVectorXd occNumberDebug;
+vVectorXd occNumberOpen;
 
 
 DHF_SPH_CA::DHF_SPH_CA(INT_SPH& int_sph_, const string& filename, const bool& spinFree, const bool& twoC, const bool& with_gaunt_, const bool& with_gauge_, const bool& allInt, const bool& gaussian_nuc):
@@ -22,7 +22,7 @@ DHF_SPH(int_sph_,filename,spinFree,twoC,with_gaunt_,with_gauge_,allInt,gaussian_
         for(int ii = 0; ii < occNumber(ir).rows(); ii++)
         {
             // if 1 > occNumber(ir)(ii) > 0
-            if(abs(occNumber(ir)(ii)) > 1e-4 && abs(occNumber(ir)(ii)) < (1.0-1e-4))
+            if(abs(occNumber(ir)(ii)) > 1e-4 && abs(occNumber(ir)(ii)) < 1.0)
             {
                 f_NM = occNumber(ir)(ii);
                 openShell = ir;
@@ -42,26 +42,26 @@ DHF_SPH(int_sph_,filename,spinFree,twoC,with_gaunt_,with_gauge_,allInt,gaussian_
         NN = f_NM * MM;
     }
 
-    occNumberDebug.resize(occMax_irrep);
+    occNumberOpen.resize(occMax_irrep);
     for(int ir = 0; ir < occMax_irrep; ir++)
     {
-        occNumberDebug(ir).resize(irrep_list(ir).size);
-        occNumberDebug(ir) = VectorXd::Zero(irrep_list(ir).size);
+        occNumberOpen(ir).resize(irrep_list(ir).size);
+        occNumberOpen(ir) = VectorXd::Zero(irrep_list(ir).size);
         for(int ii = 0; ii < occNumber(ir).rows(); ii++)
         {
             if(abs(occNumber(ir)(ii) - 1.0) < 1e-5)
-                occNumberDebug(ir)(ii) = 0.0;
+                occNumberOpen(ir)(ii) = 0.0;
             else if(abs(occNumber(ir)(ii)) > 1e-4 && abs(occNumber(ir)(ii)) < (1.0-1e-4))
             {
                 occNumber(ir)(ii) = 0.0;
-                occNumberDebug(ir)(ii) = 1.0;
+                occNumberOpen(ir)(ii) = 1.0;
             }
         }
     }
     for(int ir = 0; ir < occMax_irrep; ir++)
     {
         cout << "1: " << occNumber(ir).transpose() << endl;
-        cout << "2: " << occNumberDebug(ir).transpose() << endl;
+        cout << "2: " << occNumberOpen(ir).transpose() << endl;
     }
     cout << "Configuration-averaged HF initialization." << endl;
     cout << "f = N/M = " << f_NM << ", N = " << NN << ", M = " << MM << endl;
@@ -166,7 +166,7 @@ void DHF_SPH_CA::evaluateDensity_ca_irrep(vMatrixXd& den_c, vMatrixXd& den_o, co
     for(int ir = 0; ir < occMax_irrep; ir+=irrep_list(ir).two_j+1)
     {
         den_c(ir) = evaluateDensity_core(coeff_(ir),occNumber(ir), twoC);
-        den_o(ir) = evaluateDensity_core(coeff_(ir),occNumberDebug(ir), twoC);
+        den_o(ir) = evaluateDensity_core(coeff_(ir),occNumberOpen(ir), twoC);
     }
 }
 
@@ -184,7 +184,7 @@ void DHF_SPH_CA::runSCF(const bool& twoC, const bool& renormSmall)
     vMatrixXd coeff_c(occMax_irrep), coeff_o(occMax_irrep), fock_c(occMax_irrep), fock_o(occMax_irrep);
     StartTime = clock();
     cout << endl;
-    if(twoC) cout << "Start CA-SFX2C-1e Hartree-Fock iterations..." << endl;
+    if(twoC) cout << "Start CA-X2C-1e Hartree-Fock iterations..." << endl;
     else cout << "Start CA-Dirac Hartree-Fock iterations..." << endl;
     cout << endl;
 
@@ -196,7 +196,7 @@ void DHF_SPH_CA::runSCF(const bool& twoC, const bool& renormSmall)
     for(int ir = 0; ir < occMax_irrep; ir+=irrep_list(ir).two_j+1)
     {
         density(ir) = evaluateDensity_core(coeff_c(ir),occNumber(ir),twoC);
-        density_o(ir) = evaluateDensity_core(coeff_o(ir),occNumberDebug(ir),twoC);
+        density_o(ir) = evaluateDensity_core(coeff_o(ir),occNumberOpen(ir),twoC);
         // for(int jj = 1; jj < irrep_list(ir).two_j+1; jj++)
         // {
         //     density_o(ir+jj) = density_o(ir);
@@ -254,7 +254,7 @@ void DHF_SPH_CA::runSCF(const bool& twoC, const bool& renormSmall)
         for(int ir = 0; ir < occMax_irrep; ir += irrep_list(ir).two_j+1)
         {
             newDen_c(ir) = evaluateDensity_core(coeff_c(ir),occNumber(ir),twoC);
-            newDen_o(ir) = evaluateDensity_core(coeff_o(ir),occNumberDebug(ir),twoC);
+            newDen_o(ir) = evaluateDensity_core(coeff_o(ir),occNumberOpen(ir),twoC);
             // for(int jj = 1; jj < irrep_list(ir).two_j+1; jj++)
             // {
             //     newDen_c(ir+jj) = newDen_c(ir);
@@ -289,7 +289,7 @@ void DHF_SPH_CA::runSCF(const bool& twoC, const bool& renormSmall)
                     coeff(ir) = coeff_c(ir);
                     for(int ii = 0; ii < irrep_list(ir).size; ii++)
                     {
-                        if(abs(occNumberDebug(ir)(ii) - 1.0) < 1e-5)
+                        if(abs(occNumberOpen(ir)(ii) - 1.0) < 1e-5)
                         {
                             for(int jj = 0; jj < coeff(ir).rows(); jj++)
                                 coeff(ir)(jj,ii) = coeff_o(ir)(jj,ii);
@@ -304,7 +304,7 @@ void DHF_SPH_CA::runSCF(const bool& twoC, const bool& renormSmall)
                     coeff(ir) = coeff_c(ir);
                     for(int ii = 0; ii < irrep_list(ir).size; ii++)
                     {
-                        if(abs(occNumberDebug(ir)(ii) - 1.0) < 1e-5)
+                        if(abs(occNumberOpen(ir)(ii) - 1.0) < 1e-5)
                         {
                             for(int jj = 0; jj < coeff(ir).rows(); jj++)
                                 coeff(ir)(jj,ii+coeff(ir).rows()/2) = coeff_o(ir)(jj,ii+coeff(ir).rows()/2);
@@ -386,7 +386,7 @@ void DHF_SPH_CA::runSCF(const bool& twoC, const bool& renormSmall)
                 }
                 ene_scf += tmp_d * (irrep_list(Iirrep).two_j+1);
             }
-            if(twoC) cout << "Final CA-SFX2C-1e HF energy is " << setprecision(15) << ene_scf << " hartree." << endl;
+            if(twoC) cout << "Final CA-X2C-1e HF energy is " << setprecision(15) << ene_scf << " hartree." << endl;
             else cout << "Final CA-DHF energy is " << setprecision(15) << ene_scf << " hartree." << endl;
             break;            
         }
@@ -401,7 +401,7 @@ void DHF_SPH_CA::runSCF(const bool& twoC, const bool& renormSmall)
             fock4DIIS_c[ir].push_back(fock_c(ir));
 
             eigensolverG(fock_o(ir), overlap_half_i_4c(ir), ene_orb(ir), coeff_o(ir));
-            newDen_o(ir) = evaluateDensity_core(coeff_o(ir),occNumberDebug(ir),twoC);
+            newDen_o(ir) = evaluateDensity_core(coeff_o(ir),occNumberOpen(ir),twoC);
             error4DIIS_o[ir].push_back(evaluateErrorDIIS(density_o(ir),newDen_o(ir)));
             fock4DIIS_o[ir].push_back(fock_o(ir));
     
@@ -585,6 +585,7 @@ void DHF_SPH_CA::evaluateFock(MatrixXd& fock_c, MatrixXd& fock_o, const bool& tw
 
 vMatrixXd DHF_SPH_CA::get_amfi_unc(INT_SPH& int_sph_, const bool& twoC, const string& Xmethod, bool amfi_with_gaunt, bool amfi_with_gauge)
 {
+    cout << "Running DHF_SPH_CA::get_amfi_unc" << endl;
     if(with_gaunt && !amfi_with_gaunt)
     {
         cout << endl << "ATTENTION! Since gaunt terms are included in SCF, they are automatically calculated in amfi integrals." << endl << endl;
@@ -749,7 +750,7 @@ vMatrixXd DHF_SPH_CA::get_amfi_unc_2c(const int2eJK& h2eSSLL_SD, const int2eJK& 
             coeff_tmp(ir)(ii,size_tmp+jj) = coeff_L_tmp(ir)(ii,jj);
             coeff_tmp(ir)(size_tmp+ii,size_tmp+jj) = coeff_S_tmp(ir)(ii,jj);
         }
-        density_tmp(ir) = evaluateDensity_core(coeff_tmp(ir),occNumber(ir),false) + f_NM*evaluateDensity_core(coeff_tmp(ir),occNumberDebug(ir),false);
+        density_tmp(ir) = evaluateDensity_core(coeff_tmp(ir),occNumber(ir),false) + f_NM*evaluateDensity_core(coeff_tmp(ir),occNumberOpen(ir),false);
     }
 
     for(int ir = 0; ir < Nirrep; ir++)
@@ -814,18 +815,26 @@ vMatrixXd DHF_SPH_CA::get_amfi_unc_2c(const int2eJK& h2eSSLL_SD, const int2eJK& 
 
 
 
-void DHF_SPH_CA::basisGenerator(string basisName, string filename, const INT_SPH& intor, const INT_SPH& intorAll)
+/*
+    basisGenerator to generate relativistic (j-adapted) contracted basis sets.
+    WARNING: This method was implemented for CFOUR format of basis sets only!
+*/
+void DHF_SPH_CA::basisGenerator(string basisName, string filename, const INT_SPH& intor, const INT_SPH& intorAll, const bool& sf, const string& tag)
 {
-    Matrix<VectorXi,-1,1> basisInfo, basisInput, basisAll;
-    basisInput.resize(intor.shell_list.rows());
-    vMatrixXd resortedCoeffInput(basisInput.rows());
-    for(int ll = 0; ll < basisInput.rows(); ll++)
+    cout << "Running DHF_SPH_CA::basisGenerator" << endl;
+    Matrix<VectorXi,-1,1> basisInfo, basisSmall, basisAll;
+    basisSmall.resize(intor.shell_list.rows());
+    vMatrixXd resortedCoeffInput(basisSmall.rows());
+    for(int ll = 0; ll < basisSmall.rows(); ll++)
     {
-        basisInput(ll).resize(3);
-        basisInput(ll)(0) = ll;
-        basisInput(ll)(1) = intor.shell_list(ll).coeff.cols();
-        basisInput(ll)(2) = intor.shell_list(ll).coeff.rows();
-        // reorganize coeff in intor
+        basisSmall(ll).resize(3);
+        basisSmall(ll)(0) = ll;
+        basisSmall(ll)(1) = intor.shell_list(ll).coeff.cols();
+        basisSmall(ll)(2) = intor.shell_list(ll).coeff.rows();
+        /*  
+            Reorganize coeff in intor
+            make sure all the contracted coefficients are put to the left 
+        */
         vector<int> vec_i;
         for(int ii = 0; ii < intor.shell_list(ll).coeff.cols(); ii++)
         {
@@ -855,6 +864,7 @@ void DHF_SPH_CA::basisGenerator(string basisName, string filename, const INT_SPH
         basisAll(ll)(2) = intorAll.shell_list(ll).coeff.rows();
     }
 
+    // Count how many l-shells containing electrons to resize basisInfo
     int occL = 0;
     for(int ir = 0; ir < irrep_list.rows(); ir += 4*irrep_list(ir).l+2)
     {
@@ -862,6 +872,9 @@ void DHF_SPH_CA::basisGenerator(string basisName, string filename, const INT_SPH
         occL++;
     }
     basisInfo.resize(occL);
+    
+    // For each l-shell, count how many orbitals are fully or partially occupied
+    // and resize basisInfo(l)
     occL = 0;
     for(int ir = 0; ir < irrep_list.rows(); ir += 4*irrep_list(ir).l+2)
     {
@@ -869,25 +882,45 @@ void DHF_SPH_CA::basisGenerator(string basisName, string filename, const INT_SPH
         if(occNumberCore(ir).rows() == 0) break;
         for(int ii = 0; ii < occNumberCore(ir).rows(); ii++)
         {
-            if(abs(occNumberCore(ir)(ii)-1) < 1e-4 || abs(occNumberDebug(ir)(ii)-1) < 1e-4)
+            if(abs(occNumberCore(ir)(ii)-1) < 1e-4 || abs(occNumberOpen(ir)(ii)-1) < 1e-4)
                 occN++;
         }
         basisInfo(occL).resize(occN);
         occL++;
     }
 
+    /* 
+        Construct the final contraction coefficients
+        
+        The contraction coefficients were firsly obtained using HF with intor.
+        They were combined with other basis functions to form the coeff_final, including
+            other decontracted functions in intor, stored in resortedCoeffInput
+            extra diffuse or core-correlating functions in intorAll
+        
+        The linearly dependent core-correlating functions are replaced by the basis function
+        with the closet alpha.
+
+        For j-adapted basis, the number of contracted basis sets doubles for l >= 1.
+    */
     vMatrixXd coeff_final(intorAll.shell_list.rows());
     Matrix<vector<double>,-1,1> exp_a_final(intorAll.shell_list.rows());
     for(int ir = 0; ir < intorAll.irrep_list.rows(); ir += 4*intorAll.irrep_list(ir).l+2)
     {
+        // nLD is the number of linearly dependent basis functions in this shell whose alpha value
+        // is close to that of another basis function with a threshold of 1.25 
         int ll = intorAll.irrep_list(ir).l, nLD = 0;
-        int nPVXZ = ll < intor.shell_list.rows() ? intor.shell_list(ll).exp_a.rows() : 0;
+        // nPVXZ is the number of primitive Gaussian functions in original basis set
+        // and is likely to be smaller than ll, which comes from the basisAll
+        int nPVXZ = (ll < intor.shell_list.rows() ? intor.shell_list(ll).exp_a.rows() : 0);
         int nAll = intorAll.shell_list(ll).exp_a.rows();
         vector<int> n_closest;
         for(int ii = 0; ii < nPVXZ; ii++)
             exp_a_final(ll).push_back(intor.shell_list(ll).exp_a(ii));
+
+        // Here we assume that the first nPVXZ basis functions are the same in intor and intorAll
         for(int ii = nPVXZ; ii < nAll; ii++)
         {
+            // tmp_i'th function is the linearly dependent core-correlating function
             int tmp_i;
             double closest = 100000000000.0;
             double alpha = intorAll.shell_list(ll).exp_a(ii);
@@ -903,6 +936,7 @@ void DHF_SPH_CA::basisGenerator(string basisName, string filename, const INT_SPH
                     tmp_i = jj;
                 }
             }
+            // Add the basis function only if it is not liearly dependent with others
             if(!LD)
             {
                 exp_a_final(ll).push_back(alpha);
@@ -916,18 +950,41 @@ void DHF_SPH_CA::basisGenerator(string basisName, string filename, const INT_SPH
         
         if(ll < occL)
         {
-            coeff_final(ll) = MatrixXd::Zero(exp_a_final(ll).size(),basisInput(ll)(1) + nLD + exp_a_final(ll).size() - nPVXZ);
-            for(int ii = 0; ii < coeff(ir).rows(); ii++)
+            if(sf || ll == 0)
             {
-                for(int jj = 0; jj < basisInfo(ll).rows(); jj++)
-                    coeff_final(ll)(ii,jj) = coeff(ir)(ii,jj);
-                for(int jj = basisInfo(ll).rows(); jj < basisInput(ll)(1); jj++)
-                    coeff_final(ll)(ii,jj) = resortedCoeffInput(ll)(ii,jj);
+                // (exp_a_final(ll).size() - nPVXZ) is the number of extra linearly independent Gaussian functions
+                coeff_final(ll) = MatrixXd::Zero(exp_a_final(ll).size(), basisSmall(ll)(1) + nLD + exp_a_final(ll).size() - nPVXZ);
+                for(int ii = 0; ii < coeff(ir).rows(); ii++)
+                {
+                    for(int jj = 0; jj < basisInfo(ll).rows(); jj++)
+                        coeff_final(ll)(ii,jj) = coeff(ir)(ii,jj);
+                    for(int jj = basisInfo(ll).rows(); jj < basisSmall(ll)(1); jj++)
+                        coeff_final(ll)(ii,jj) = resortedCoeffInput(ll)(ii,jj);
+                }
+                for(int jj = 0; jj < nLD; jj++)
+                    coeff_final(ll)(n_closest[jj],basisSmall(ll)(1)+jj) = 1.0;
+                for(int ii = 0; ii < exp_a_final(ll).size() - nPVXZ; ii++)
+                    coeff_final(ll)(nPVXZ+ii,basisSmall(ll)(1)+nLD+ii) = 1.0;
             }
-            for(int jj = 0; jj < nLD; jj++)
-                coeff_final(ll)(n_closest[jj],basisInput(ll)(1)+jj) = 1.0;
-            for(int ii = 0; ii < exp_a_final(ll).size() - nPVXZ; ii++)
-                coeff_final(ll)(nPVXZ+ii,basisInput(ll)(1)+nLD+ii) = 1.0;
+            else
+            {
+                // (exp_a_final(ll).size() - nPVXZ) is the number of extra linearly independent Gaussian functions
+                coeff_final(ll) = MatrixXd::Zero(exp_a_final(ll).size(), basisSmall(ll)(1) + basisInfo(ll).rows() + nLD + exp_a_final(ll).size() - nPVXZ);
+                for(int ii = 0; ii < coeff(ir).rows(); ii++)
+                {
+                    for(int jj = 0; jj < basisInfo(ll).rows(); jj++)
+                        coeff_final(ll)(ii,jj) = coeff(ir)(ii,jj);
+                    for(int jj = 0; jj < basisInfo(ll).rows(); jj++)
+                        coeff_final(ll)(ii,jj+basisInfo(ll).rows()) = coeff(ir + irrep_list(ir).two_j + 1)(ii,jj);
+                    for(int jj = 2*basisInfo(ll).rows(); jj < basisSmall(ll)(1) + basisInfo(ll).rows(); jj++)
+                        coeff_final(ll)(ii,jj) = resortedCoeffInput(ll)(ii,jj - basisInfo(ll).rows());
+                }
+                for(int jj = 0; jj < nLD; jj++)
+                    coeff_final(ll)(n_closest[jj],basisSmall(ll)(1)+basisInfo(ll).rows()+jj) = 1.0;
+                for(int jj = 0; jj < exp_a_final(ll).size() - nPVXZ; jj++)
+                    coeff_final(ll)(nPVXZ+jj,basisSmall(ll)(1)+basisInfo(ll).rows()+nLD+jj) = 1.0;
+            }
+            
         }
         else
         {
@@ -935,16 +992,22 @@ void DHF_SPH_CA::basisGenerator(string basisName, string filename, const INT_SPH
         }
     }
     
-    int pos = basisName.find("X2C");
+    int pos = basisName.find("-X2C");
     if(pos != string::npos)
-        basisName.erase(pos,3);
-    pos = basisName.find("DK3");
+        basisName.erase(pos,4);
+    pos = basisName.find("-DK3");
     if(pos != string::npos)
-        basisName.erase(pos,3);
+        basisName.erase(pos,4);
+    pos = basisName.find("_X2C");
+    if(pos != string::npos)
+        basisName.erase(pos,4);
+    pos = basisName.find("_DK3");
+    if(pos != string::npos)
+        basisName.erase(pos,4);
     ofstream ofs;
     ofs.open(filename,std::ofstream::app);
-        ofs << basisName + "DE4" << endl;
-        ofs << "obtained from AOC-SFX2C1E atomic calculation" << endl;
+        ofs << basisName + tag << endl;
+        ofs << "obtained from atomic calculation" << endl;
         ofs << endl;
         ofs << intorAll.shell_list.rows() << endl;
         for(int jj = 0; jj < intorAll.shell_list.rows(); jj++)

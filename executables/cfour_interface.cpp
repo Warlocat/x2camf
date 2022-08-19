@@ -72,6 +72,17 @@ int main()
     if(amfiMethod[3])   method = "NOTHING: special for x2c1e calculation";
     cout << "amfi Method input: " << method << endl;
 
+    if(amfiMethod[0])
+    {
+        cout << endl << endl;
+        cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << endl;
+        cout << "!!  WARNING: Average-of-configuration calculations are INCORRECT   !!" << endl;
+        cout << "!!  for atoms with more than one partially occupied l-shell, e.g., !!" << endl;
+        cout << "!!  uranium atom with both 5f and 6d partially occupied.           !!" << endl;
+        cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << endl;
+        cout << endl << endl;
+    }
+
     vector<MatrixXcd> amfiUnique, XUnique;
     for(int ii = 0; ii < atomListUnique.size(); ii++)
     {
