@@ -24,15 +24,18 @@ link_libraries(OpenMP::OpenMP_CXX)
 add_library(shared_objects OBJECT ${SHARED_SRC})
 
 pybind11_add_module(libx2camf ${SHARED_SRC} executables/pyx2camf.cpp)
-#add_executable(amf_pyscf $<TARGET_OBJECTS:shared_objects> executables/pyscf_interface.cpp)
-add_executable(xray      $<TARGET_OBJECTS:shared_objects> executables/xrayCorrection.cpp)
-add_executable(basisGenerator      $<TARGET_OBJECTS:shared_objects> executables/basisGenerator.cpp)
-# add_executable(main      $<TARGET_OBJECTS:shared_objects> executables/main.cpp)
-# add_executable(test      $<TARGET_OBJECTS:shared_objects> executables/test.cpp)
+# add_executable(amf_pyscf $<TARGET_OBJECTS:shared_objects> executables/pyscf_interface.cpp)
 
-enable_language (Fortran)
-include(FortranCInterface)
-FortranCInterface_VERIFY(CXX)
-add_executable(xx2camf      $<TARGET_OBJECTS:shared_objects> src/finterface.f90 executables/cfour_interface.cpp)
+# 
+#add_executable(xray      $<TARGET_OBJECTS:shared_objects> executables/xrayCorrection.cpp)
+#add_executable(basisGenerator      $<TARGET_OBJECTS:shared_objects> executables/basisGenerator.cpp)
+#add_executable(main      $<TARGET_OBJECTS:shared_objects> executables/main.cpp)
+#add_executable(test      $<TARGET_OBJECTS:shared_objects> executables/test.cpp)
+
+# 
+#enable_language (Fortran)
+#include(FortranCInterface)
+#FortranCInterface_VERIFY(CXX)
+#add_executable(xx2camf      $<TARGET_OBJECTS:shared_objects> src/finterface.f90 executables/cfour_interface.cpp)
 
 #install(TARGETS amf_pyscf main test)
