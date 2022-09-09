@@ -153,8 +153,12 @@ namespace Rotate
     MatrixXd jspinor2sph(const Matrix<irrep_jm, Dynamic, 1>& irrep_list);
     MatrixXcd sph2solid(const Matrix<irrep_jm, Dynamic, 1>& irrep_list);
     /* For CFOUR interface */
+    MatrixXcd jspinor2cfour_interface(const Matrix<irrep_jm, Dynamic, 1>& irrep_list,
+                                      MatrixXd (*reorder_m)(const int&));
     MatrixXd reorder_m_cfour(const int& LL);
     MatrixXcd jspinor2cfour_interface_old(const Matrix<irrep_jm, Dynamic, 1>& irrep_list);
+    MatrixXd reorder_m_cfour_new(const int& LL);
+    MatrixXcd jspinor2cfour_interface_new(const Matrix<irrep_jm, Dynamic, 1>& irrep_list);
     /*
         Put one-electron integrals in a single matrix and reorder them.
         The new ordering is to put the single uncontracted spinors together (separate)

@@ -476,16 +476,6 @@ MatrixXd Rotate::reorder_m_cfour(const int& LL)
         tmp(3,2) = 1.0;
         tmp(4,3) = 1.0;
         tmp(1,4) = 1.0;
-        // tmp(1,0) = 1.0;
-        // tmp(0,1) = 1.0;
-        // tmp(3,2) = 1.0;
-        // tmp(2,3) = 1.0;
-        // tmp(4,4) = 1.0;
-        // tmp(4,0) = 1.0;
-        // tmp(0,1) = 1.0;
-        // tmp(3,2) = 1.0;
-        // tmp(1,3) = 1.0;
-        // tmp(2,4) = 1.0;
         break;
     case 3:
         tmp(4,0) = 1.0;
@@ -543,12 +533,27 @@ MatrixXd Rotate::reorder_m_cfour(const int& LL)
 
     return tmp;
 }
-MatrixXcd Rotate::jspinor2cfour_interface_old(const Matrix<irrep_jm, Dynamic, 1>& irrep_list)
+MatrixXd Rotate::reorder_m_cfour_new(const int& LL)
+{
+    /*
+        Transform -l, -l+1, ..., l-1, l 
+        to        l, -l, l-1, -l+1, ..., 0
+    */
+    MatrixXd tmp = MatrixXd::Zero(2*LL+1,2*LL+1);
+    for(int ii = 0 ; ii < 2*LL+1; ii++)
+    {
+        int index_tmp = ii%2? ii/2 : 2*LL-ii/2;
+        tmp(index_tmp,ii) = 1.0;
+    }
+
+    return tmp;
+}
+MatrixXcd Rotate::jspinor2cfour_interface(const Matrix<irrep_jm, Dynamic, 1>& irrep_list, MatrixXd (*reorder_m)(const int&))
 {
     int Lmax = irrep_list(irrep_list.rows()-1).l;
     vMatrixXd Lmatrices(Lmax+1);
     for(int ll = 0; ll <= Lmax; ll++)
-        Lmatrices(ll) = reorder_m_cfour(ll);
+        Lmatrices(ll) = reorder_m(ll);
     int size_spinor = 0, Lsize[Lmax+1];
     for(int ir = 0; ir < irrep_list.rows(); ir++)
     {
@@ -571,7 +576,14 @@ MatrixXcd Rotate::jspinor2cfour_interface_old(const Matrix<irrep_jm, Dynamic, 1>
 
     return jspinor2sph(irrep_list) * sph2solid(irrep_list) * tmp;
 }
-
+MatrixXcd Rotate::jspinor2cfour_interface_old(const Matrix<irrep_jm, Dynamic, 1>& irrep_list)
+{
+    return jspinor2cfour_interface(irrep_list, Rotate::reorder_m_cfour);
+}
+MatrixXcd Rotate::jspinor2cfour_interface_new(const Matrix<irrep_jm, Dynamic, 1>& irrep_list)
+{
+    return jspinor2cfour_interface(irrep_list, Rotate::reorder_m_cfour_new);
+}
 
 
 bool CG::triangle_fails(const int two_j1, const int two_j2, const int two_j3)

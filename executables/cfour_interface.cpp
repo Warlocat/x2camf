@@ -117,7 +117,8 @@ int main()
         amfiUnique.push_back(Rotate::unite_irrep(scfer->get_amfi_unc(intor,twoC), intor.irrep_list));
         XUnique.push_back(Rotate::unite_irrep(scfer->get_X(), intor.irrep_list));
         
-        MatrixXcd tmp = Rotate::jspinor2cfour_interface_old(intor.irrep_list);
+        //MatrixXcd tmp = Rotate::jspinor2cfour_interface_old(intor.irrep_list);
+        MatrixXcd tmp = Rotate::jspinor2cfour_interface_new(intor.irrep_list);
         amfiUnique[ii] = tmp.adjoint() * amfiUnique[ii] * tmp;
         amfiUnique[ii] = Rotate::separate2mCompact(amfiUnique[ii],intor.irrep_list);
         XUnique[ii] = tmp.adjoint() * XUnique[ii] * tmp;
