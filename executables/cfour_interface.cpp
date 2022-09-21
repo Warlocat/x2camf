@@ -69,7 +69,7 @@ int main()
     if(amfiMethod[1])   method = method + "-Gaunt";
     if(amfiMethod[2])   method = method + "-gauge\n";
     if(amfiMethod[4])   method = method + " with Gaussian nuclear model";
-    if(amfiMethod[3])   method = "NOTHING: special for x2c1e calculation";
+    if(amfiMethod[3])   method = method + " using entire picture change correction";
     cout << "amfi Method input: " << method << endl;
 
     if(amfiMethod[0])
@@ -113,12 +113,15 @@ int main()
             scfer->runSCF(true,false);
         }
         
-        //amfiUnique.push_back(Rotate::unite_irrep(scfer.x2c2ePCC(),intor.irrep_list)); // for 2e-pcc test
-        amfiUnique.push_back(Rotate::unite_irrep(scfer->get_amfi_unc(intor,twoC), intor.irrep_list));
+        if(amfiMethod[3])
+            amfiUnique.push_back(Rotate::unite_irrep(scfer->x2c2ePCC(),intor.irrep_list)); // for 2e-pcc test
+        else
+            amfiUnique.push_back(Rotate::unite_irrep(scfer->get_amfi_unc(intor,twoC), intor.irrep_list));
+
         XUnique.push_back(Rotate::unite_irrep(scfer->get_X(), intor.irrep_list));
         
-        //MatrixXcd tmp = Rotate::jspinor2cfour_interface_old(intor.irrep_list);
-        MatrixXcd tmp = Rotate::jspinor2cfour_interface_new(intor.irrep_list);
+        MatrixXcd tmp = Rotate::jspinor2cfour_interface_old(intor.irrep_list);
+        // MatrixXcd tmp = Rotate::jspinor2cfour_interface_new(intor.irrep_list);
         amfiUnique[ii] = tmp.adjoint() * amfiUnique[ii] * tmp;
         amfiUnique[ii] = Rotate::separate2mCompact(amfiUnique[ii],intor.irrep_list);
         XUnique[ii] = tmp.adjoint() * XUnique[ii] * tmp;
@@ -170,14 +173,6 @@ int main()
     }
 
     int sizeAllReal = 2*sizeAll2;
-    if(amfiMethod[3])
-    {
-        for(int ii = 0; ii < sizeAll2; ii++)
-        {
-            amfiAll[ii].dr = 0.0;
-            amfiAll[ii].di = 0.0;
-        }
-    }
     cout << "Writing amfso integrals...." << endl;
     if(!PT)
     {
@@ -321,7 +316,7 @@ void readZMAT(const string& filename, vector<string>& atoms, vector<string>& bas
                 //average-of-configuration
                 //gaunt
                 //gauge
-                //set all integrals to zero
+                //use entire 2e-picture-change-correction
                 //Gaussian finite nuclear model
                 for(int ii = 0 ; ii < 4; ii++)
                 {
@@ -344,7 +339,7 @@ void readZMAT(const string& filename, vector<string>& atoms, vector<string>& bas
             amfiMethod.push_back(false); //aoc
             amfiMethod.push_back(false); //with gaunt
             amfiMethod.push_back(false); //with gauge
-            amfiMethod.push_back(false); //normal integral
+            amfiMethod.push_back(false); //normal integral rather than entire 2e-pcc
             amfiMethod.push_back(false); //without Gaussian nuclear model 
             amfiMethod.push_back(false); //calculate amfso integrals using variational approach 
         }
