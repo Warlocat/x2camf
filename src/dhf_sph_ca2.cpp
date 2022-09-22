@@ -10,24 +10,40 @@
 using namespace std;
 using namespace Eigen;
 
-vVectorXd occNumberOpen2;
-
-
 DHF_SPH_CA2::DHF_SPH_CA2(INT_SPH& int_sph_, const string& filename, const bool& spinFree, const bool& twoC, const bool& with_gaunt_, const bool& with_gauge_, const bool& allInt, const bool& gaussian_nuc):
 DHF_SPH(int_sph_,filename,spinFree,twoC,with_gaunt_,with_gauge_,allInt,gaussian_nuc)
 {
+    occNumberShells.resize(3);
+    occNumberShells[0] = occNumber;
+    occNumberShells[1].resize(occMax_irrep);
+    occNumberShells[2].resize(irrep_list.rows());
     openShell = -1;
     for(int ir = 0; ir < occMax_irrep; ir++)
     {
+        occNumberShells[1](ir).resize(irrep_list(ir).size);
+        occNumberShells[1](ir) = VectorXd::Zero(irrep_list(ir).size);
+        occNumberShells[2](ir).resize(irrep_list(ir).size);
+        occNumberShells[2](ir) = VectorXd::Ones(irrep_list(ir).size);
         for(int ii = 0; ii < occNumber(ir).rows(); ii++)
         {
-            // if 1 > occNumber(ir)(ii) > 0
-            if(abs(occNumber(ir)(ii)) > 1e-4 && abs(occNumber(ir)(ii)) < 1.0)
+            if(abs(occNumber(ir)(ii)) > 1e-4)
             {
-                f_NM = occNumber(ir)(ii);
-                openShell = ir;
+                // if 1 > occNumber(ir)(ii) > 0
+                if(occNumber(ir)(ii) < 0.9999)
+                {
+                    f_NM = occNumber(ir)(ii);
+                    openShell = ir;
+                    occNumberShells[0](ir)(ii) = 0.0;
+                    occNumberShells[1](ir)(ii) = 1.0;
+                }
+                occNumberShells[2](ir)(ii) = 0.0;
             }
         }
+    }
+    for(int ir = occMax_irrep; ir < irrep_list.rows(); ir++)
+    {
+        occNumberShells[2](ir).resize(irrep_list(ir).size);
+        occNumberShells[2](ir) = VectorXd::Ones(irrep_list(ir).size);
     }
 
     if(openShell == -1)
@@ -42,26 +58,15 @@ DHF_SPH(int_sph_,filename,spinFree,twoC,with_gaunt_,with_gauge_,allInt,gaussian_
         NN = f_NM * MM;
     }
 
-    occNumberOpen2.resize(occMax_irrep);
     for(int ir = 0; ir < occMax_irrep; ir++)
     {
-        occNumberOpen2(ir).resize(irrep_list(ir).size);
-        occNumberOpen2(ir) = VectorXd::Zero(irrep_list(ir).size);
-        for(int ii = 0; ii < occNumber(ir).rows(); ii++)
-        {
-            if(abs(occNumber(ir)(ii) - 1.0) < 1e-5)
-                occNumberOpen2(ir)(ii) = 0.0;
-            else if(abs(occNumber(ir)(ii)) > 1e-4 && abs(occNumber(ir)(ii)) < (1.0-1e-4))
-            {
-                occNumber(ir)(ii) = 0.0;
-                occNumberOpen2(ir)(ii) = 1.0;
-            }
-        }
+        cout << "1: " << occNumberShells[0](ir).transpose() << endl;
+        cout << "2: " << occNumberShells[1](ir).transpose() << endl;
+        cout << "3: " << occNumberShells[2](ir).transpose() << endl;
     }
-    for(int ir = 0; ir < occMax_irrep; ir++)
+    for(int ir = occMax_irrep; ir < irrep_list.rows(); ir++)
     {
-        cout << "1: " << occNumber(ir).transpose() << endl;
-        cout << "2: " << occNumberOpen2(ir).transpose() << endl;
+        cout << "3: " << occNumberShells[2](ir).transpose() << endl;
     }
     cout << "Configuration-averaged HF initialization." << endl;
     cout << "f = N/M = " << f_NM << ", N = " << NN << ", M = " << MM << endl;
@@ -77,7 +82,7 @@ DHF_SPH_CA2::~DHF_SPH_CA2()
 /*
     Evaluate density matrix
 */
-MatrixXd DHF_SPH_CA2::evaluateDensity_core(const MatrixXd& coeff_, const VectorXd& occNumber_, const bool& twoC)
+MatrixXd DHF_SPH_CA2::evaluateDensity_aoc(const MatrixXd& coeff_, const VectorXd& occNumber_, const bool& twoC)
 {
     if(!twoC)
     {
@@ -116,60 +121,6 @@ MatrixXd DHF_SPH_CA2::evaluateDensity_core(const MatrixXd& coeff_, const VectorX
     }
 }
 
-MatrixXd DHF_SPH_CA2::evaluateDensity_open(const MatrixXd& coeff_, const VectorXd& occNumber_, const bool& twoC)
-{
-    if(!twoC)
-    {
-        int size = coeff_.cols()/2;
-        MatrixXd den(2*size,2*size);
-        den = MatrixXd::Zero(2*size,2*size);        
-        for(int aa = 0; aa < size; aa++)
-        for(int bb = 0; bb < size; bb++)
-        {
-            for(int ii = 0; ii < occNumber_.rows(); ii++)
-            {
-                // if 1 > occNumber(ir)(ii) > 0
-                if(abs(occNumber_(ii)) > 1e-4 && abs(occNumber_(ii)) < (1.0-1e-4))
-                {    
-                    den(aa,bb) += coeff_(aa,ii+size) * coeff_(bb,ii+size);
-                    den(size+aa,bb) += coeff_(size+aa,ii+size) * coeff_(bb,ii+size);
-                    den(aa,size+bb) += coeff_(aa,ii+size) * coeff_(size+bb,ii+size);
-                    den(size+aa,size+bb) += coeff_(size+aa,ii+size) * coeff_(size+bb,ii+size);
-                }
-            }
-        }
-        return den;
-    }
-    else
-    {
-        int size = coeff_.cols();
-        MatrixXd den(size,size);
-        den = MatrixXd::Zero(size,size);        
-        for(int aa = 0; aa < size; aa++)
-        for(int bb = 0; bb < size; bb++)
-        for(int ii = 0; ii < occNumber_.rows(); ii++)
-        {
-            // if 1 > occNumber(ir)(ii) > 0
-            if(abs(occNumber_(ii)) > 1e-4 && abs(occNumber_(ii)) < (1.0-1e-4))
-            {
-                den(aa,bb) += coeff_(aa,ii) * coeff_(bb,ii);
-            }
-        }
-        return den;
-    }
-}
-
-void DHF_SPH_CA2::evaluateDensity_ca_irrep(vMatrixXd& den_c, vMatrixXd& den_o, const vMatrixXd& coeff_, const bool& twoC)
-{
-    den_c.resize(occMax_irrep);
-    den_o.resize(occMax_irrep);
-    for(int ir = 0; ir < occMax_irrep; ir+=irrep_list(ir).two_j+1)
-    {
-        den_c(ir) = evaluateDensity_core(coeff_(ir),occNumber(ir), twoC);
-        den_o(ir) = evaluateDensity_core(coeff_(ir),occNumberOpen2(ir), twoC);
-    }
-}
-
 
 /*
     SCF procedure for 4-c and 2-c calculation
@@ -180,7 +131,7 @@ void DHF_SPH_CA2::runSCF(const bool& twoC, const bool& renormSmall)
     {
         renormalize_small();
     }
-    vector<MatrixXd> error4DIIS[occMax_irrep], fock4DIIS[occMax_irrep];
+    vector<MatrixXd> error4DIIS_c[occMax_irrep], fock4DIIS_c[occMax_irrep], error4DIIS_o[occMax_irrep], fock4DIIS_o[occMax_irrep];
     vMatrixXd coeff_c(occMax_irrep), coeff_o(occMax_irrep), fock_c(occMax_irrep), fock_o(occMax_irrep);
     StartTime = clock();
     cout << endl;
@@ -195,8 +146,13 @@ void DHF_SPH_CA2::runSCF(const bool& twoC, const bool& renormSmall)
     density_o.resize(occMax_irrep);
     for(int ir = 0; ir < occMax_irrep; ir+=irrep_list(ir).two_j+1)
     {
-        density(ir) = evaluateDensity_core(coeff_c(ir),occNumber(ir),twoC);
-        density_o(ir) = evaluateDensity_core(coeff_o(ir),occNumberOpen2(ir),twoC);
+        density(ir) = evaluateDensity_aoc(coeff_c(ir),occNumberShells[0](ir),twoC);
+        density_o(ir) = evaluateDensity_aoc(coeff_o(ir),occNumberShells[1](ir),twoC);
+        // for(int jj = 1; jj < irrep_list(ir).two_j+1; jj++)
+        // {
+        //     density_o(ir+jj) = density_o(ir);
+        //     density(ir+jj) = density(ir);
+        // }
     }
 
     for(int iter = 1; iter <= maxIter; iter++)
@@ -211,7 +167,7 @@ void DHF_SPH_CA2::runSCF(const bool& twoC, const bool& renormSmall)
         }
         else
         {
-            int tmp_size = fock4DIIS[0].size();
+            int tmp_size = fock4DIIS_c[0].size();
             MatrixXd B4DIIS(tmp_size+1,tmp_size+1);
             VectorXd vec_b(tmp_size+1);    
             for(int ii = 0; ii < tmp_size; ii++)
@@ -220,7 +176,9 @@ void DHF_SPH_CA2::runSCF(const bool& twoC, const bool& renormSmall)
                 {
                     B4DIIS(ii,jj) = 0.0;
                     for(int ir = 0; ir < occMax_irrep; ir += irrep_list(ir).two_j+1)
-                        B4DIIS(ii,jj) += (error4DIIS[ir][ii].adjoint()*error4DIIS[ir][jj])(0,0);
+                        B4DIIS(ii,jj) += (error4DIIS_c[ir][ii].adjoint()*error4DIIS_c[ir][jj])(0,0);
+                    for(int ir = 0; ir < occMax_irrep; ir += irrep_list(ir).two_j+1)
+                        B4DIIS(ii,jj) += (error4DIIS_o[ir][ii].adjoint()*error4DIIS_o[ir][jj])(0,0);
                     B4DIIS(jj,ii) = B4DIIS(ii,jj);
                 }
                 B4DIIS(tmp_size, ii) = -1.0;
@@ -233,21 +191,28 @@ void DHF_SPH_CA2::runSCF(const bool& twoC, const bool& renormSmall)
             for(int ir = 0; ir < occMax_irrep; ir += irrep_list(ir).two_j+1)
             {
                 fock_c(ir) = MatrixXd::Zero(fock_c(ir).rows(),fock_c(ir).cols());
+                fock_o(ir) = MatrixXd::Zero(fock_o(ir).rows(),fock_o(ir).cols());
                 for(int ii = 0; ii < tmp_size; ii++)
                 {
-                    fock_c(ir) += C(ii) * fock4DIIS[ir][ii];
+                    fock_c(ir) += C(ii) * fock4DIIS_c[ir][ii];
+                    fock_o(ir) += C(ii) * fock4DIIS_o[ir][ii];
                 }
             }
         }
         eigensolverG_irrep(fock_c, overlap_half_i_4c, ene_orb, coeff_c);
-        // eigensolverG_irrep(fock_o, overlap_half_i_4c, ene_orb, coeff_o);
+        eigensolverG_irrep(fock_o, overlap_half_i_4c, ene_orb, coeff_o);
 
         for(int ir = 0; ir < occMax_irrep; ir += irrep_list(ir).two_j+1)
         {
-            newDen_c(ir) = evaluateDensity_core(coeff_c(ir),occNumber(ir),twoC);
-            newDen_o(ir) = evaluateDensity_core(coeff_c(ir),occNumberOpen2(ir),twoC);
+            newDen_c(ir) = evaluateDensity_aoc(coeff_c(ir),occNumberShells[0](ir),twoC);
+            newDen_o(ir) = evaluateDensity_aoc(coeff_o(ir),occNumberShells[1](ir),twoC);
+            // for(int jj = 1; jj < irrep_list(ir).two_j+1; jj++)
+            // {
+            //     newDen_c(ir+jj) = newDen_c(ir);
+            //     newDen_o(ir+jj) = newDen_o(ir);
+            // }
         }
-        d_density = max(evaluateChange_irrep(density, newDen_c),evaluateChange_irrep(density_o,newDen_o));
+        d_density = max(evaluateChange_irrep(density, newDen_c),evaluateChange_irrep(density_o,newDen_o));              
         cout << "Iter #" << iter << " maximum density difference: " << d_density << endl;     
         density = newDen_c;
         density_o = newDen_o;
@@ -275,7 +240,7 @@ void DHF_SPH_CA2::runSCF(const bool& twoC, const bool& renormSmall)
                     coeff(ir) = coeff_c(ir);
                     for(int ii = 0; ii < irrep_list(ir).size; ii++)
                     {
-                        if(abs(occNumberOpen2(ir)(ii) - 1.0) < 1e-5)
+                        if(abs(occNumberShells[1](ir)(ii) - 1.0) < 1e-5)
                         {
                             for(int jj = 0; jj < coeff(ir).rows(); jj++)
                                 coeff(ir)(jj,ii) = coeff_o(ir)(jj,ii);
@@ -290,7 +255,7 @@ void DHF_SPH_CA2::runSCF(const bool& twoC, const bool& renormSmall)
                     coeff(ir) = coeff_c(ir);
                     for(int ii = 0; ii < irrep_list(ir).size; ii++)
                     {
-                        if(abs(occNumberOpen2(ir)(ii) - 1.0) < 1e-5)
+                        if(abs(occNumberShells[1](ir)(ii) - 1.0) < 1e-5)
                         {
                             for(int jj = 0; jj < coeff(ir).rows(); jj++)
                                 coeff(ir)(jj,ii+coeff(ir).rows()/2) = coeff_o(ir)(jj,ii+coeff(ir).rows()/2);
@@ -379,19 +344,25 @@ void DHF_SPH_CA2::runSCF(const bool& twoC, const bool& renormSmall)
         for(int ir = 0; ir < occMax_irrep; ir += irrep_list(ir).two_j+1)    
         {
             int size_tmp = irrep_list(ir).size;
-            evaluateFock(fock_c(ir),fock_o(ir),twoC,density,density_o,size_tmp,ir);    
-            if(error4DIIS[ir].size() >= size_DIIS)
+            evaluateFock(fock_c(ir),fock_o(ir),twoC,density,density_o,size_tmp,ir);
+
+            eigensolverG(fock_c(ir), overlap_half_i_4c(ir), ene_orb(ir), coeff_c(ir));
+            newDen_c(ir) = evaluateDensity_aoc(coeff_c(ir),occNumberShells[0](ir),twoC);
+            error4DIIS_c[ir].push_back(evaluateErrorDIIS(density(ir),newDen_c(ir)));
+            fock4DIIS_c[ir].push_back(fock_c(ir));
+
+            eigensolverG(fock_o(ir), overlap_half_i_4c(ir), ene_orb(ir), coeff_o(ir));
+            newDen_o(ir) = evaluateDensity_aoc(coeff_o(ir),occNumberShells[1](ir),twoC);
+            error4DIIS_o[ir].push_back(evaluateErrorDIIS(density_o(ir),newDen_o(ir)));
+            fock4DIIS_o[ir].push_back(fock_o(ir));
+    
+            if(error4DIIS_c[ir].size() > size_DIIS)
             {
-                error4DIIS[ir].erase(error4DIIS[ir].begin());
-                error4DIIS[ir].push_back(evaluateErrorDIIS(fock_c(ir),overlap_4c(ir),density(ir)));
-                fock4DIIS[ir].erase(fock4DIIS[ir].begin());
-                fock4DIIS[ir].push_back(fock_c(ir));
-            }
-            else
-            {
-                error4DIIS[ir].push_back(evaluateErrorDIIS(fock_c(ir),overlap_4c(ir),density(ir)));
-                fock4DIIS[ir].push_back(fock_c(ir));
-            }          
+                error4DIIS_c[ir].erase(error4DIIS_c[ir].begin());
+                fock4DIIS_c[ir].erase(fock4DIIS_c[ir].begin());
+                error4DIIS_o[ir].erase(error4DIIS_o[ir].begin());
+                fock4DIIS_o[ir].erase(fock4DIIS_o[ir].begin());
+            }            
         }
     }
     EndTime = clock();
@@ -416,7 +387,7 @@ void DHF_SPH_CA2::runSCF(const bool& twoC, const bool& renormSmall)
 /* 
     evaluate Fock matrix 
 */
-void DHF_SPH_CA2::evaluateFock(MatrixXd& fock_c, MatrixXd& fock_o, const bool& twoC, const vMatrixXd& den_c, const vMatrixXd den_o, const int& size, const int& Iirrep)
+void DHF_SPH_CA2::evaluateFock(MatrixXd& fock_c, MatrixXd& fock_o, const bool& twoC, const vMatrixXd& den_c, const vMatrixXd& den_o, const int& size, const int& Iirrep)
 {
     int ir = all2compact(Iirrep);
     if(twoC)
@@ -465,18 +436,23 @@ void DHF_SPH_CA2::evaluateFock(MatrixXd& fock_c, MatrixXd& fock_o, const bool& t
     }
     else
     {
+        MatrixXd QQ = MatrixXd::Zero(size*2,size*2);
         fock_c.resize(size*2,size*2);
         fock_o.resize(size*2,size*2);
         #pragma omp parallel  for
         for(int mm = 0; mm < size; mm++)
         for(int nn = 0; nn <= mm; nn++)
         {
-            fock_c(mm,nn) = (1.0-f_NM)*h1e_4c(Iirrep)(mm,nn);
-            fock_c(mm+size,nn) = (1.0-f_NM)*h1e_4c(Iirrep)(mm+size,nn);
-            fock_c(mm+size,nn+size) = (1.0-f_NM)*h1e_4c(Iirrep)(mm+size,nn+size);
+            fock_c(mm,nn) = h1e_4c(Iirrep)(mm,nn);
+            fock_c(mm+size,nn) = h1e_4c(Iirrep)(mm+size,nn);
+            fock_c(mm+size,nn+size) = h1e_4c(Iirrep)(mm+size,nn+size);
+            fock_o(mm,nn) = h1e_4c(Iirrep)(mm,nn);
+            fock_o(mm+size,nn) = h1e_4c(Iirrep)(mm+size,nn);
+            fock_o(mm+size,nn+size) = h1e_4c(Iirrep)(mm+size,nn+size);
             if(mm != nn) 
             {
-                fock_c(nn+size,mm) = (1.0-f_NM)*h1e_4c(Iirrep)(nn+size,mm);
+                fock_c(nn+size,mm) = h1e_4c(Iirrep)(nn+size,mm);
+                fock_o(nn+size,mm) = h1e_4c(Iirrep)(nn+size,mm);
             }
             
             for(int jr = 0; jr < occMax_irrep_compact; jr++)
@@ -484,42 +460,197 @@ void DHF_SPH_CA2::evaluateFock(MatrixXd& fock_c, MatrixXd& fock_o, const bool& t
                 int Jirrep = compact2all(jr);
                 double twojP1 = irrep_list(Jirrep).two_j+1;
                 int size_tmp2 = irrep_list(Jirrep).size;
-                MatrixXd den_t = f_NM*(1.0-(NN-1.0)/(MM-1.0))*den_o(Jirrep) + (1.0-f_NM)*den_c(Jirrep);
+                MatrixXd den_tc = den_c(Jirrep) + f_NM*den_o(Jirrep);
+                MatrixXd den_to = den_c(Jirrep) + (NN-1.0)/(MM-1.0)*den_o(Jirrep);
                 for(int ss = 0; ss < size_tmp2; ss++)
                 for(int rr = 0; rr < size_tmp2; rr++)
                 {
                     int emn = mm*size+nn, esr = ss*size_tmp2+rr, emr = mm*size_tmp2+rr, esn = ss*size+nn;
-                    fock_c(mm,nn) += twojP1*den_t(ss,rr) * h2eLLLL_JK.J[ir][jr][emn][esr] + twojP1*den_t(size_tmp2+ss,size_tmp2+rr) * h2eSSLL_JK.J[jr][ir][esr][emn];
-                    fock_c(mm+size,nn) -= twojP1*den_t(ss,size_tmp2+rr) * h2eSSLL_JK.K[ir][jr][emr][esn];
-                    fock_c(mm+size,nn+size) += twojP1*den_t(size_tmp2+ss,size_tmp2+rr) * h2eSSSS_JK.J[ir][jr][emn][esr] + twojP1*den_t(ss,rr) * h2eSSLL_JK.J[ir][jr][emn][esr];
+                    fock_c(mm,nn) += twojP1*den_tc(ss,rr) * h2eLLLL_JK.J[ir][jr][emn][esr] + twojP1*den_tc(size_tmp2+ss,size_tmp2+rr) * h2eSSLL_JK.J[jr][ir][esr][emn];
+                    fock_c(mm+size,nn) -= twojP1*den_tc(ss,size_tmp2+rr) * h2eSSLL_JK.K[ir][jr][emr][esn];
+                    fock_c(mm+size,nn+size) += twojP1*den_tc(size_tmp2+ss,size_tmp2+rr) * h2eSSSS_JK.J[ir][jr][emn][esr] + twojP1*den_tc(ss,rr) * h2eSSLL_JK.J[ir][jr][emn][esr];
+
+                    fock_o(mm,nn) += twojP1*den_to(ss,rr) * h2eLLLL_JK.J[ir][jr][emn][esr] + twojP1*den_to(size_tmp2+ss,size_tmp2+rr) * h2eSSLL_JK.J[jr][ir][esr][emn];
+                    fock_o(mm+size,nn) -= twojP1*den_to(ss,size_tmp2+rr) * h2eSSLL_JK.K[ir][jr][emr][esn];
+                    fock_o(mm+size,nn+size) += twojP1*den_to(size_tmp2+ss,size_tmp2+rr) * h2eSSSS_JK.J[ir][jr][emn][esr] + twojP1*den_to(ss,rr) * h2eSSLL_JK.J[ir][jr][emn][esr];
+
+                    QQ(mm,nn) += twojP1*den_o(Jirrep)(ss,rr) * h2eLLLL_JK.J[ir][jr][emn][esr] + twojP1*den_o(Jirrep)(size_tmp2+ss,size_tmp2+rr) * h2eSSLL_JK.J[jr][ir][esr][emn];
+                    QQ(mm+size,nn) -= twojP1*den_o(Jirrep)(ss,size_tmp2+rr) * h2eSSLL_JK.K[ir][jr][emr][esn];
+                    QQ(mm+size,nn+size) += twojP1*den_o(Jirrep)(size_tmp2+ss,size_tmp2+rr) * h2eSSSS_JK.J[ir][jr][emn][esr] + twojP1*den_o(Jirrep)(ss,rr) * h2eSSLL_JK.J[ir][jr][emn][esr];
                     
                     if(mm != nn) 
                     {
                         int enr = nn*size_tmp2+rr, esm = ss*size+mm;
-                        fock_c(nn+size,mm) -= twojP1*den_t(ss,size_tmp2+rr) * h2eSSLL_JK.K[ir][jr][enr][esm];
+                        fock_c(nn+size,mm) -= twojP1*den_tc(ss,size_tmp2+rr) * h2eSSLL_JK.K[ir][jr][enr][esm];
+                        fock_o(nn+size,mm) -= twojP1*den_to(ss,size_tmp2+rr) * h2eSSLL_JK.K[ir][jr][enr][esm];
+                        QQ(nn+size,mm) -= twojP1*den_o(Jirrep)(ss,size_tmp2+rr) * h2eSSLL_JK.K[ir][jr][enr][esm];
                     }
 
                     if(with_gaunt)
                     {
                         int enm = nn*size+mm, ers = rr*size_tmp2+ss, erm = rr*size+mm, ens = nn*size_tmp2+ss;
 
-                        fock_c(mm,nn) -= twojP1*den_t(size_tmp2+ss,size_tmp2+rr) * gauntLSSL_JK.K[ir][jr][emr][esn];
-                        fock_c(mm+size,nn) += twojP1*den_t(ss+size_tmp2,rr)*gauntLSLS_JK.J[ir][jr][enm][ers] + twojP1*den_t(ss,size_tmp2+rr) * gauntLSSL_JK.J[jr][ir][esr][emn];
-                        fock_c(mm+size,nn+size) -= twojP1*den_t(ss,rr) * gauntLSSL_JK.K[jr][ir][esn][emr];
+                        fock_c(mm,nn) -= twojP1*den_tc(size_tmp2+ss,size_tmp2+rr) * gauntLSSL_JK.K[ir][jr][emr][esn];
+                        fock_c(mm+size,nn) += twojP1*den_tc(ss+size_tmp2,rr)*gauntLSLS_JK.J[ir][jr][enm][ers] + twojP1*den_tc(ss,size_tmp2+rr) * gauntLSSL_JK.J[jr][ir][esr][emn];
+                        fock_c(mm+size,nn+size) -= twojP1*den_tc(ss,rr) * gauntLSSL_JK.K[jr][ir][esn][emr];
+
+                        fock_o(mm,nn) -= twojP1*den_to(size_tmp2+ss,size_tmp2+rr) * gauntLSSL_JK.K[ir][jr][emr][esn];       
+                        fock_o(mm+size,nn) += twojP1*den_to(ss+size_tmp2,rr)*gauntLSLS_JK.J[ir][jr][enm][ers] + twojP1*den_to(ss,size_tmp2+rr) * gauntLSSL_JK.J[jr][ir][esr][emn];              
+                        fock_o(mm+size,nn+size) -= twojP1*den_to(ss,rr) * gauntLSSL_JK.K[jr][ir][esn][emr];
+
+                        QQ(mm,nn) -= twojP1*den_o(Jirrep)(size_tmp2+ss,size_tmp2+rr) * gauntLSSL_JK.K[ir][jr][emr][esn];
+                        QQ(mm+size,nn) += twojP1*den_o(Jirrep)(size_tmp2+ss,rr)*gauntLSLS_JK.J[ir][jr][enm][ers] + twojP1*den_o(Jirrep)(ss,size_tmp2+rr) * gauntLSSL_JK.J[jr][ir][esr][emn];                        
+                        QQ(mm+size,nn+size) -= twojP1*den_o(Jirrep)(ss,rr) * gauntLSSL_JK.K[jr][ir][esn][emr];
+
                         if(mm != nn)
                         {
                             int ern = rr*size+nn, ems = mm*size_tmp2+ss;
-                            fock_c(nn+size,mm) += twojP1*den_t(size_tmp2+ss,rr)*gauntLSLS_JK.J[ir][jr][emn][ers] + twojP1*den_t(ss,size_tmp2+rr) * gauntLSSL_JK.J[jr][ir][esr][enm];
+                            fock_c(nn+size,mm) += twojP1*den_tc(size_tmp2+ss,rr)*gauntLSLS_JK.J[ir][jr][emn][ers] + twojP1*den_tc(ss,size_tmp2+rr) * gauntLSSL_JK.J[jr][ir][esr][enm];
+                            fock_o(nn+size,mm) += twojP1*den_to(size_tmp2+ss,rr)*gauntLSLS_JK.J[ir][jr][emn][ers] + twojP1*den_to(ss,size_tmp2+rr) * gauntLSSL_JK.J[jr][ir][esr][enm];
+                            QQ(nn+size,mm) += twojP1*den_o(Jirrep)(size_tmp2+ss,rr)*gauntLSLS_JK.J[ir][jr][emn][ers] + twojP1*den_o(Jirrep)(ss,size_tmp2+rr) * gauntLSSL_JK.J[jr][ir][esr][enm];
                         }
                     }
                 }
             }
+            QQ(nn,mm) = QQ(mm,nn);
+            QQ(nn+size,mm+size) = QQ(mm+size,nn+size);
+            QQ(nn,mm+size) = QQ(mm+size,nn);
+            QQ(mm,nn+size) = QQ(nn+size,mm);
         }
-        MatrixXd R = den_o(Iirrep).transpose() + den_c(Iirrep).transpose(), S = overlap_half_i_4c(Iirrep);        
-        fock_c = R *S * fock_c *S*R;
-        fock_o = fock_c;
+        #pragma omp parallel  for
+        for(int mm = 0; mm < 2*size; mm++)
+        for(int nn = 0; nn <= mm; nn++)
+        {
+            for(int ss = 0; ss < 2*size; ss++)
+            for(int rr = 0; rr < 2*size; rr++)
+            {
+                fock_c(mm,nn) += f_NM/(MM-1.0) * den_o(Iirrep)(rr,ss) * (overlap_4c(Iirrep)(mm,ss)*QQ(rr,nn) + QQ(mm,ss)*overlap_4c(Iirrep)(rr,nn));
+                fock_o(mm,nn) += 1.0/(MM-1.0) * den_c(Iirrep)(rr,ss) * (overlap_4c(Iirrep)(mm,ss)*QQ(rr,nn) + QQ(mm,ss)*overlap_4c(Iirrep)(rr,nn));
+            }
+            fock_c(nn,mm) = fock_c(mm,nn);
+            fock_o(nn,mm) = fock_o(mm,nn);
+        }
     }
 }
+void DHF_SPH_CA2::evaluateFock_oneF(MatrixXd& fock_c, const bool& twoC, const vMatrixXd& den_c, const vMatrixXd& den_o, const vMatrixXd& den_u, const int& size, const int& Iirrep)
+{
+    int ir = all2compact(Iirrep);
+    if(twoC)
+    {
+        // cout << (den_c(Iirrep) + den_o(Iirrep) + den_u(Iirrep)).transpose() * overlap_4c(Iirrep) << endl << endl;
+        MatrixXd Rcu = (den_c(Iirrep)+den_u(Iirrep)).transpose(),
+                 Rou = (den_o(Iirrep)+den_u(Iirrep)).transpose(),
+                 Rco = (den_c(Iirrep)+den_o(Iirrep)).transpose();
+        MatrixXd Hc(size,size), Ho(size,size);
+        #pragma omp parallel  for
+        for(int mm = 0; mm < size; mm++)
+        for(int nn = 0; nn <= mm; nn++)
+        {
+            Hc(mm,nn) = h1e_4c(Iirrep)(mm,nn);
+            Ho(mm,nn) = h1e_4c(Iirrep)(mm,nn);
+            for(int jr = 0; jr < occMax_irrep_compact; jr++)
+            {
+                int Jirrep = compact2all(jr);
+                double twojP1 = irrep_list(Jirrep).two_j+1;
+                MatrixXd den_tc = den_c(Jirrep) + f_NM*den_o(Jirrep);
+                MatrixXd den_to = den_c(Jirrep) + (NN-1.0)/(MM-1.0)*den_o(Jirrep);
+                int size_tmp2 = irrep_list(Jirrep).size;
+                for(int aa = 0; aa < size_tmp2; aa++)
+                for(int bb = 0; bb < size_tmp2; bb++)
+                {
+                    int emn = mm*size+nn, eab = aa*size_tmp2+bb, emb = mm*size_tmp2+bb, ean = aa*size+nn;
+                    Hc(mm,nn) += twojP1*den_tc(aa,bb) * h2eLLLL_JK.J[ir][jr][emn][eab];
+                    Ho(mm,nn) += twojP1*den_to(aa,bb) * h2eLLLL_JK.J[ir][jr][emn][eab];
+                }
+            }
+            Hc(nn,mm) = Hc(mm,nn);
+            Ho(nn,mm) = Ho(mm,nn);
+        }
+        fock_c = 0.5*Rcu*Hc*Rcu + 0.5*Rou*Ho*Rou + 0.5/(1.0-f_NM)*Rco*(Hc-f_NM*Ho)*Rco;
+    }
+    else
+    {
+        cout << (den_c(Iirrep) + den_o(Iirrep) + den_u(Iirrep)).transpose() * overlap_4c(Iirrep) << endl << endl;
+        MatrixXd Rcu = (den_c(Iirrep)+den_u(Iirrep)).transpose(),
+                 Rou = (den_o(Iirrep)+den_u(Iirrep)).transpose(),
+                 Rco = (den_c(Iirrep)+den_o(Iirrep)).transpose();
+        MatrixXd Hc(2*size,2*size), Ho(2*size,2*size);
+        #pragma omp parallel  for
+        for(int mm = 0; mm < size; mm++)
+        for(int nn = 0; nn <= mm; nn++)
+        {
+            Hc(mm,nn) = h1e_4c(Iirrep)(mm,nn);
+            Hc(mm+size,nn) = h1e_4c(Iirrep)(mm+size,nn);
+            Hc(mm+size,nn+size) = h1e_4c(Iirrep)(mm+size,nn+size);
+            Ho(mm,nn) = h1e_4c(Iirrep)(mm,nn);
+            Ho(mm+size,nn) = h1e_4c(Iirrep)(mm+size,nn);
+            Ho(mm+size,nn+size) = h1e_4c(Iirrep)(mm+size,nn+size);
+            if(mm != nn) 
+            {
+                Hc(nn+size,mm) = h1e_4c(Iirrep)(nn+size,mm);
+                Ho(nn+size,mm) = h1e_4c(Iirrep)(nn+size,mm);
+            }
+            
+            for(int jr = 0; jr < occMax_irrep_compact; jr++)
+            {
+                int Jirrep = compact2all(jr);
+                double twojP1 = irrep_list(Jirrep).two_j+1;
+                int size_tmp2 = irrep_list(Jirrep).size;
+                MatrixXd den_tc = den_c(Jirrep) + f_NM*den_o(Jirrep);
+                MatrixXd den_to = den_c(Jirrep) + (NN-1.0)/(MM-1.0)*den_o(Jirrep);
+                for(int ss = 0; ss < size_tmp2; ss++)
+                for(int rr = 0; rr < size_tmp2; rr++)
+                {
+                    int emn = mm*size+nn, esr = ss*size_tmp2+rr, emr = mm*size_tmp2+rr, esn = ss*size+nn;
+                    Hc(mm,nn) += twojP1*den_tc(ss,rr) * h2eLLLL_JK.J[ir][jr][emn][esr] + twojP1*den_tc(size_tmp2+ss,size_tmp2+rr) * h2eSSLL_JK.J[jr][ir][esr][emn];
+                    Hc(mm+size,nn) -= twojP1*den_tc(ss,size_tmp2+rr) * h2eSSLL_JK.K[ir][jr][emr][esn];
+                    Hc(mm+size,nn+size) += twojP1*den_tc(size_tmp2+ss,size_tmp2+rr) * h2eSSSS_JK.J[ir][jr][emn][esr] + twojP1*den_tc(ss,rr) * h2eSSLL_JK.J[ir][jr][emn][esr];
+
+                    Ho(mm,nn) += twojP1*den_to(ss,rr) * h2eLLLL_JK.J[ir][jr][emn][esr] + twojP1*den_to(size_tmp2+ss,size_tmp2+rr) * h2eSSLL_JK.J[jr][ir][esr][emn];
+                    Ho(mm+size,nn) -= twojP1*den_to(ss,size_tmp2+rr) * h2eSSLL_JK.K[ir][jr][emr][esn];
+                    Ho(mm+size,nn+size) += twojP1*den_to(size_tmp2+ss,size_tmp2+rr) * h2eSSSS_JK.J[ir][jr][emn][esr] + twojP1*den_to(ss,rr) * h2eSSLL_JK.J[ir][jr][emn][esr];
+                    
+                    if(mm != nn) 
+                    {
+                        int enr = nn*size_tmp2+rr, esm = ss*size+mm;
+                        Hc(nn+size,mm) -= twojP1*den_tc(ss,size_tmp2+rr) * h2eSSLL_JK.K[ir][jr][enr][esm];
+                        Ho(nn+size,mm) -= twojP1*den_to(ss,size_tmp2+rr) * h2eSSLL_JK.K[ir][jr][enr][esm];
+                    }
+
+                    if(with_gaunt)
+                    {
+                        int enm = nn*size+mm, ers = rr*size_tmp2+ss, erm = rr*size+mm, ens = nn*size_tmp2+ss;
+
+                        Hc(mm,nn) -= twojP1*den_tc(size_tmp2+ss,size_tmp2+rr) * gauntLSSL_JK.K[ir][jr][emr][esn];
+                        Hc(mm+size,nn) += twojP1*den_tc(ss+size_tmp2,rr)*gauntLSLS_JK.J[ir][jr][enm][ers] + twojP1*den_tc(ss,size_tmp2+rr) * gauntLSSL_JK.J[jr][ir][esr][emn];
+                        Hc(mm+size,nn+size) -= twojP1*den_tc(ss,rr) * gauntLSSL_JK.K[jr][ir][esn][emr];
+
+                        Ho(mm,nn) -= twojP1*den_to(size_tmp2+ss,size_tmp2+rr) * gauntLSSL_JK.K[ir][jr][emr][esn];       
+                        Ho(mm+size,nn) += twojP1*den_to(ss+size_tmp2,rr)*gauntLSLS_JK.J[ir][jr][enm][ers] + twojP1*den_to(ss,size_tmp2+rr) * gauntLSSL_JK.J[jr][ir][esr][emn];              
+                        Ho(mm+size,nn+size) -= twojP1*den_to(ss,rr) * gauntLSSL_JK.K[jr][ir][esn][emr];
+
+                        if(mm != nn)
+                        {
+                            int ern = rr*size+nn, ems = mm*size_tmp2+ss;
+                            Hc(nn+size,mm) += twojP1*den_tc(size_tmp2+ss,rr)*gauntLSLS_JK.J[ir][jr][emn][ers] + twojP1*den_tc(ss,size_tmp2+rr) * gauntLSSL_JK.J[jr][ir][esr][enm];
+                            Ho(nn+size,mm) += twojP1*den_to(size_tmp2+ss,rr)*gauntLSLS_JK.J[ir][jr][emn][ers] + twojP1*den_to(ss,size_tmp2+rr) * gauntLSSL_JK.J[jr][ir][esr][enm];
+                        }
+                    }
+                }
+            }
+            Hc(nn,mm) = Hc(mm,nn);
+            Hc(mm,nn+size) = Hc(nn+size,mm);
+            Hc(nn,mm+size) = Hc(mm+size,nn);
+            Hc(size+nn,size+mm) = Hc(size+mm,size+nn);
+            Ho(nn,mm) = Ho(mm,nn);
+            Ho(mm,nn+size) = Ho(nn+size,mm);
+            Ho(nn,mm+size) = Ho(mm+size,nn);
+            Ho(size+nn,size+mm) = Ho(size+mm,size+nn);
+        }
+        fock_c = 0.5*Rcu*Hc*Rcu + 0.5*Rou*Ho*Rou + 0.5/(1.0-f_NM)*Rco*(Hc-f_NM*Ho)*Rco;
+    }
+}
+
 
 
 vMatrixXd DHF_SPH_CA2::get_amfi_unc(INT_SPH& int_sph_, const bool& twoC, const string& Xmethod, bool amfi_with_gaunt, bool amfi_with_gauge)
@@ -689,7 +820,7 @@ vMatrixXd DHF_SPH_CA2::get_amfi_unc_2c(const int2eJK& h2eSSLL_SD, const int2eJK&
             coeff_tmp(ir)(ii,size_tmp+jj) = coeff_L_tmp(ir)(ii,jj);
             coeff_tmp(ir)(size_tmp+ii,size_tmp+jj) = coeff_S_tmp(ir)(ii,jj);
         }
-        density_tmp(ir) = evaluateDensity_core(coeff_tmp(ir),occNumber(ir),false) + f_NM*evaluateDensity_core(coeff_tmp(ir),occNumberOpen2(ir),false);
+        density_tmp(ir) = evaluateDensity_aoc(coeff_tmp(ir),occNumberShells[0](ir),false) + f_NM*evaluateDensity_aoc(coeff_tmp(ir),occNumberShells[1](ir),false);
     }
 
     for(int ir = 0; ir < Nirrep; ir++)
@@ -807,7 +938,7 @@ void DHF_SPH_CA2::basisGenerator(string basisName, string filename, const INT_SP
     int occL = 0;
     for(int ir = 0; ir < irrep_list.rows(); ir += 4*irrep_list(ir).l+2)
     {
-        if(occNumberCore(ir).rows() == 0) break;
+        if(occNumber(ir).rows() == 0 || abs(occNumber(ir)(0) < 1e-5)) break;
         occL++;
     }
     basisInfo.resize(occL);
@@ -818,10 +949,10 @@ void DHF_SPH_CA2::basisGenerator(string basisName, string filename, const INT_SP
     for(int ir = 0; ir < irrep_list.rows(); ir += 4*irrep_list(ir).l+2)
     {
         int occN = 0;
-        if(occNumberCore(ir).rows() == 0) break;
-        for(int ii = 0; ii < occNumberCore(ir).rows(); ii++)
+        if(occNumber(ir).rows() == 0 || abs(occNumber(ir)(0) < 1e-5)) break;
+        for(int ii = 0; ii < occNumber(ir).rows(); ii++)
         {
-            if(abs(occNumberCore(ir)(ii)-1) < 1e-4 || abs(occNumberOpen2(ir)(ii)-1) < 1e-4)
+            if(abs(occNumber(ir)(ii)-1) < 1e-4 || abs(occNumberShells[1](ir)(ii)-1) < 1e-4)
                 occN++;
         }
         basisInfo(occL).resize(occN);

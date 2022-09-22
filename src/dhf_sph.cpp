@@ -19,7 +19,6 @@ irrep_list(int_sph_.irrep_list), with_gaunt(with_gaunt_), with_gauge(with_gauge_
     size_basis_spinor = int_sph_.size_gtou_spinor;
 
     occNumber.resize(Nirrep);
-    occNumberCore.resize(Nirrep);
     occMax_irrep = 0;
     setOCC(filename, int_sph_.atomName);
 
@@ -52,12 +51,6 @@ irrep_list(int_sph_.irrep_list), with_gaunt(with_gaunt_), with_gauge(with_gauge_
         for(int jj = 0; jj < occNumber(ii).rows(); jj++)
             nelec += occNumber(ii)(jj);
     }
-    // cout << "Core occupation number vector:" << endl;
-    // cout << "l\t2j\t2mj\tOcc" << endl;
-    // for(int ii = 0; ii < Nirrep; ii++)
-    // {
-    //     cout << irrep_list(ii).l << "\t" << irrep_list(ii).two_j << "\t" << irrep_list(ii).two_mj << "\t" << occNumberCore(ii).transpose() << endl;
-    // }
     cout << "Highest occupied irrep: " << occMax_irrep << endl;
     cout << "Total number of electrons: " << nelec << endl << endl;
 
@@ -912,16 +905,9 @@ void DHF_SPH::setOCC(const string& filename, const string& atomName)
         {
             occNumber(int_tmp2+jj).resize(irrep_list(int_tmp2+jj).size);
             occNumber(int_tmp2+jj) = VectorXd::Zero(irrep_list(int_tmp2+jj).size);
-            occNumberCore(int_tmp2+jj).resize(irrep_list(int_tmp2+jj).size);
-            occNumberCore(int_tmp2+jj) = VectorXd::Zero(irrep_list(int_tmp2+jj).size);
             for(int kk = 0; kk < int_tmp3; kk++)
             {    
                 occNumber(int_tmp2+jj)(kk) = 1.0;
-                occNumberCore(int_tmp2+jj)(kk) = 1.0;
-                // if(kk == int_tmp3-1 && abs(d_tmp) < 1e-4)
-                // {
-                //    occNumberCore(int_tmp2+jj)(kk) = 0.0;
-                // }
             }
             if(occNumber(int_tmp2+jj).rows() > int_tmp3)
                 occNumber(int_tmp2+jj)(int_tmp3) = d_tmp;
