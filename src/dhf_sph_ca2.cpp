@@ -379,7 +379,7 @@ void DHF_SPH_CA2::runSCF(const bool& twoC, const bool& renormSmall)
             density(ir+jj) = density(ir);
             density_o(ir+jj) = density_o(ir);
         }
-    }
+    }    
     cout << "DHF iterations finished in " << (EndTime - StartTime) / (double)CLOCKS_PER_SEC << " seconds." << endl << endl;
 }
 

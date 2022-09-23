@@ -132,7 +132,6 @@ void DHF_SPH_CA::runSCF(const bool& twoC, const bool& renormSmall)
         renormalize_small();
     }
     vector<MatrixXd> error4DIIS_c[occMax_irrep], error4DIIS_o[occMax_irrep], error4DIIS_u[occMax_irrep], fock4DIIS[occMax_irrep];
-    vMatrixXd coeff_c(occMax_irrep), coeff_o(occMax_irrep), fock_c(occMax_irrep);
     StartTime = clock();
     cout << endl;
     if(twoC) cout << "Start CA-X2C-1e Hartree-Fock iterations..." << endl;
@@ -140,21 +139,20 @@ void DHF_SPH_CA::runSCF(const bool& twoC, const bool& renormSmall)
     cout << endl;
 
     vMatrixXd newDen_c(occMax_irrep), newDen_o(occMax_irrep), newDen_u(irrep_list.rows());
-    eigensolverG_irrep(h1e_4c, overlap_half_i_4c, ene_orb, coeff_c);
-    coeff_o = coeff_c;
+    eigensolverG_irrep(h1e_4c, overlap_half_i_4c, ene_orb, coeff);
     density.resize(occMax_irrep);
     density_o.resize(occMax_irrep);
     density_u.resize(irrep_list.rows());
     for(int ir = 0; ir < occMax_irrep; ir+=irrep_list(ir).two_j+1)
     {
-        density(ir) = evaluateDensity_aoc(coeff_c(ir),occNumberShells[0](ir),twoC);
-        density_o(ir) = evaluateDensity_aoc(coeff_c(ir),occNumberShells[1](ir),twoC);
-        density_u(ir) = evaluateDensity_aoc(coeff_c(ir),occNumberShells[2](ir),twoC);
+        density(ir) = evaluateDensity_aoc(coeff(ir),occNumberShells[0](ir),twoC);
+        density_o(ir) = evaluateDensity_aoc(coeff(ir),occNumberShells[1](ir),twoC);
+        density_u(ir) = evaluateDensity_aoc(coeff(ir),occNumberShells[2](ir),twoC);
     }
     for(int ir = occMax_irrep; ir < irrep_list.rows(); ir+=irrep_list(ir).two_j+1)
     {
         //WORNG
-        density_u(ir) = evaluateDensity_aoc(coeff_c(ir),occNumberShells[2](ir),twoC);
+        density_u(ir) = evaluateDensity_aoc(coeff(ir),occNumberShells[2](ir),twoC);
     }
 
     for(int iter = 1; iter <= maxIter; iter++)
@@ -164,7 +162,7 @@ void DHF_SPH_CA::runSCF(const bool& twoC, const bool& renormSmall)
             for(int ir = 0; ir < occMax_irrep; ir += irrep_list(ir).two_j+1)    
             {
                 int size_tmp = irrep_list(ir).size;
-                evaluateFock_oneF(fock_c(ir),twoC,density,density_o,density_u,size_tmp,ir);
+                evaluateFock_oneF(fock_4c(ir),twoC,density,density_o,density_u,size_tmp,ir);
             }
         }
         else
@@ -181,8 +179,8 @@ void DHF_SPH_CA::runSCF(const bool& twoC, const bool& renormSmall)
                         B4DIIS(ii,jj) += (error4DIIS_c[ir][ii].adjoint()*error4DIIS_c[ir][jj])(0,0);
                     for(int ir = 0; ir < occMax_irrep; ir += irrep_list(ir).two_j+1)
                         B4DIIS(ii,jj) += (error4DIIS_o[ir][ii].adjoint()*error4DIIS_o[ir][jj])(0,0);
-                    // for(int ir = 0; ir < irrep_list.rows(); ir += irrep_list(ir).two_j+1)
-                    //     B4DIIS(ii,jj) += (error4DIIS_u[ir][ii].adjoint()*error4DIIS_u[ir][jj])(0,0);
+                    for(int ir = 0; ir < irrep_list.rows(); ir += irrep_list(ir).two_j+1)
+                        B4DIIS(ii,jj) += (error4DIIS_u[ir][ii].adjoint()*error4DIIS_u[ir][jj])(0,0);
                     B4DIIS(jj,ii) = B4DIIS(ii,jj);
                 }
                 B4DIIS(tmp_size, ii) = -1.0;
@@ -194,25 +192,25 @@ void DHF_SPH_CA::runSCF(const bool& twoC, const bool& renormSmall)
             VectorXd C = B4DIIS.partialPivLu().solve(vec_b);
             for(int ir = 0; ir < occMax_irrep; ir += irrep_list(ir).two_j+1)
             {
-                fock_c(ir) = MatrixXd::Zero(fock_c(ir).rows(),fock_c(ir).cols());
+                fock_4c(ir) = MatrixXd::Zero(fock_4c(ir).rows(),fock_4c(ir).cols());
                 for(int ii = 0; ii < tmp_size; ii++)
                 {
-                    fock_c(ir) += C(ii) * fock4DIIS[ir][ii];
+                    fock_4c(ir) += C(ii) * fock4DIIS[ir][ii];
                 }
             }
         }
-        eigensolverG_irrep(fock_c, overlap_half_i_4c, ene_orb, coeff_c);
+        eigensolverG_irrep(fock_4c, overlap_half_i_4c, ene_orb, coeff);
 
         for(int ir = 0; ir < occMax_irrep; ir += irrep_list(ir).two_j+1)
         {
-            newDen_c(ir) = evaluateDensity_aoc(coeff_c(ir),occNumberShells[0](ir),twoC);
-            newDen_o(ir) = evaluateDensity_aoc(coeff_c(ir),occNumberShells[1](ir),twoC);
-            newDen_u(ir) = evaluateDensity_aoc(coeff_c(ir),occNumberShells[2](ir),twoC);
+            newDen_c(ir) = evaluateDensity_aoc(coeff(ir),occNumberShells[0](ir),twoC);
+            newDen_o(ir) = evaluateDensity_aoc(coeff(ir),occNumberShells[1](ir),twoC);
+            newDen_u(ir) = evaluateDensity_aoc(coeff(ir),occNumberShells[2](ir),twoC);
         }
         for(int ir = occMax_irrep; ir < irrep_list.rows(); ir+=irrep_list(ir).two_j+1)
         {
             //WORNG
-            newDen_u(ir) = evaluateDensity_aoc(coeff_c(ir),occNumberShells[2](ir),twoC);
+            newDen_u(ir) = evaluateDensity_aoc(coeff(ir),occNumberShells[2](ir),twoC);
         }
         d_density = max(evaluateChange_irrep(density, newDen_c),evaluateChange_irrep(density_o,newDen_o));    
         // d_density = max(d_density, evaluateChange_irrep(density_u, newDen_u));      
@@ -236,38 +234,6 @@ void DHF_SPH_CA::runSCF(const bool& twoC, const bool& renormSmall)
                 else cout << "\t" << ii << "\t\t" << setprecision(15) << ene_orb(ir)(irrep_list(ir).size + ii - 1) << endl;
             }
             
-            coeff.resize(occMax_irrep);
-            if(twoC)
-            {
-                for(int ir = 0; ir < occMax_irrep; ir += irrep_list(ir).two_j+1)
-                {
-                    coeff(ir) = coeff_c(ir);
-                    for(int ii = 0; ii < irrep_list(ir).size; ii++)
-                    {
-                        if(abs(occNumberShells[1](ir)(ii) - 1.0) < 1e-5)
-                        {
-                            for(int jj = 0; jj < coeff(ir).rows(); jj++)
-                                coeff(ir)(jj,ii) = coeff_o(ir)(jj,ii);
-                        }
-                    }
-                }
-            }
-            else
-            {
-                for(int ir = 0; ir < occMax_irrep; ir += irrep_list(ir).two_j+1)
-                {
-                    coeff(ir) = coeff_c(ir);
-                    for(int ii = 0; ii < irrep_list(ir).size; ii++)
-                    {
-                        if(abs(occNumberShells[1](ir)(ii) - 1.0) < 1e-5)
-                        {
-                            for(int jj = 0; jj < coeff(ir).rows(); jj++)
-                                coeff(ir)(jj,ii+coeff(ir).rows()/2) = coeff_o(ir)(jj,ii+coeff(ir).rows()/2);
-                        }
-                    }
-                }
-            }
-
             ene_scf = 0.0;
             for(int ir = 0; ir < occMax_irrep_compact; ir++)
             {
@@ -348,22 +314,22 @@ void DHF_SPH_CA::runSCF(const bool& twoC, const bool& renormSmall)
         for(int ir = 0; ir < occMax_irrep; ir += irrep_list(ir).two_j+1)    
         {
             int size_tmp = irrep_list(ir).size;
-            evaluateFock_oneF(fock_c(ir),twoC,density,density_o,density_u,size_tmp,ir);
+            evaluateFock_oneF(fock_4c(ir),twoC,density,density_o,density_u,size_tmp,ir);
 
-            eigensolverG(fock_c(ir), overlap_half_i_4c(ir), ene_orb(ir), coeff_c(ir));
-            newDen_c(ir) = evaluateDensity_aoc(coeff_c(ir),occNumberShells[0](ir),twoC);
-            newDen_o(ir) = evaluateDensity_aoc(coeff_c(ir),occNumberShells[1](ir),twoC);
-            newDen_u(ir) = evaluateDensity_aoc(coeff_c(ir),occNumberShells[2](ir),twoC); 
+            eigensolverG(fock_4c(ir), overlap_half_i_4c(ir), ene_orb(ir), coeff(ir));
+            newDen_c(ir) = evaluateDensity_aoc(coeff(ir),occNumberShells[0](ir),twoC);
+            newDen_o(ir) = evaluateDensity_aoc(coeff(ir),occNumberShells[1](ir),twoC);
+            newDen_u(ir) = evaluateDensity_aoc(coeff(ir),occNumberShells[2](ir),twoC); 
             error4DIIS_c[ir].push_back(evaluateErrorDIIS(density(ir),newDen_c(ir)));
             error4DIIS_o[ir].push_back(evaluateErrorDIIS(density_o(ir),newDen_o(ir)));
-            // error4DIIS_u[ir].push_back(evaluateErrorDIIS(density_u(ir),newDen_u(ir)));
-            fock4DIIS[ir].push_back(fock_c(ir));
+            error4DIIS_u[ir].push_back(evaluateErrorDIIS(density_u(ir),newDen_u(ir)));
+            fock4DIIS[ir].push_back(fock_4c(ir));
     
             if(error4DIIS_c[ir].size() > size_DIIS)
             {
                 error4DIIS_c[ir].erase(error4DIIS_c[ir].begin());
                 error4DIIS_o[ir].erase(error4DIIS_o[ir].begin());
-                // error4DIIS_u[ir].erase(error4DIIS_u[ir].begin());
+                error4DIIS_u[ir].erase(error4DIIS_u[ir].begin());
                 fock4DIIS[ir].erase(fock4DIIS[ir].begin());
             }            
         }
@@ -539,11 +505,6 @@ void DHF_SPH_CA::evaluateFock_oneF(MatrixXd& fock_c, const bool& twoC, const vMa
     if(twoC)
     {
         MatrixXd S = overlap_4c(Iirrep);
-        // MatrixXd S_h = overlap_half_i_4c(Iirrep).inverse();
-        // cout << (den_c(Iirrep) + den_o(Iirrep) + den_u(Iirrep)).transpose() * overlap_4c(Iirrep) << endl << endl;
-        // MatrixXd Rcu = S* (den_c(Iirrep)+den_u(Iirrep)).transpose()* S,
-                //  Rou = S* (den_o(Iirrep)+den_u(Iirrep)).transpose()* S,
-                //  Rco = S* (den_c(Iirrep)+den_o(Iirrep)).transpose()* S;
         MatrixXd Rcu = (den_c(Iirrep)+den_u(Iirrep)).transpose(),
                  Rou = (den_o(Iirrep)+den_u(Iirrep)).transpose(),
                  Rco = (den_c(Iirrep)+den_o(Iirrep)).transpose();
@@ -575,12 +536,13 @@ void DHF_SPH_CA::evaluateFock_oneF(MatrixXd& fock_c, const bool& twoC, const vMa
         Hc = Hc;
         Ho = Ho;
         // fock_c = Rcu*Hc*Rcu;
+        // fock_c = Rcu*Hc*Rcu + Rou*Ho*Rou;
         fock_c = 0.5*Rcu*Hc*Rcu + 0.5*Rou*Ho*Rou + 0.5/(1.0-f_NM)*Rco*(Hc-f_NM*Ho)*Rco;
         fock_c = S*fock_c*S;
     }
     else
     {
-        cout << (den_c(Iirrep) + den_o(Iirrep) + den_u(Iirrep)).transpose() * overlap_4c(Iirrep) << endl << endl;
+        MatrixXd S = overlap_4c(Iirrep);
         MatrixXd Rcu = (den_c(Iirrep)+den_u(Iirrep)).transpose(),
                  Rou = (den_o(Iirrep)+den_u(Iirrep)).transpose(),
                  Rco = (den_c(Iirrep)+den_o(Iirrep)).transpose();
@@ -658,6 +620,7 @@ void DHF_SPH_CA::evaluateFock_oneF(MatrixXd& fock_c, const bool& twoC, const vMa
             Ho(size+nn,size+mm) = Ho(size+mm,size+nn);
         }
         fock_c = 0.5*Rcu*Hc*Rcu + 0.5*Rou*Ho*Rou + 0.5/(1.0-f_NM)*Rco*(Hc-f_NM*Ho)*Rco;
+        fock_c = S*fock_c*S;
     }
 }
 
