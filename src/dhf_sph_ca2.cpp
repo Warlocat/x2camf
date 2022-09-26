@@ -392,6 +392,9 @@ void DHF_SPH_CA2::evaluateFock(MatrixXd& fock_c, MatrixXd& fock_o, const bool& t
     int ir = all2compact(Iirrep);
     if(twoC)
     {
+        MatrixXd S = overlap_4c(Iirrep);
+        MatrixXd Rc = (den_c(Iirrep)).transpose(),
+                 Ro = (den_o(Iirrep)).transpose();
         fock_c.resize(size,size);
         fock_o.resize(size,size);
         MatrixXd QQ(size,size);
@@ -418,21 +421,30 @@ void DHF_SPH_CA2::evaluateFock(MatrixXd& fock_c, MatrixXd& fock_o, const bool& t
                     QQ(mm,nn) += twojP1*den_o(Jirrep)(aa,bb) * h2eLLLL_JK.J[ir][jr][emn][eab];
                 }
             }
-            QQ(nn,mm) = QQ(mm,nn);
-        }
-        #pragma omp parallel  for
-        for(int mm = 0; mm < size; mm++)
-        for(int nn = 0; nn <= mm; nn++)
-        {
-            for(int ss = 0; ss < size; ss++)
-            for(int rr = 0; rr < size; rr++)
-            {
-                fock_c(mm,nn) += f_NM/(MM-1.0) * den_o(Iirrep)(rr,ss) * (overlap(Iirrep)(mm,ss)*QQ(rr,nn) + QQ(mm,ss)*overlap(Iirrep)(rr,nn));
-                fock_o(mm,nn) += 1.0/(MM-1.0) * den_c(Iirrep)(rr,ss) * (overlap(Iirrep)(mm,ss)*QQ(rr,nn) + QQ(mm,ss)*overlap(Iirrep)(rr,nn));
-            }
             fock_c(nn,mm) = fock_c(mm,nn);
             fock_o(nn,mm) = fock_o(mm,nn);
+            QQ(nn,mm) = QQ(mm,nn);
         }
+        fock_c = fock_c + f_NM/(MM-1.0)*(S*Ro*QQ+QQ*Ro*S);
+        fock_o = fock_o + 1.0/(MM-1.0)*(S*Rc*QQ+QQ*Rc*S);
+
+        // MatrixXd tmp = 1.0/(1.0-f_NM)*(fock_c - f_NM*fock_o);
+        // fock_c = 0.5*fock_c + tmp;
+        // fock_o = 0.5*fock_o + tmp;
+
+        // #pragma omp parallel  for
+        // for(int mm = 0; mm < size; mm++)
+        // for(int nn = 0; nn <= mm; nn++)
+        // {
+        //     for(int ss = 0; ss < size; ss++)
+        //     for(int rr = 0; rr < size; rr++)
+        //     {
+        //         fock_c(mm,nn) += f_NM/(MM-1.0) * den_o(Iirrep)(rr,ss) * (overlap(Iirrep)(mm,ss)*QQ(rr,nn) + QQ(mm,ss)*overlap(Iirrep)(rr,nn));
+        //         fock_o(mm,nn) += 1.0/(MM-1.0) * den_c(Iirrep)(rr,ss) * (overlap(Iirrep)(mm,ss)*QQ(rr,nn) + QQ(mm,ss)*overlap(Iirrep)(rr,nn));
+        //     }
+        //     fock_c(nn,mm) = fock_c(mm,nn);
+        //     fock_o(nn,mm) = fock_o(mm,nn);
+        // }
     }
     else
     {

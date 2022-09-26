@@ -179,8 +179,8 @@ void DHF_SPH_CA::runSCF(const bool& twoC, const bool& renormSmall)
                         B4DIIS(ii,jj) += (error4DIIS_c[ir][ii].adjoint()*error4DIIS_c[ir][jj])(0,0);
                     for(int ir = 0; ir < occMax_irrep; ir += irrep_list(ir).two_j+1)
                         B4DIIS(ii,jj) += (error4DIIS_o[ir][ii].adjoint()*error4DIIS_o[ir][jj])(0,0);
-                    for(int ir = 0; ir < irrep_list.rows(); ir += irrep_list(ir).two_j+1)
-                        B4DIIS(ii,jj) += (error4DIIS_u[ir][ii].adjoint()*error4DIIS_u[ir][jj])(0,0);
+                    // for(int ir = 0; ir < irrep_list.rows(); ir += irrep_list(ir).two_j+1)
+                    //     B4DIIS(ii,jj) += (error4DIIS_u[ir][ii].adjoint()*error4DIIS_u[ir][jj])(0,0);
                     B4DIIS(jj,ii) = B4DIIS(ii,jj);
                 }
                 B4DIIS(tmp_size, ii) = -1.0;
@@ -505,16 +505,20 @@ void DHF_SPH_CA::evaluateFock_oneF(MatrixXd& fock_c, const bool& twoC, const vMa
     if(twoC)
     {
         MatrixXd S = overlap_4c(Iirrep);
+        MatrixXd Rc = (den_c(Iirrep)).transpose(),
+                 Ro = (den_o(Iirrep)).transpose(),
+                 Ru = (den_u(Iirrep)).transpose();
         MatrixXd Rcu = (den_c(Iirrep)+den_u(Iirrep)).transpose(),
                  Rou = (den_o(Iirrep)+den_u(Iirrep)).transpose(),
                  Rco = (den_c(Iirrep)+den_o(Iirrep)).transpose();
-        MatrixXd Hc(size,size), Ho(size,size);
+        MatrixXd Hc(size,size), Ho(size,size), Go(size,size);
         #pragma omp parallel  for
         for(int mm = 0; mm < size; mm++)
         for(int nn = 0; nn <= mm; nn++)
         {
             Hc(mm,nn) = h1e_4c(Iirrep)(mm,nn);
             Ho(mm,nn) = h1e_4c(Iirrep)(mm,nn);
+            Go(mm,nn) = 0.0;
             for(int jr = 0; jr < occMax_irrep_compact; jr++)
             {
                 int Jirrep = compact2all(jr);
@@ -528,17 +532,24 @@ void DHF_SPH_CA::evaluateFock_oneF(MatrixXd& fock_c, const bool& twoC, const vMa
                     int emn = mm*size+nn, eab = aa*size_tmp2+bb, emb = mm*size_tmp2+bb, ean = aa*size+nn;
                     Hc(mm,nn) += twojP1*den_tc(aa,bb) * h2eLLLL_JK.J[ir][jr][emn][eab];
                     Ho(mm,nn) += twojP1*den_to(aa,bb) * h2eLLLL_JK.J[ir][jr][emn][eab];
+                    Go(mm,nn) += twojP1*den_o(Jirrep)(aa,bb) * h2eLLLL_JK.J[ir][jr][emn][eab];
                 }
             }
             Hc(nn,mm) = Hc(mm,nn);
             Ho(nn,mm) = Ho(mm,nn);
+            Go(nn,mm) = Go(mm,nn);
         }
-        Hc = Hc;
-        Ho = Ho;
         // fock_c = Rcu*Hc*Rcu;
         // fock_c = Rcu*Hc*Rcu + Rou*Ho*Rou;
-        fock_c = 0.5*Rcu*Hc*Rcu + 0.5*Rou*Ho*Rou + 0.5/(1.0-f_NM)*Rco*(Hc-f_NM*Ho)*Rco;
-        fock_c = S*fock_c*S;
+        // fock_c = 0.5*Rcu*Hc*Rcu + 0.5*Rou*Ho*Rou + 0.5/(f_NM)*Rco*(Hc-f_NM*Ho)*Rco;
+        // fock_c = Rcu*Hc*Rcu + Rou*Ho*Rou + (f_NM+1.0)/(MM-1.0)*Rco*Go*Rco;
+        // fock_c = Hc + 0.5/(1.0-f_NM)*Rco*(Hc-f_NM*Ho)*Rco;
+        // fock_c = S*fock_c*S;
+    
+        double a = MM*(NN-1.0)/NN/(MM-1.0), alpha = (1-a)/(1-f_NM);
+        MatrixXd LM = S*Ro*Go*(alpha*f_NM*Rc+(a-1.0)*(Ro+Ru))*S*f_NM;
+        fock_c = Hc + LM + LM.adjoint();
+        // fock_c = Hc + 1.0/(MM-1.0)*( S*(Rc+f_NM*Ro)*Go + Go*(Rc+f_NM*Ro)*S - Go);
     }
     else
     {
