@@ -15,6 +15,7 @@ DHF_SPH(int_sph_,filename,spinFree,twoC,with_gaunt_,with_gauge_,allInt,gaussian_
 {
     vector<int> openIrreps;
     for(int ir = 0; ir < occMax_irrep; ir+=4*irrep_list(ir).l+2)
+    // for(int ir = 0; ir < occMax_irrep; ir+=irrep_list(ir).two_j+1)
     {
         for(int ii = 0; ii < occNumber(ir).rows(); ii++)
         {
@@ -30,7 +31,8 @@ DHF_SPH(int_sph_,filename,spinFree,twoC,with_gaunt_,with_gauge_,allInt,gaussian_
     occNumberShells.resize(NOpenShells+2);
     for(int ii = 0; ii < NOpenShells; ii++)
     {
-        MM_list.push_back(irrep_list(openIrreps[ii]).l*4+2);   
+        MM_list.push_back(irrep_list(openIrreps[ii]).l*4+2);  
+        // MM_list.push_back(irrep_list(openIrreps[ii]).two_j+1);   
     }
     occNumberShells[0] = occNumber;
     for(int ii = 1; ii < occNumberShells.size()-1; ii++)
@@ -377,6 +379,8 @@ void DHF_SPH_CA::runSCF(const bool& twoC, const bool& renormSmall)
             coeff(ir+jj) = coeff(ir);
             density(ir+jj) = density(ir);
             density_o(ir+jj) = density_o(ir);
+            for(int ii = 0; ii < NOpenShells+2; ii++)
+                densityShells(ii)(ir+jj) = densityShells(ii)(ir);
         }
     }
     cout << "DHF iterations finished in " << (EndTime - StartTime) / (double)CLOCKS_PER_SEC << " seconds." << endl << endl;
@@ -389,26 +393,24 @@ void DHF_SPH_CA::runSCF(const bool& twoC, const bool& renormSmall)
 void DHF_SPH_CA::evaluateFock(MatrixXd& fock_c, const bool& twoC, const Matrix<vMatrixXd,-1,1>& densities, const int& size, const int& Iirrep)
 {
     int ir = all2compact(Iirrep);
+    vMatrixXd R(NOpenShells+2);
+    vMatrixXd Q(NOpenShells+1);
+    for(int ii = 0; ii < NOpenShells+2; ii++)
+    {
+        R(ii) = densities(ii)(Iirrep).transpose();
+        if(ii < NOpenShells+1)
+        {
+            if(twoC)  Q(ii) = MatrixXd::Zero(size,size);
+            else      Q(ii) = MatrixXd::Zero(2*size,2*size);
+        }
+            
+    }     
     if(twoC)
     {
-        MatrixXd S = overlap_4c(Iirrep);
-        vMatrixXd R(NOpenShells+2);
-        vMatrixXd Q(NOpenShells+1);
-        for(int ii = 0; ii < NOpenShells+2; ii++)
-        {
-            R(ii) = densities(ii)(Iirrep).transpose();
-            if(ii < NOpenShells+1)
-                Q(ii).resize(size,size);
-        }        
-        
         #pragma omp parallel  for
         for(int mm = 0; mm < size; mm++)
         for(int nn = 0; nn <= mm; nn++)
         {
-            for(int ii = 0; ii < NOpenShells+1; ii++)
-            {
-                Q(ii)(mm,nn) = 0.0;
-            }
             for(int jr = 0; jr < occMax_irrep_compact; jr++)
             {
                 int Jirrep = compact2all(jr);
@@ -430,49 +432,97 @@ void DHF_SPH_CA::evaluateFock(MatrixXd& fock_c, const bool& twoC, const Matrix<v
                 Q(ii)(nn,mm) = Q(ii)(mm,nn);
             }
         }
-
-        fock_c = h1e_4c(Iirrep);
-        for(int ii = 0; ii < NOpenShells+1; ii++)
-        {
-            if(ii != 0)
-                Q(ii) = Q(ii)*f_list[ii-1];
-            fock_c += Q(ii);
-        }
-        MatrixXd LM(size,size);
-        LM = MatrixXd::Zero(size,size);
-        for(int ii = 1; ii < NOpenShells+1; ii++)
-        {
-            double f_u = f_list[ii-1];
-            double a_u = MM_list[ii-1]*(NN_list[ii-1]-1.0)/NN_list[ii-1]/(MM_list[ii-1]-1.0);
-            double alpha_u = (1-a_u)/(1-f_u);
-            LM += S*R(ii)*Q(ii)*(alpha_u*f_u*R(0)+(a_u-1.0)*(R(ii)+R(NOpenShells+1)))*S;
-            for(int jj = 1; jj < NOpenShells+1; jj++)
-            {
-                if(ii != jj)
-                {
-                    double a_v = MM_list[jj-1]*(NN_list[jj-1]-1.0)/NN_list[jj-1]/(MM_list[jj-1]-1.0);
-                    double f_v = f_list[jj-1];
-                    if(abs(f_u-f_v) > 1e-4)
-                    {
-                        LM += S*R[ii]*( (a_u-1.0)/(f_u-f_v)*f_u*Q(ii) + (a_v-1.0)/(f_v-f_u)*f_v*Q(jj) ) *R(jj)*S;
-                    }
-                    else
-                    {
-                        LM += S*R(ii)*(-fock_c + (a_u-1.0)*f_u*Q(ii) - (a_v-1.0)*f_v*Q(jj))*R(jj)*S;
-                    }
-                }
-            }
-        }
-        fock_c += LM + LM.adjoint();
-
-        // double a = MM*(NN-1.0)/NN/(MM-1.0), alpha = (1-a)/(1-f_NM);
-        // MatrixXd LM = S*Ro*Go*(alpha*f_NM*Rc+(a-1.0)*(Ro+Ru))*S*f_NM;
-        // fock_c = Hc + LM + LM.adjoint();
     }
     else
     {
-        
+        #pragma omp parallel  for
+        for(int mm = 0; mm < size; mm++)
+        for(int nn = 0; nn <= mm; nn++)
+        {
+            MatrixXd den_tmp;            
+            for(int jr = 0; jr < occMax_irrep_compact; jr++)
+            {
+                int Jirrep = compact2all(jr);
+                double twojP1 = irrep_list(Jirrep).two_j+1;
+                int size_tmp2 = irrep_list(Jirrep).size;
+                for(int ss = 0; ss < size_tmp2; ss++)
+                for(int rr = 0; rr < size_tmp2; rr++)
+                {
+                    int emn = mm*size+nn, esr = ss*size_tmp2+rr, emr = mm*size_tmp2+rr, esn = ss*size+nn;
+                    for(int ii = 0; ii < NOpenShells+1; ii++)
+                    {
+                        den_tmp = densities(ii)(Jirrep);
+                        Q(ii)(mm,nn) += twojP1*den_tmp(ss,rr) * h2eLLLL_JK.J[ir][jr][emn][esr] + twojP1*den_tmp(size_tmp2+ss,size_tmp2+rr) * h2eSSLL_JK.J[jr][ir][esr][emn];
+                        Q(ii)(mm+size,nn) -= twojP1*den_tmp(ss,size_tmp2+rr) * h2eSSLL_JK.K[ir][jr][emr][esn];
+                        Q(ii)(mm+size,nn+size) += twojP1*den_tmp(size_tmp2+ss,size_tmp2+rr) * h2eSSSS_JK.J[ir][jr][emn][esr] + twojP1*den_tmp(ss,rr) * h2eSSLL_JK.J[ir][jr][emn][esr];
+                        if(mm != nn) 
+                        {
+                            int enr = nn*size_tmp2+rr, esm = ss*size+mm;
+                            Q(ii)(nn+size,mm) -= twojP1*den_tmp(ss,size_tmp2+rr) * h2eSSLL_JK.K[ir][jr][enr][esm];
+                        }
+                        if(with_gaunt)
+                        {
+                            int enm = nn*size+mm, ers = rr*size_tmp2+ss, erm = rr*size+mm, ens = nn*size_tmp2+ss;
+
+                            Q(ii)(mm,nn) -= twojP1*den_tmp(size_tmp2+ss,size_tmp2+rr) * gauntLSSL_JK.K[ir][jr][emr][esn];
+                            Q(ii)(mm+size,nn) += twojP1*den_tmp(ss+size_tmp2,rr)*gauntLSLS_JK.J[ir][jr][enm][ers] + twojP1*den_tmp(ss,size_tmp2+rr) * gauntLSSL_JK.J[jr][ir][esr][emn];
+                            Q(ii)(mm+size,nn+size) -= twojP1*den_tmp(ss,rr) * gauntLSSL_JK.K[jr][ir][esn][emr];
+                            if(mm != nn)
+                            {
+                                int ern = rr*size+nn, ems = mm*size_tmp2+ss;
+                                Q(ii)(nn+size,mm) += twojP1*den_tmp(size_tmp2+ss,rr)*gauntLSLS_JK.J[ir][jr][emn][ers] + twojP1*den_tmp(ss,size_tmp2+rr) * gauntLSSL_JK.J[jr][ir][esr][enm];
+                            }
+                        }
+                    }               
+                }
+            }
+            for(int ii = 0; ii < NOpenShells+1; ii++)
+            {
+                Q(ii)(nn,mm) = Q(ii)(mm,nn);
+                Q(ii)(mm,nn+size) = Q(ii)(nn+size,mm);
+                Q(ii)(nn,mm+size) = Q(ii)(mm+size,nn);
+                Q(ii)(size+nn,size+mm) = Q(ii)(size+mm,size+nn);
+            }
+        }
     }
+
+    fock_c = h1e_4c(Iirrep);
+    for(int ii = 0; ii < NOpenShells+1; ii++)
+    {
+        if(ii != 0)
+            Q(ii) = Q(ii)*f_list[ii-1];
+        fock_c += Q(ii);
+    }
+    MatrixXd S = overlap_4c(Iirrep);
+    MatrixXd LM;
+    if(twoC)  LM = MatrixXd::Zero(size,size);
+    else      LM = MatrixXd::Zero(2*size,2*size);
+    
+    for(int ii = 1; ii < NOpenShells+1; ii++)
+    {
+        double f_u = f_list[ii-1];
+        double a_u = MM_list[ii-1]*(NN_list[ii-1]-1.0)/NN_list[ii-1]/(MM_list[ii-1]-1.0);
+        double alpha_u = (1-a_u)/(1-f_u);
+        LM += S*R(ii)*Q(ii)*(alpha_u*f_u*R(0)+(a_u-1.0)*(R(ii)+R(NOpenShells+1)))*S;
+        for(int jj = 1; jj < NOpenShells+1; jj++)
+        {
+            if(ii != jj)
+            {
+                double a_v = MM_list[jj-1]*(NN_list[jj-1]-1.0)/NN_list[jj-1]/(MM_list[jj-1]-1.0);
+                double f_v = f_list[jj-1];
+                if(abs(f_u-f_v) > 1e-4)
+                {
+                    // LM += S*R[ii]*( (a_u-1.0)/(f_u-f_v)*Q(ii) + (a_v-1.0)/(f_v-f_u)*Q(jj) ) *R(jj)*S;
+                    LM += S*R[ii]*( (a_u-1.0)/(f_u-f_v)*f_u*Q(ii) + (a_v-1.0)/(f_v-f_u)*f_v*Q(jj) ) *R(jj)*S;
+                }
+                else
+                {
+                    LM += S*R(ii)*(-fock_c + (a_u-1.0)*f_u*Q(ii) - (a_v-1.0)*f_v*Q(jj))*R(jj)*S;
+                }
+            }
+        }
+    }
+    fock_c += LM + LM.adjoint();
 }
 void DHF_SPH_CA::evaluateFock(MatrixXd& fock_c, const bool& twoC, const vMatrixXd& den_c, const vMatrixXd& den_o, const vMatrixXd& den_u, const int& size, const int& Iirrep)
 {

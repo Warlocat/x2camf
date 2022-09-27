@@ -57,7 +57,7 @@ public:
     void evaluateFock(MatrixXd& fock, const bool& twoC, const vMatrixXd& den, const int& size, const int& Iirrep);
 
     /* x2c2e picture change */
-    vMatrixXd x2c2ePCC(vMatrixXd* coeff2c = NULL);
+    virtual vMatrixXd x2c2ePCC(vMatrixXd* coeff2c = NULL);
     vMatrixXd h_x2c2e(vMatrixXd* coeff2c = NULL);
     void evaluateFock_2e(MatrixXd& fock, const bool& twoC, const vMatrixXd& den, const int& size, const int& Iirrep);
     void evaluateFock_J(MatrixXd& fock, const bool& twoC, const vMatrixXd& den, const int& size, const int& Iirrep);
