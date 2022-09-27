@@ -375,7 +375,7 @@ void DHF_SPH_CA::evaluateFock_2e(MatrixXd& fock_c, const bool& twoC, const Matri
         double f_u = f_list[ii-1];
         double a_u = MM_list[ii-1]*(NN_list[ii-1]-1.0)/NN_list[ii-1]/(MM_list[ii-1]-1.0);
         double alpha_u = (1-a_u)/(1-f_u);
-        LM += S*R(ii)*Q(ii)*(alpha_u*f_u*R(0)+(a_u-1.0)*(R(ii)+R(NOpenShells+1)))*S;
+        LM += S*R(ii)*Q(ii)*(alpha_u*f_u*R(0)+(a_u-1.0)*(R(ii)*0.25+R(NOpenShells+1)))*S;
         
         for(int jj = 1; jj < NOpenShells+1; jj++)
         {
