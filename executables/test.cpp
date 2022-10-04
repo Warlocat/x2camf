@@ -25,26 +25,31 @@ void readInput(const string filename);
 
 int main()
 {
-    bool twoC = false, spinFree = false;
+    bool twoC = true, spinFree = true;
     readInput("input");
     INT_SPH intor(atomName, basisSet);
+
+    DHF_SPH *scfer_aoc = new DHF_SPH_CA(intor,"input",spinFree,twoC,false,false,true,false);
+    scfer_aoc->convControl = 1e-9;
+    scfer_aoc->runSCF(twoC,false);
+
     //                                             sf   2c   Gaunt gauge allint  gauNuc
     //dc4c
-    DHF_SPH *scfer_aoc = new DHF_SPH_CA(intor,"input",false,false,false,false,true,false);
-    scfer_aoc->convControl = 1e-9;
-    scfer_aoc->runSCF(false,false);
-    auto pcc_aoc = scfer_aoc->x2c2ePCC();
+    // DHF_SPH *scfer_aoc = new DHF_SPH_CA(intor,"input",false,false,false,false,true,false);
+    // scfer_aoc->convControl = 1e-9;
+    // scfer_aoc->runSCF(false,false);
+    // auto pcc_aoc = scfer_aoc->x2c2ePCC();
 
     // //x2c1e
-    DHF_SPH *scfer_2c = new DHF_SPH_CA(intor,"input",false,true,false,false,true,false);
-    auto h1e = scfer_2c->get_h1e_4c();
-    for(int ir = 0; ir < pcc_aoc.rows(); ir++)
-    {
-        h1e(ir) += pcc_aoc(ir);
-    }
-    scfer_2c->set_h1e_4c(h1e);
-    scfer_2c->convControl = 1e-9;
-    scfer_2c->runSCF(true,false);
+    // DHF_SPH *scfer_2c = new DHF_SPH_CA(intor,"input",false,true,false,false,true,false);
+    // auto h1e = scfer_2c->get_h1e_4c();
+    // for(int ir = 0; ir < pcc_aoc.rows(); ir++)
+    // {
+    //     h1e(ir) += pcc_aoc(ir);
+    // }
+    // scfer_2c->set_h1e_4c(h1e);
+    // scfer_2c->convControl = 1e-9;
+    // scfer_2c->runSCF(true,false);
 
     // DHF_SPH *scfer_frac = new DHF_SPH(intor,"input",true,true,false,false,true,false);
     // scfer_frac->runSCF(true,false);

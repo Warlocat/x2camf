@@ -10,17 +10,22 @@ using namespace Eigen;
 class DHF_SPH_CA2: public DHF_SPH
 {
 private:
-    int coreShell, openShell;
-    double f_NM, NN, MM;
+    int openShell, NOpenShells;
+    vector<double> NN_list, MM_list, f_list, a_list;
+    double NN, MM, f_NM;
     vector<vVectorXd> occNumberShells;
-    /* in CAHF, density is density_c */
-    vMatrixXd density_o, density_u;
+    vMatrixXd density_o;
+    Matrix<vMatrixXd,-1,1> densityShells, coeffShells, fockShells;
+    
     MatrixXd evaluateDensity_aoc(const MatrixXd& coeff_, const VectorXd& occNumber_, const bool& twoC);
     /* evaluate fock matrix */
     void evaluateFock(MatrixXd& fock_c, MatrixXd& fock_o, const bool& twoC, const vMatrixXd& den_c, const vMatrixXd& den_o, const int& size, const int& Iirrep);
+    void evaluateFockShells(Matrix<vMatrixXd,-1,1>& fockShells, const bool& twoC, const Matrix<vMatrixXd,-1,1>& densities, const int& size, const int& Iirrep);
     void evaluateFock_oneF(MatrixXd& fock, const bool& twoC, const vMatrixXd& den_c, const vMatrixXd& den_o, const vMatrixXd& den_u, const int& size, const int& Iirrep);
     void evaluateFock_core(MatrixXd& fock, const bool& twoC, const vMatrixXd& den_c, const vMatrixXd den_o, const int& size, const int& Iirrep);
     void evaluateFock_open(MatrixXd& fock, const bool& twoC, const vMatrixXd& den_c, const vMatrixXd den_o, const int& size, const int& Iirrep);
+
+    double evaluateEnergy(const bool& twoC);
 
 public:
     DHF_SPH_CA2(INT_SPH& int_sph_, const string& filename, const bool& spinFree = false, const bool& twoC = false, const bool& with_gaunt_ = false, const bool& with_gauge_ = false, const bool& allInt = false, const bool& gaussian_nuc = false);
