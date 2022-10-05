@@ -8,10 +8,13 @@
 #include<ctime>
 #include<iostream>
 #include<fstream>
+#include<chrono>
 using namespace std;
 using namespace Eigen;
 
-static clock_t StartTime, EndTime; 
+static clock_t StartTimeCPU, EndTimeCPU;
+static auto StartTimeWall = chrono::high_resolution_clock::now();
+static auto EndTimeWall = chrono::high_resolution_clock::now(); 
 
 const double speedOfLight = 137.0359991;
 const double au2cm_1 = 219474.63;

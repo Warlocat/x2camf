@@ -25,13 +25,14 @@ void readInput(const string filename);
 
 int main()
 {
-    bool twoC = true, spinFree = true;
+    bool twoC = false, spinFree = false;
     readInput("input");
     INT_SPH intor(atomName, basisSet);
 
     DHF_SPH *scfer_aoc = new DHF_SPH_CA(intor,"input",spinFree,twoC,false,false,true,false);
     scfer_aoc->convControl = 1e-9;
     scfer_aoc->runSCF(twoC,false);
+    // scfer_aoc->basisGenerator(basisSet,"out",intor,intor,spinFree);
 
     //                                             sf   2c   Gaunt gauge allint  gauNuc
     //dc4c
