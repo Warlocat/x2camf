@@ -14,18 +14,17 @@ vMatrixXd DHF_SPH::x2c2ePCC(vMatrixXd* coeff2c)
         cout << "SCF did not converge. x2c2ePCC cannot be used!" << endl;
         exit(99);
     }
-    else
+    
+    //Special case for H-like atoms.
+    if(abs(nelec-1.0)<1e-5)
     {
-        // recalculate Fock matrix
-        // This is redundant for fractional-occupation calculation but necessary for AOC-SCF.
-        for(int ir = 0; ir < occMax_irrep; ir += irrep_list(ir).two_j+1)
+        for(int ir = 0; ir < occMax_irrep; ir++)
         {
-            evaluateFock(fock_4c(ir),false,density,irrep_list(ir).size,ir);
-            for(int jj = 1; jj < irrep_list(ir).two_j+1; jj++)
-                fock_4c(ir+jj) = fock_4c(ir);
+            fock_4c(ir) = h1e_4c(ir);
         }
     }
-    vMatrixXd fock_pcc(occMax_irrep), fock_4c_2e(occMax_irrep), fock_x2c2e(occMax_irrep), fock_x2c2e_2e(occMax_irrep), JK_x2c2c(occMax_irrep), coeff_2c(occMax_irrep), density_2c(occMax_irrep), density_pcc(occMax_irrep), h1e_x2c2e(occMax_irrep), h1e_x2c1e(occMax_irrep), densityCore_4c(occMax_irrep), densityCore_2c(occMax_irrep), fock_pcc_mo(occMax_irrep);
+
+    vMatrixXd fock_pcc(occMax_irrep), fock_4c_2e(occMax_irrep), fock_x2c2e(occMax_irrep), fock_x2c2e_2e(occMax_irrep), JK_x2c2c(occMax_irrep), coeff_2c(occMax_irrep), density_2c(occMax_irrep), density_pcc(occMax_irrep), h1e_x2c2e(occMax_irrep), h1e_x2c1e(occMax_irrep);
     vMatrixXd XXX(occMax_irrep), RRR(occMax_irrep), XXX_1e(occMax_irrep), RRR_1e(occMax_irrep);
     vMatrixXd overlap_2c(occMax_irrep), overlap_h_i_2c(occMax_irrep);
 
@@ -34,17 +33,22 @@ vMatrixXd DHF_SPH::x2c2ePCC(vMatrixXd* coeff2c)
     {
         overlap_2c(ir) = overlap_4c(ir).block(0,0,overlap_4c(ir).rows()/2,overlap_4c(ir).cols()/2);
         overlap_h_i_2c(ir) = matrix_half_inverse(overlap_2c(ir));
-        VectorXd ene_mo_tmp;
+        
         XXX(ir) = X2C::get_X(coeff(ir));
         RRR(ir) = X2C::get_R(overlap_4c(ir),XXX(ir));
         
         h1e_x2c2e(ir) = X2C::transform_4c_2c(h1e_4c(ir), XXX(ir), RRR(ir));
-        fock_x2c2e(ir) = X2C::transform_4c_2c(fock_4c(ir), XXX(ir), RRR(ir));
+        
         if(coeff2c == NULL)
+        {
+            VectorXd ene_mo_tmp;
+            fock_x2c2e(ir) = X2C::transform_4c_2c(fock_4c(ir), XXX(ir), RRR(ir));
             eigensolverG(fock_x2c2e(ir),overlap_h_i_2c(ir),ene_mo_tmp,coeff_2c(ir));
+        }
         else
+        {
             coeff_2c(ir) = (*coeff2c)(ir);
-
+        }
         density_2c(ir) = evaluateDensity_spinor(coeff_2c(ir),occNumber(ir),true);
 
         // X2C1E

@@ -58,6 +58,8 @@ Eigen::MatrixXd amfi(const int input_string, const int atom_number,
     scfer->runSCF(twoC, renormS);
     vMatrixXd amfi = scfer->get_amfi_unc(intor, twoC);
     MatrixXd amfi_all = Rotate::unite_irrep(amfi, intor.irrep_list);
+
+    delete scfer;
     return amfi_all;
 }
 

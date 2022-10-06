@@ -126,6 +126,8 @@ int main()
         amfiUnique[ii] = Rotate::separate2mCompact(amfiUnique[ii],intor.irrep_list);
         XUnique[ii] = tmp.adjoint() * XUnique[ii] * tmp;
         XUnique[ii] = Rotate::separate2mCompact(XUnique[ii],intor.irrep_list);
+
+        delete scfer;
     }
 
     cout << "Constructing amfso integrals...." << endl;
@@ -176,6 +178,7 @@ int main()
     cout << "Writing amfso integrals...." << endl;
     if(!PT)
     {
+        // F_INTERFACE::prvecr_((double*)amfiAll,&sizeAllReal);
         F_INTERFACE::wfile_("X2CMFSOM",(double*)amfiAll,&sizeAllReal);
         F_INTERFACE::wfile_("X2CATMXM",(double*)XAll,&sizeAllReal);
     }
