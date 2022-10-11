@@ -16,7 +16,7 @@ protected:
     int2eJK h2eLLLL_JK, h2eSSLL_JK, h2eSSSS_JK, gauntLSLS_JK, gauntLSSL_JK;
     vMatrixXd density, fock_4c, h1e_4c, overlap_4c, overlap_half_i_4c, x2cXXX, x2cRRR;
     vVectorXd norm_s;
-    vVectorXd occNumber, occNumberCore;
+    vVectorXd occNumber;
     double d_density, nelec;
     bool converged = false, renormalizedSmall = false, with_gaunt = false, with_gauge = false, X_calculated = false;
     
@@ -31,7 +31,7 @@ protected:
     double evaluateChange_irrep(const vMatrixXd& M1, const vMatrixXd& M2);
 
 public:
-Matrix<intShell, Dynamic, 1> shell_list;
+    Matrix<intShell, Dynamic, 1> shell_list;
     int size_basis_spinor, Nirrep, Nirrep_compact, occMax_irrep, occMax_irrep_compact;
     Matrix<irrep_jm, Dynamic, 1> irrep_list;
     int maxIter = 100, size_DIIS = 8;
@@ -57,10 +57,8 @@ Matrix<intShell, Dynamic, 1> shell_list;
     void evaluateFock(MatrixXd& fock, const bool& twoC, const vMatrixXd& den, const int& size, const int& Iirrep);
 
     /* x2c2e picture change */
-    vMatrixXd x2c2ePCC(vMatrixXd* coeff2c = NULL);
+    virtual vMatrixXd x2c2ePCC(vMatrixXd* coeff2c = NULL);
     vMatrixXd h_x2c2e(vMatrixXd* coeff2c = NULL);
-    vMatrixXd x2c2ePCC_density();
-    vMatrixXd x2c2ePCC_test();
     void evaluateFock_2e(MatrixXd& fock, const bool& twoC, const vMatrixXd& den, const int& size, const int& Iirrep);
     void evaluateFock_J(MatrixXd& fock, const bool& twoC, const vMatrixXd& den, const int& size, const int& Iirrep);
 
@@ -83,11 +81,11 @@ Matrix<intShell, Dynamic, 1> shell_list;
     virtual void runSCF(const bool& twoC, const bool& renormSmall, vMatrixXd* initialGuess);
 
     /* Evaluate amfi SOC integrals */
-    virtual vMatrixXd get_amfi_unc(INT_SPH& int_sph_, const bool& twoC = false, const string& Xmethod = "partialFock", bool amfi_with_gaunt = false, bool amfi_with_gauge = false);
-    virtual vMatrixXd get_amfi_unc(const int2eJK& h2eSSLL_SD, const int2eJK& h2eSSSS_SD, const int2eJK& gauntLSLS_SD, const int2eJK& gauntLSSL_SD, const vMatrixXd& density_, const string& Xmethod = "partialFock", const bool& amfi_with_gaunt = false);
-    virtual vMatrixXd get_amfi_unc_2c(const int2eJK& h2eSSLL_SD, const int2eJK& h2eSSSS_SD, const bool& amfi_with_gaunt = false);
+    vMatrixXd get_amfi_unc(INT_SPH& int_sph_, const bool& twoC = false, const string& Xmethod = "partialFock", bool amfi_with_gaunt = false, bool amfi_with_gauge = false);
+    vMatrixXd get_amfi_unc(const int2eJK& h2eSSLL_SD, const int2eJK& h2eSSSS_SD, const int2eJK& gauntLSLS_SD, const int2eJK& gauntLSSL_SD, const vMatrixXd& density_, const string& Xmethod = "partialFock", const bool& amfi_with_gaunt = false);
+    vMatrixXd get_amfi_unc_2c(const int2eJK& h2eSSLL_SD, const int2eJK& h2eSSSS_SD, const bool& amfi_with_gaunt = false);
 
-    virtual void basisGenerator(string basisName, string filename, const INT_SPH& intor, const INT_SPH& intorAll, const bool& sf = true, const string& tag = "DE4");
+    void basisGenerator(string basisName, string filename, const INT_SPH& intor, const INT_SPH& intorAll, const bool& sf = true, const string& tag = "DE4");
 };
 
 

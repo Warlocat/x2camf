@@ -19,7 +19,6 @@ irrep_list(int_sph_.irrep_list), with_gaunt(with_gaunt_), with_gauge(with_gauge_
     size_basis_spinor = int_sph_.size_gtou_spinor;
 
     occNumber.resize(Nirrep);
-    occNumberCore.resize(Nirrep);
     occMax_irrep = 0;
     setOCC(filename, int_sph_.atomName);
 
@@ -52,12 +51,6 @@ irrep_list(int_sph_.irrep_list), with_gaunt(with_gaunt_), with_gauge(with_gauge_
         for(int jj = 0; jj < occNumber(ii).rows(); jj++)
             nelec += occNumber(ii)(jj);
     }
-    // cout << "Core occupation number vector:" << endl;
-    // cout << "l\t2j\t2mj\tOcc" << endl;
-    // for(int ii = 0; ii < Nirrep; ii++)
-    // {
-    //     cout << irrep_list(ii).l << "\t" << irrep_list(ii).two_j << "\t" << irrep_list(ii).two_mj << "\t" << occNumberCore(ii).transpose() << endl;
-    // }
     cout << "Highest occupied irrep: " << occMax_irrep << endl;
     cout << "Total number of electrons: " << nelec << endl << endl;
 
@@ -73,7 +66,7 @@ irrep_list(int_sph_.irrep_list), with_gaunt(with_gaunt_), with_gauge(with_gauge_
     if(with_gauge)  numberOfDouble = numberOfDouble/9.0*12.0;
     cout << "Maximum memory cost (2e part) in SCF and amfi calculation: " << numberOfDouble*sizeof(double)/pow(1024.0,3) << " GB." << endl;
 
-    StartTime = clock();
+    countTime(StartTimeCPU,StartTimeWall);
     overlap = int_sph_.get_h1e("overlap");
     kinetic = int_sph_.get_h1e("kinetic");
     if(gaussian_nuc)
@@ -94,20 +87,20 @@ irrep_list(int_sph_.irrep_list), with_gaunt(with_gaunt_), with_gauge(with_gauge_
             WWW = int_sph_.get_h1e("s_p_nuc_s_p");
     }
         
-    EndTime = clock();
-    cout << "1e-integral finished in " << (EndTime - StartTime) / (double)CLOCKS_PER_SEC << " seconds." << endl;
+    countTime(EndTimeCPU,EndTimeWall);
+    printTime("1e-integrals");
 
-    StartTime = clock();
+    countTime(StartTimeCPU,StartTimeWall);
     if(twoC)
         h2eLLLL_JK = int_sph_.get_h2e_JK_compact("LLLL",irrep_list(occMax_irrep-1).l);
     else
         int_sph_.get_h2e_JK_direct(h2eLLLL_JK,h2eSSLL_JK,h2eSSSS_JK,irrep_list(occMax_irrep-1).l, spinFree);
-    EndTime = clock();
-    cout << "2e-integral finished in " << (EndTime - StartTime) / (double)CLOCKS_PER_SEC << " seconds." << endl; 
+    countTime(EndTimeCPU,EndTimeWall);
+    printTime("2e-Coulomb-integrals");
 
     if(with_gaunt && !twoC)
     {
-        StartTime = clock();
+        countTime(StartTimeCPU,StartTimeWall);
         //Always calculate all Gaunt integrals for amfi integrals
         if(spinFree)
         {
@@ -117,8 +110,8 @@ irrep_list(int_sph_.irrep_list), with_gaunt(with_gaunt_), with_gauge(with_gauge_
         }
         else
             int_sph_.get_h2e_JK_gaunt_direct(gauntLSLS_JK,gauntLSSL_JK);
-        EndTime = clock();
-        cout << "2e-integral-Gaunt finished in " << (EndTime - StartTime) / (double)CLOCKS_PER_SEC << " seconds." << endl << endl; 
+        countTime(EndTimeCPU,EndTimeWall);
+        printTime("2e-Gaunt-integrals");
     }
     if(with_gauge && !twoC)
     {
@@ -149,8 +142,8 @@ irrep_list(int_sph_.irrep_list), with_gaunt(with_gaunt_), with_gauge(with_gauge_
                 gauntLSSL_JK.K[ir][jr][emr][esn] -= tmp2.K[ir][jr][emr][esn];
             }
         }
-        EndTime = clock();
-        cout << "2e-integral-gauge finished in " << (EndTime - StartTime) / (double)CLOCKS_PER_SEC << " seconds." << endl << endl; 
+        countTime(EndTimeCPU,EndTimeWall);
+        printTime("2e-gauge-integrals");
     }
     symmetrize_h2e(twoC);
 
@@ -348,7 +341,7 @@ void DHF_SPH::runSCF(const bool& twoC, const bool& renormSmall, vMatrixXd* initi
         renormalize_small();
     }
     vector<MatrixXd> error4DIIS[occMax_irrep], fock4DIIS[occMax_irrep];
-    StartTime = clock();
+    countTime(StartTimeCPU,StartTimeWall);
     cout << endl;
     if(twoC) cout << "Start X2C-1e Hartree-Fock iterations..." << endl;
     else cout << "Start Dirac Hartree-Fock iterations..." << endl;
@@ -476,8 +469,6 @@ void DHF_SPH::runSCF(const bool& twoC, const bool& renormSmall, vMatrixXd* initi
             }
         }
     }
-    EndTime = clock();
-
     
     for(int ir = 0; ir < occMax_irrep; ir += irrep_list(ir).two_j+1)
     {
@@ -489,7 +480,9 @@ void DHF_SPH::runSCF(const bool& twoC, const bool& renormSmall, vMatrixXd* initi
             density(ir+jj) = density(ir);
         }
     }
-    cout << "DHF iterations finished in " << (EndTime - StartTime) / (double)CLOCKS_PER_SEC << " seconds." << endl << endl;
+
+    countTime(EndTimeCPU,EndTimeWall);
+    printTime("DHF iterations");
 }
 
 /*
@@ -912,16 +905,9 @@ void DHF_SPH::setOCC(const string& filename, const string& atomName)
         {
             occNumber(int_tmp2+jj).resize(irrep_list(int_tmp2+jj).size);
             occNumber(int_tmp2+jj) = VectorXd::Zero(irrep_list(int_tmp2+jj).size);
-            occNumberCore(int_tmp2+jj).resize(irrep_list(int_tmp2+jj).size);
-            occNumberCore(int_tmp2+jj) = VectorXd::Zero(irrep_list(int_tmp2+jj).size);
             for(int kk = 0; kk < int_tmp3; kk++)
             {    
                 occNumber(int_tmp2+jj)(kk) = 1.0;
-                occNumberCore(int_tmp2+jj)(kk) = 1.0;
-                // if(kk == int_tmp3-1 && abs(d_tmp) < 1e-4)
-                // {
-                //    occNumberCore(int_tmp2+jj)(kk) = 0.0;
-                // }
             }
             if(occNumber(int_tmp2+jj).rows() > int_tmp3)
                 occNumber(int_tmp2+jj)(int_tmp3) = d_tmp;
@@ -956,10 +942,10 @@ vMatrixXd DHF_SPH::get_amfi_unc(INT_SPH& int_sph_, const bool& twoC, const strin
     }
     if(!with_gaunt && amfi_with_gaunt || twoC)
     {
-        StartTime = clock();
+        countTime(StartTimeCPU,StartTimeWall);
         int_sph_.get_h2e_JK_gaunt_direct(gauntLSLS_JK,gauntLSSL_JK);
-        EndTime = clock();
-        cout << "2e-integral-Gaunt finished in " << (EndTime - StartTime) / (double)CLOCKS_PER_SEC << " seconds." << endl << endl; 
+        countTime(EndTimeCPU,EndTimeWall);
+        printTime("2e-Gaunt-integrals");
         if(amfi_with_gauge)
         {
             int2eJK tmp1, tmp2, tmp3, tmp4;
@@ -980,8 +966,8 @@ vMatrixXd DHF_SPH::get_amfi_unc(INT_SPH& int_sph_, const bool& twoC, const strin
                     gauntLSSL_JK.K[ir][jr][emr][esn] -= tmp2.K[ir][jr][emr][esn];
                 }
             }
-            EndTime = clock();
-            cout << "2e-integral-gauge finished in " << (EndTime - StartTime) / (double)CLOCKS_PER_SEC << " seconds." << endl << endl;  
+            countTime(EndTimeCPU,EndTimeWall);
+            printTime("2e-gauge-integrals");
         }
         symmetrize_JK_gaunt(gauntLSLS_JK,Nirrep_compact);
         if(renormalizedSmall)
@@ -1042,7 +1028,7 @@ vMatrixXd DHF_SPH::get_amfi_unc(INT_SPH& int_sph_, const bool& twoC, const strin
         {
             cout << "fullFock is used in amfi function with incomplete h2e." << endl;
             cout << "Recalculate h2e and gaunt2e..." << endl;
-            StartTime = clock();
+            countTime(StartTimeCPU,StartTimeWall);
             int_sph_.get_h2e_JK_direct(h2eLLLL_JK,h2eSSLL_JK,h2eSSSS_JK);
             symmetrize_JK(h2eLLLL_JK,Nirrep_compact);
             symmetrize_JK(h2eSSSS_JK,Nirrep_compact);
@@ -1051,8 +1037,8 @@ vMatrixXd DHF_SPH::get_amfi_unc(INT_SPH& int_sph_, const bool& twoC, const strin
                 renormalize_h2e(h2eSSLL_JK,"SSLL");
                 renormalize_h2e(h2eSSSS_JK,"SSSS");
             }
-            EndTime = clock();
-            cout << "Complete 2e-integral finished in " << (EndTime - StartTime) / (double)CLOCKS_PER_SEC << " seconds." << endl << endl; 
+            countTime(EndTimeCPU,EndTimeWall);
+            printTime("Extra 2e-integrals");
         }
         return get_amfi_unc(SSLL_SD, SSSS_SD, gauntLSLS_SD, gauntLSSL_SD, density, Xmethod, amfi_with_gaunt);
     }
@@ -1466,7 +1452,6 @@ void DHF_SPH::set_h1e_4c(const vMatrixXd& inputM)
 */
 void DHF_SPH::basisGenerator(string basisName, string filename, const INT_SPH& intor, const INT_SPH& intorAll, const bool& sf, const string& tag)
 {
-    cout << "Running DHF_SPH::basisGenerator" << endl;
     Matrix<VectorXi,-1,1> basisInfo, basisSmall, basisAll;
     basisSmall.resize(intor.shell_list.rows());
     vMatrixXd resortedCoeffInput(basisSmall.rows());

@@ -69,21 +69,21 @@ int main()
     if(amfiMethod[1])   method = method + "-Gaunt";
     if(amfiMethod[2])   method = method + "-gauge\n";
     if(amfiMethod[4])   method = method + " with Gaussian nuclear model";
-    if(amfiMethod[3])   method = "NOTHING: special for x2c1e calculation";
+    if(amfiMethod[3])   method = method + " using entire picture change correction";
     cout << "amfi Method input: " << method << endl;
 
     if(amfiMethod[0])
     {
         cout << endl << endl;
         cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << endl;
-        cout << "!!  WARNING: Average-of-configuration calculations are INCORRECT   !!" << endl;
+        cout << "!!  WARNING: Average-of-configuration calculations MIGHT BE WRONG  !!" << endl;
         cout << "!!  for atoms with more than one partially occupied l-shell, e.g., !!" << endl;
         cout << "!!  uranium atom with both 5f and 6d partially occupied.           !!" << endl;
         cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << endl;
         cout << endl << endl;
     }
 
-    vector<MatrixXcd> amfiUnique, XUnique;
+    vector<MatrixXcd> amfiUnique, XUnique, denUnique;
     for(int ii = 0; ii < atomListUnique.size(); ii++)
     {
         INT_SPH intor(atomListUnique[ii],basisListUnique[ii]);
@@ -113,16 +113,24 @@ int main()
             scfer->runSCF(true,false);
         }
         
-        //amfiUnique.push_back(Rotate::unite_irrep(scfer.x2c2ePCC(),intor.irrep_list)); // for 2e-pcc test
-        amfiUnique.push_back(Rotate::unite_irrep(scfer->get_amfi_unc(intor,twoC), intor.irrep_list));
+        if(amfiMethod[3])
+            amfiUnique.push_back(Rotate::unite_irrep(scfer->x2c2ePCC(),intor.irrep_list)); // for 2e-pcc test
+        else
+            amfiUnique.push_back(Rotate::unite_irrep(scfer->get_amfi_unc(intor,twoC), intor.irrep_list));
+
         XUnique.push_back(Rotate::unite_irrep(scfer->get_X(), intor.irrep_list));
+        denUnique.push_back(Rotate::unite_irrep(scfer->get_density(), intor.irrep_list));
         
-        //MatrixXcd tmp = Rotate::jspinor2cfour_interface_old(intor.irrep_list);
-        MatrixXcd tmp = Rotate::jspinor2cfour_interface_new(intor.irrep_list);
+        MatrixXcd tmp = Rotate::jspinor2cfour_interface_old(intor.irrep_list);
+        // MatrixXcd tmp = Rotate::jspinor2cfour_interface_new(intor.irrep_list);
         amfiUnique[ii] = tmp.adjoint() * amfiUnique[ii] * tmp;
         amfiUnique[ii] = Rotate::separate2mCompact(amfiUnique[ii],intor.irrep_list);
         XUnique[ii] = tmp.adjoint() * XUnique[ii] * tmp;
         XUnique[ii] = Rotate::separate2mCompact(XUnique[ii],intor.irrep_list);
+        denUnique[ii] = tmp.adjoint() * denUnique[ii] * tmp;
+        denUnique[ii] = Rotate::separate2mCompact(denUnique[ii],intor.irrep_list);
+
+        delete scfer;
     }
 
     cout << "Constructing amfso integrals...." << endl;
@@ -133,12 +141,15 @@ int main()
     }
     int sizeAll2 = sizeAll*sizeAll, sizeHalf = sizeAll/2;
     F_INTERFACE::f_dcomplex amfiAll[sizeAll*sizeAll], XAll[sizeAll*sizeAll];
+    double drAll[sizeAll*sizeAll], diAll[sizeAll*sizeAll];
     for(int ii = 0; ii < sizeAll2; ii++)
     {
         amfiAll[ii].dr = 0.0;
         amfiAll[ii].di = 0.0;
         XAll[ii].dr = 0.0;
         XAll[ii].di = 0.0;
+        drAll[ii] = 0.0;
+        diAll[ii] = 0.0;
     }
     for(int ii = 0; ii < atomList.size(); ii++)
     {
@@ -165,24 +176,29 @@ int main()
             XAll[(int_tmp+mm)*sizeAll + int_tmp+nn+sizeHalf].di = XUnique[indexList[ii]](size_tmp_half+nn,mm).imag();
             XAll[(int_tmp+mm+sizeHalf)*sizeAll + int_tmp+nn+sizeHalf].dr = XUnique[indexList[ii]](size_tmp_half+nn,size_tmp_half+mm).real();
             XAll[(int_tmp+mm+sizeHalf)*sizeAll + int_tmp+nn+sizeHalf].di = XUnique[indexList[ii]](size_tmp_half+nn,size_tmp_half+mm).imag();
+
+            drAll[(int_tmp+mm)*sizeAll + int_tmp+nn] = denUnique[indexList[ii]](nn,mm).real();
+            drAll[(int_tmp+mm+sizeHalf)*sizeAll + int_tmp+nn] = denUnique[indexList[ii]](nn,size_tmp_half+mm).real();
+            drAll[(int_tmp+mm)*sizeAll + int_tmp+nn+sizeHalf] = denUnique[indexList[ii]](size_tmp_half+nn,mm).real();
+            drAll[(int_tmp+mm+sizeHalf)*sizeAll + int_tmp+nn+sizeHalf] = denUnique[indexList[ii]](size_tmp_half+nn,size_tmp_half+mm).real();
+
+            diAll[(int_tmp+mm)*sizeAll + int_tmp+nn] = denUnique[indexList[ii]](nn,mm).imag();
+            diAll[(int_tmp+mm+sizeHalf)*sizeAll + int_tmp+nn] = denUnique[indexList[ii]](nn,size_tmp_half+mm).imag();
+            diAll[(int_tmp+mm)*sizeAll + int_tmp+nn+sizeHalf] = denUnique[indexList[ii]](size_tmp_half+nn,mm).imag();
+            diAll[(int_tmp+mm+sizeHalf)*sizeAll + int_tmp+nn+sizeHalf] = denUnique[indexList[ii]](size_tmp_half+nn,size_tmp_half+mm).imag();
         }
         int_tmp += amfiUnique[indexList[ii]].rows()/2;
     }
 
     int sizeAllReal = 2*sizeAll2;
-    if(amfiMethod[3])
-    {
-        for(int ii = 0; ii < sizeAll2; ii++)
-        {
-            amfiAll[ii].dr = 0.0;
-            amfiAll[ii].di = 0.0;
-        }
-    }
     cout << "Writing amfso integrals...." << endl;
     if(!PT)
     {
+        // F_INTERFACE::prvecr_((double*)amfiAll,&sizeAllReal);
         F_INTERFACE::wfile_("X2CMFSOM",(double*)amfiAll,&sizeAllReal);
         F_INTERFACE::wfile_("X2CATMXM",(double*)XAll,&sizeAllReal);
+        F_INTERFACE::wfile_("X2CATMDR",(double*)drAll,&sizeAll2);
+        F_INTERFACE::wfile_("X2CATMDI",(double*)diAll,&sizeAll2);
     }
     else
     {
@@ -321,7 +337,7 @@ void readZMAT(const string& filename, vector<string>& atoms, vector<string>& bas
                 //average-of-configuration
                 //gaunt
                 //gauge
-                //set all integrals to zero
+                //use entire 2e-picture-change-correction
                 //Gaussian finite nuclear model
                 for(int ii = 0 ; ii < 4; ii++)
                 {
@@ -344,7 +360,7 @@ void readZMAT(const string& filename, vector<string>& atoms, vector<string>& bas
             amfiMethod.push_back(false); //aoc
             amfiMethod.push_back(false); //with gaunt
             amfiMethod.push_back(false); //with gauge
-            amfiMethod.push_back(false); //normal integral
+            amfiMethod.push_back(false); //normal integral rather than entire 2e-pcc
             amfiMethod.push_back(false); //without Gaussian nuclear model 
             amfiMethod.push_back(false); //calculate amfso integrals using variational approach 
         }

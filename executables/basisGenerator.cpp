@@ -57,7 +57,7 @@ int main()
     scfer->runSCF(true,false);
     scfer->basisGenerator(basisSetAll, filenameOuput, intor, intorAll, spinFree, newTag);
 
-
+    delete scfer;
     return 0;
 }
 

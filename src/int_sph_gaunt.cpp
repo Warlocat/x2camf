@@ -364,7 +364,7 @@ int2eJK INT_SPH::get_h2e_JK_gaunt(const string& intType, const int& occMaxL) con
         double array_radial_K[LmaxK+1][size_gtos_p*size_gtos_q][size_gtos_q*size_gtos_p][size_tmp_p][size_tmp_q];
         MatrixXd array_angular_J[LmaxJ+1][size_tmp_p][size_tmp_q], array_angular_K[LmaxK+1][size_tmp_p][size_tmp_q];
 
-        StartTime = clock();
+        countTime(StartTimeCPU,StartTimeWall);
         #pragma omp parallel  for
         for(int twojj_p = abs(2*l_p-1); twojj_p <= 2*l_p+1; twojj_p = twojj_p + 2)
         for(int twojj_q = abs(2*l_q-1); twojj_q <= 2*l_q+1; twojj_q = twojj_q + 2)
@@ -408,10 +408,10 @@ int2eJK INT_SPH::get_h2e_JK_gaunt(const string& intType, const int& occMaxL) con
                 }
             }
         }
-        EndTime = clock();
-        time_a += (EndTime - StartTime)/(double)CLOCKS_PER_SEC;
+        countTime(EndTimeCPU,EndTimeWall);
+        time_a += (EndTimeCPU - StartTimeCPU)/(double)CLOCKS_PER_SEC;
 
-        StartTime = clock();
+        countTime(StartTimeCPU,StartTimeWall);
         #pragma omp parallel  for
         for(int tt = 0; tt < size_gtos_p*size_gtos_p*size_gtos_q*size_gtos_q; tt++)
         {
@@ -554,10 +554,10 @@ int2eJK INT_SPH::get_h2e_JK_gaunt(const string& intType, const int& occMaxL) con
                 }
             }
         }
-        EndTime = clock();
-        time_r += (EndTime - StartTime)/(double)CLOCKS_PER_SEC;
+        countTime(EndTimeCPU,EndTimeWall);
+        time_r += (EndTimeCPU - StartTimeCPU)/(double)CLOCKS_PER_SEC;
 
-        StartTime = clock();
+        countTime(StartTimeCPU,StartTimeWall);
         int l_p_cycle = (l_p == 0) ? 1 : 2, l_q_cycle = (l_q == 0) ? 1 : 2;
         for(int int_tmp2_p = 0; int_tmp2_p < l_p_cycle; int_tmp2_p++)
         for(int int_tmp2_q = 0; int_tmp2_q < l_q_cycle; int_tmp2_q++)
@@ -588,8 +588,8 @@ int2eJK INT_SPH::get_h2e_JK_gaunt(const string& intType, const int& occMaxL) con
                 }
             }
         }
-        EndTime = clock();
-        time_c += (EndTime - StartTime)/(double)CLOCKS_PER_SEC;
+        countTime(EndTimeCPU,EndTimeWall);
+        time_c += (EndTimeCPU - StartTimeCPU)/(double)CLOCKS_PER_SEC;
         int_tmp1_q += 4*l_q+2;
     }
     int_tmp1_p += 4*l_p+2;
@@ -870,7 +870,7 @@ int2eJK INT_SPH::get_h2e_JK_gauntSF_compact(const string& intType, const int& oc
         double array_angular_J21[LmaxJ+1][size_tmp_p][size_tmp_q], array_angular_K21[LmaxK+1][size_tmp_p][size_tmp_q];
         double array_angular_J22[LmaxJ+1][size_tmp_p][size_tmp_q], array_angular_K22[LmaxK+1][size_tmp_p][size_tmp_q];
 
-        StartTime = clock();
+        countTime(StartTimeCPU,StartTimeWall);
         #pragma omp parallel  for
         for(int twojj_p = abs(2*l_p-1); twojj_p <= 2*l_p+1; twojj_p = twojj_p + 2)
         for(int twojj_q = abs(2*l_q-1); twojj_q <= 2*l_q+1; twojj_q = twojj_q + 2)
@@ -920,10 +920,10 @@ int2eJK INT_SPH::get_h2e_JK_gauntSF_compact(const string& intType, const int& oc
                 tmp_d22 /= (twojj_q + 1);   array_angular_K22[tmp][index_tmp_p][index_tmp_q] = tmp_d22;
             }
         }
-        EndTime = clock();
-        time_a += (EndTime - StartTime)/(double)CLOCKS_PER_SEC;
+        countTime(EndTimeCPU,EndTimeWall);
+        time_a += (EndTimeCPU - StartTimeCPU)/(double)CLOCKS_PER_SEC;
 
-        StartTime = clock();
+        countTime(StartTimeCPU,StartTimeWall);
         #pragma omp parallel  for
         for(int tt = 0; tt < size_gtos_p*size_gtos_p*size_gtos_q*size_gtos_q; tt++)
         {
@@ -1125,10 +1125,10 @@ int2eJK INT_SPH::get_h2e_JK_gauntSF_compact(const string& intType, const int& oc
                 }
             }
         }
-        EndTime = clock();
-        time_r += (EndTime - StartTime)/(double)CLOCKS_PER_SEC;
+        countTime(EndTimeCPU,EndTimeWall);
+        time_r += (EndTimeCPU - StartTimeCPU)/(double)CLOCKS_PER_SEC;
 
-        StartTime = clock();
+        countTime(StartTimeCPU,StartTimeWall);
         int l_p_cycle = (l_p == 0) ? 1 : 2, l_q_cycle = (l_q == 0) ? 1 : 2;
         for(int int_tmp2_p = 0; int_tmp2_p < l_p_cycle; int_tmp2_p++)
         for(int int_tmp2_q = 0; int_tmp2_q < l_q_cycle; int_tmp2_q++)
@@ -1162,8 +1162,8 @@ int2eJK INT_SPH::get_h2e_JK_gauntSF_compact(const string& intType, const int& oc
                     array_radial_K22[tmp][e1K][e2K][int_tmp2_p][int_tmp2_q] * array_angular_K22[tmp][int_tmp2_p][int_tmp2_q];
             }
         }
-        EndTime = clock();
-        time_c += (EndTime - StartTime)/(double)CLOCKS_PER_SEC;
+        countTime(EndTimeCPU,EndTimeWall);
+        time_c += (EndTimeCPU - StartTimeCPU)/(double)CLOCKS_PER_SEC;
         int_tmp1_q += (l_q == 0) ? 1 : 2;
     }
     int_tmp1_p += (l_p == 0) ? 1 : 2;
