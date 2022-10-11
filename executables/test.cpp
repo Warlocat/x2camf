@@ -10,7 +10,6 @@
 #include"dhf_sph.h"
 #include"general.h"
 #include"dhf_sph_ca.h"
-#include"dhf_sph_ca2.h"
 using namespace Eigen;
 using namespace std;
 
