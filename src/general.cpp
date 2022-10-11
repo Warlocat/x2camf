@@ -11,6 +11,25 @@ using namespace std;
 using namespace Eigen;
 
 /*
+    Count and print CPU & wall time
+*/
+void countTime(clock_t& timeCPU, std::chrono::_V2::system_clock::time_point& timeWall)
+{
+    timeCPU = clock();
+    timeWall = chrono::high_resolution_clock::now();
+}
+void printTime(const string& processName)
+{
+    std::streamsize ss = std::cout.precision();
+    cout << fixed << setprecision(2);
+    cout << processName + " time (CPU/WALL): " << (EndTimeCPU - StartTimeCPU) / (double)CLOCKS_PER_SEC;
+    cout << "/" << std::chrono::duration<double, std::milli>(EndTimeWall-StartTimeWall).count() / 1000.0 << " seconds." << endl;
+    cout.unsetf(std::ios_base::floatfield);
+    cout << setprecision(ss);
+}
+
+
+/*
     factorial and double_factorial
 */
 double double_factorial(const int& n)

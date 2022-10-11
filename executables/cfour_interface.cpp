@@ -76,14 +76,14 @@ int main()
     {
         cout << endl << endl;
         cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << endl;
-        cout << "!!  WARNING: Average-of-configuration calculations are INCORRECT   !!" << endl;
+        cout << "!!  WARNING: Average-of-configuration calculations MIGHT BE WRONG  !!" << endl;
         cout << "!!  for atoms with more than one partially occupied l-shell, e.g., !!" << endl;
         cout << "!!  uranium atom with both 5f and 6d partially occupied.           !!" << endl;
         cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << endl;
         cout << endl << endl;
     }
 
-    vector<MatrixXcd> amfiUnique, XUnique;
+    vector<MatrixXcd> amfiUnique, XUnique, denUnique;
     for(int ii = 0; ii < atomListUnique.size(); ii++)
     {
         INT_SPH intor(atomListUnique[ii],basisListUnique[ii]);
@@ -119,6 +119,7 @@ int main()
             amfiUnique.push_back(Rotate::unite_irrep(scfer->get_amfi_unc(intor,twoC), intor.irrep_list));
 
         XUnique.push_back(Rotate::unite_irrep(scfer->get_X(), intor.irrep_list));
+        denUnique.push_back(Rotate::unite_irrep(scfer->get_density(), intor.irrep_list));
         
         MatrixXcd tmp = Rotate::jspinor2cfour_interface_old(intor.irrep_list);
         // MatrixXcd tmp = Rotate::jspinor2cfour_interface_new(intor.irrep_list);
@@ -126,6 +127,8 @@ int main()
         amfiUnique[ii] = Rotate::separate2mCompact(amfiUnique[ii],intor.irrep_list);
         XUnique[ii] = tmp.adjoint() * XUnique[ii] * tmp;
         XUnique[ii] = Rotate::separate2mCompact(XUnique[ii],intor.irrep_list);
+        denUnique[ii] = tmp.adjoint() * denUnique[ii] * tmp;
+        denUnique[ii] = Rotate::separate2mCompact(denUnique[ii],intor.irrep_list);
 
         delete scfer;
     }
@@ -138,12 +141,15 @@ int main()
     }
     int sizeAll2 = sizeAll*sizeAll, sizeHalf = sizeAll/2;
     F_INTERFACE::f_dcomplex amfiAll[sizeAll*sizeAll], XAll[sizeAll*sizeAll];
+    double drAll[sizeAll*sizeAll], diAll[sizeAll*sizeAll];
     for(int ii = 0; ii < sizeAll2; ii++)
     {
         amfiAll[ii].dr = 0.0;
         amfiAll[ii].di = 0.0;
         XAll[ii].dr = 0.0;
         XAll[ii].di = 0.0;
+        denAll[ii].dr = 0.0;
+        denAll[ii].di = 0.0;
     }
     for(int ii = 0; ii < atomList.size(); ii++)
     {
@@ -170,6 +176,16 @@ int main()
             XAll[(int_tmp+mm)*sizeAll + int_tmp+nn+sizeHalf].di = XUnique[indexList[ii]](size_tmp_half+nn,mm).imag();
             XAll[(int_tmp+mm+sizeHalf)*sizeAll + int_tmp+nn+sizeHalf].dr = XUnique[indexList[ii]](size_tmp_half+nn,size_tmp_half+mm).real();
             XAll[(int_tmp+mm+sizeHalf)*sizeAll + int_tmp+nn+sizeHalf].di = XUnique[indexList[ii]](size_tmp_half+nn,size_tmp_half+mm).imag();
+
+            drAll[(int_tmp+mm)*sizeAll + int_tmp+nn] = denUnique[indexList[ii]](nn,mm).real();
+            drAll[(int_tmp+mm+sizeHalf)*sizeAll + int_tmp+nn] = denUnique[indexList[ii]](nn,size_tmp_half+mm).real();
+            drAll[(int_tmp+mm)*sizeAll + int_tmp+nn+sizeHalf] = denUnique[indexList[ii]](size_tmp_half+nn,mm).real();
+            drAll[(int_tmp+mm+sizeHalf)*sizeAll + int_tmp+nn+sizeHalf] = denUnique[indexList[ii]](size_tmp_half+nn,size_tmp_half+mm).real();
+
+            diAll[(int_tmp+mm)*sizeAll + int_tmp+nn] = denUnique[indexList[ii]](nn,mm).imag();
+            diAll[(int_tmp+mm+sizeHalf)*sizeAll + int_tmp+nn] = denUnique[indexList[ii]](nn,size_tmp_half+mm).imag();
+            diAll[(int_tmp+mm)*sizeAll + int_tmp+nn+sizeHalf] = denUnique[indexList[ii]](size_tmp_half+nn,mm).imag();
+            diAll[(int_tmp+mm+sizeHalf)*sizeAll + int_tmp+nn+sizeHalf] = denUnique[indexList[ii]](size_tmp_half+nn,size_tmp_half+mm).imag();
         }
         int_tmp += amfiUnique[indexList[ii]].rows()/2;
     }
@@ -181,6 +197,8 @@ int main()
         // F_INTERFACE::prvecr_((double*)amfiAll,&sizeAllReal);
         F_INTERFACE::wfile_("X2CMFSOM",(double*)amfiAll,&sizeAllReal);
         F_INTERFACE::wfile_("X2CATMXM",(double*)XAll,&sizeAllReal);
+        F_INTERFACE::wfile_("X2CATMDR",(double*)drAll,&sizeAll2);
+        F_INTERFACE::wfile_("X2CATMDI",(double*)diAll,&sizeAll2);
     }
     else
     {

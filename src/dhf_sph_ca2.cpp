@@ -164,7 +164,7 @@ void DHF_SPH_CA2::runSCF(const bool& twoC, const bool& renormSmall)
         coeffShells(ii).resize(occMax_irrep);
         densityShells(ii).resize(occMax_irrep);
     }
-    StartTimeCPU = clock();
+    countTime(StartTimeCPU,StartTimeWall);
     cout << endl;
     if(twoC) cout << "Start CA-X2C-1e Hartree-Fock iterations..." << endl;
     else cout << "Start CA-Dirac Hartree-Fock iterations..." << endl;
@@ -317,7 +317,6 @@ void DHF_SPH_CA2::runSCF(const bool& twoC, const bool& renormSmall)
             }            
         }
     }
-    EndTimeCPU = clock();
 
     density.resize(occMax_irrep);
     for(int ir = 0; ir < occMax_irrep; ir += irrep_list(ir).two_j+1)
@@ -334,7 +333,9 @@ void DHF_SPH_CA2::runSCF(const bool& twoC, const bool& renormSmall)
                 densityShells(ii)(ir+jj) = densityShells(ii)(ir);
         }
     }    
-    cout << "DHF iterations finished in " << (EndTimeCPU - StartTimeCPU) / (double)CLOCKS_PER_SEC << " seconds." << endl << endl;
+
+    countTime(EndTimeCPU,EndTimeWall);
+    printTime("DHF iterations");
 }
 
 
@@ -343,8 +344,6 @@ void DHF_SPH_CA2::runSCF(const bool& twoC, const bool& renormSmall)
 */
 void DHF_SPH_CA2::evaluateFockShells(Matrix<vMatrixXd,-1,1>& fockShells, const bool& twoC, const Matrix<vMatrixXd,-1,1>& densities, const int& size, const int& Iirrep)
 {
-    StartTimeCPU = clock();
-    StartTimeWall = chrono::high_resolution_clock::now();
     int ir = all2compact(Iirrep);
     MatrixXd S = overlap_4c(Iirrep);
     int fockSize = S.rows();
@@ -434,12 +433,7 @@ void DHF_SPH_CA2::evaluateFockShells(Matrix<vMatrixXd,-1,1>& fockShells, const b
             }
         }
     }
-    EndTimeCPU = clock();
-    EndTimeWall = chrono::high_resolution_clock::now();
-    cout << "first part: CPU time: " << (EndTimeCPU - StartTimeCPU) / (double)CLOCKS_PER_SEC << " s, Wall time: " << std::chrono::duration<double, std::milli>(EndTimeWall-StartTimeWall).count() << endl << endl;
 
-    StartTimeCPU = clock();
-    StartTimeWall = chrono::high_resolution_clock::now();
     vMatrixXd fock_ir_shells(NOpenShells+1);
     for(int ii = 0; ii < NOpenShells+1; ii++)
     {
@@ -466,9 +460,6 @@ void DHF_SPH_CA2::evaluateFockShells(Matrix<vMatrixXd,-1,1>& fockShells, const b
         }
         fockShells(ii)(Iirrep) = fock_ir_shells(ii);
     }
-    EndTimeCPU = clock();
-    EndTimeWall = chrono::high_resolution_clock::now();
-    cout << "Second part: CPU time: " << (EndTimeCPU - StartTimeCPU) / (double)CLOCKS_PER_SEC << " s, Wall time: " << std::chrono::duration<double, std::milli>(EndTimeWall-StartTimeWall).count() << endl << endl;
 }
 double DHF_SPH_CA2::evaluateEnergy(const bool& twoC)
 {

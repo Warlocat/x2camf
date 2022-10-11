@@ -59,7 +59,6 @@ DHF_SPH(int_sph_,filename,spinFree,twoC,with_gaunt_,with_gauge_,allInt,gaussian_
                         f_list.push_back(occNumber(ir)(ii));
                         NN_list.push_back(f_list[f_list.size()-1]*MM_list[f_list.size()-1]);
                     }
-                    // f_NM = occNumber(ir)(ii);
                     occNumberShells[0](ir)(ii) = 0.0;
                     occNumberShells[f_list.size()](ir)(ii) = 1.0;
                 }
@@ -153,7 +152,7 @@ void DHF_SPH_CA::runSCF(const bool& twoC, const bool& renormSmall)
     }
     Matrix<vector<MatrixXd>,-1,-1> error4DIIS(occMax_irrep,NOpenShells+2);
     vector<MatrixXd> fock4DIIS[occMax_irrep];
-    StartTimeCPU = clock();
+    countTime(StartTimeCPU,StartTimeWall);
     cout << endl;
     if(twoC) cout << "Start CA-X2C-1e Hartree-Fock iterations..." << endl;
     else cout << "Start CA-Dirac Hartree-Fock iterations..." << endl;
@@ -282,7 +281,6 @@ void DHF_SPH_CA::runSCF(const bool& twoC, const bool& renormSmall)
             }            
         }
     }
-    EndTimeCPU = clock();
 
     density.resize(occMax_irrep);
     for(int ir = 0; ir < occMax_irrep; ir += irrep_list(ir).two_j+1)
@@ -301,7 +299,9 @@ void DHF_SPH_CA::runSCF(const bool& twoC, const bool& renormSmall)
                 densityShells(ii)(ir+jj) = densityShells(ii)(ir);
         }
     }
-    cout << "DHF iterations finished in " << (EndTimeCPU - StartTimeCPU) / (double)CLOCKS_PER_SEC << " seconds." << endl << endl;
+
+    countTime(EndTimeCPU,EndTimeWall);
+    printTime("DHF iterations");
 }
 
 
