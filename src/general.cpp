@@ -13,6 +13,8 @@ using namespace Eigen;
 /*
     Count and print CPU & wall time
 */
+clock_t StartTimeCPU, EndTimeCPU;
+std::chrono::_V2::system_clock::time_point StartTimeWall, EndTimeWall; 
 void countTime(clock_t& timeCPU, std::chrono::_V2::system_clock::time_point& timeWall)
 {
     timeCPU = clock();

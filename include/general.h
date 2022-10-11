@@ -12,9 +12,8 @@
 using namespace std;
 using namespace Eigen;
 
-static clock_t StartTimeCPU, EndTimeCPU;
-static auto StartTimeWall = chrono::high_resolution_clock::now();
-static auto EndTimeWall = chrono::high_resolution_clock::now(); 
+extern clock_t StartTimeCPU, EndTimeCPU;
+extern std::chrono::_V2::system_clock::time_point StartTimeWall, EndTimeWall; 
 void countTime(clock_t& timeCPU, std::chrono::_V2::system_clock::time_point& timeWall);
 void printTime(const string& processName);
 

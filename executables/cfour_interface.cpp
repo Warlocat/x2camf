@@ -148,8 +148,8 @@ int main()
         amfiAll[ii].di = 0.0;
         XAll[ii].dr = 0.0;
         XAll[ii].di = 0.0;
-        denAll[ii].dr = 0.0;
-        denAll[ii].di = 0.0;
+        drAll[ii] = 0.0;
+        diAll[ii] = 0.0;
     }
     for(int ii = 0; ii < atomList.size(); ii++)
     {
