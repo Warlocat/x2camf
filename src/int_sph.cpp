@@ -113,7 +113,7 @@ vMatrixXd INT_SPH::get_h1e(const string& intType) const
                     double norm = -atomNumber*pow(xi/M_PI,1.5);
                     double tmp = 4.0*a1*a2*int2e_get_radial(0,0.0,0,xi,ll+1,a1,ll+1,a2,0);
                     if(ll != 0)
-                        tmp += (2.0*ll*ll + ll)*int2e_get_radial(0,0.0,0,xi,ll-1,a1,ll-1,a2,0) - 2.0*(a1+a2)*(1+ll)*int2e_get_radial(0,0.0,0,xi,ll+1,a1,ll-1,a2,0);
+                        tmp += (2.0*ll*ll + ll)*int2e_get_radial(0,0.0,0,xi,ll-1,a1,ll-1,a2,0) - 2.0*(a1+a2)*(ll)*int2e_get_radial(0,0.0,0,xi,ll+1,a1,ll-1,a2,0);
                     h1e_single_shell(index_tmp)(ii,jj) = norm*tmp*4.0*M_PI;
                 }
                 else if(intType == "kinetic")

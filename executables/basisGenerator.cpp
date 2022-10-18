@@ -15,7 +15,7 @@ using namespace std;
 
 /* Global information */
 string atomName, basisSetPVXZ, basisSetAll, flags, newTag, filenameOuput;
-bool spinFree = true, aoc = true;
+bool spinFree = true, aoc = true, finiteN = false;
 
 /* Read input file and set global variables */
 void readInput(const string filename);
@@ -29,21 +29,21 @@ int main()
 
     if(aoc)
     {
-        scfer = new DHF_SPH_CA(intor,"input",spinFree,true,false,false,true,false);
+        scfer = new DHF_SPH_CA(intor,"input",spinFree,true,false,false,true,finiteN);
     }
     else
     {
-        scfer = new DHF_SPH(intor,"input",spinFree,true,false,false,true,false);
+        scfer = new DHF_SPH(intor,"input",spinFree,true,false,false,true,finiteN);
     }
     if(!spinFree)
     {
         if(aoc)
         {
-            scfer2 = new DHF_SPH_CA(intor,"input",false,false,false,false,true,false);
+            scfer2 = new DHF_SPH_CA(intor,"input",false,false,false,false,true,finiteN);
         }
         else
         {
-            scfer2 = new DHF_SPH(intor,"input",false,false,false,false,true,false);
+            scfer2 = new DHF_SPH(intor,"input",false,false,false,false,true,finiteN);
         }
         scfer2->convControl = 1e-9;
         scfer2->runSCF(false,false);
@@ -56,6 +56,12 @@ int main()
     scfer->convControl = 1e-9;
     scfer->runSCF(true,false);
     scfer->basisGenerator(basisSetAll, filenameOuput, intor, intorAll, spinFree, newTag);
+    // print mo coefficients for convenience
+    cout << fixed << setprecision(8);
+    for(int ir = 0; ir < scfer->irrep_list.rows(); ir += scfer->irrep_list(ir).two_j+1)
+    {
+        cout << scfer->coeff(ir) << endl << endl;
+    }
 
     delete scfer;
     return 0;
@@ -77,6 +83,7 @@ void readInput(const string filename)
         ifs >> basisSetAll >> flags;
         ifs >> spinFree >> flags;
         ifs >> aoc >> flags;
+        ifs >> finiteN >> flags;
         ifs >> newTag >> flags;
         ifs >> filenameOuput >> flags;
         atomName = removeSpaces(atomName);
