@@ -169,7 +169,7 @@ namespace Rotate
     */
     template<typename T> Matrix<T,-1,-1> unite_irrep(const Matrix<Matrix<T,-1,-1>,-1,1>& inputM, const Matrix<irrep_jm, Dynamic, 1>& irrep_list)
     {
-        int size_spinor = 0, size_irrep = irrep_list.rows(), Lmax = irrep_list(size_irrep - 1).l;
+        int size_spinor = 0, size_irrep = irrep_list.rows();
         if(inputM.rows() != size_irrep)
         {
             cout << "ERROR: the size of inputM is not equal to Nirrep." << endl;
@@ -188,6 +188,41 @@ namespace Rotate
             for(int mi = 0; mi < 4*irrep_list(ir).l+2; mi++)
             {
                 outputM(i_output + ii*(4*irrep_list(ir).l+2) + mi, i_output + jj*(4*irrep_list(ir).l+2) + mi) = inputM(ir+mi)(ii,jj);
+            }
+            i_output += (4*irrep_list(ir).l+2) * irrep_list(ir).size;
+        }
+
+        return outputM;
+    }
+    template<typename T> Matrix<T,-1,-1> unite_irrep_4c(const Matrix<Matrix<T,-1,-1>,-1,1>& inputM, const Matrix<irrep_jm, Dynamic, 1>& irrep_list)
+    {
+        int size_spinor = 0, size_irrep = irrep_list.rows();
+        Matrix<Matrix<T,-1,-1>,-1,1> inputLL(size_irrep), inputLS(size_irrep), inputSL(size_irrep), inputSS(size_irrep);
+        if(inputM.rows() != size_irrep)
+        {
+            cout << "ERROR: the size of inputM is not equal to Nirrep." << endl;
+            exit(99);
+        }
+        for(int ir = 0; ir < size_irrep; ir++)
+        {
+            size_spinor += irrep_list(ir).size;
+            inputLL(ir) = inputM(ir).block(0,0,irrep_list(ir).size,irrep_list(ir).size);
+            inputLS(ir) = inputM(ir).block(0,irrep_list(ir).size,irrep_list(ir).size,irrep_list(ir).size);
+            inputSL(ir) = inputM(ir).block(irrep_list(ir).size,0,irrep_list(ir).size,irrep_list(ir).size);
+            inputSS(ir) = inputM(ir).block(irrep_list(ir).size,irrep_list(ir).size,irrep_list(ir).size,irrep_list(ir).size);
+        }
+        Matrix<T,-1,-1> outputM = Matrix<T,-1,-1>::Zero(size_spinor*2,size_spinor*2);
+        int i_output = 0;
+        for(int ir = 0; ir < size_irrep; ir += 4*irrep_list(ir).l+2)
+        {
+            for(int ii = 0; ii < irrep_list(ir).size; ii++)
+            for(int jj = 0; jj < irrep_list(ir).size; jj++)
+            for(int mi = 0; mi < 4*irrep_list(ir).l+2; mi++)
+            {
+                outputM(i_output + ii*(4*irrep_list(ir).l+2) + mi, i_output + jj*(4*irrep_list(ir).l+2) + mi) = inputLL(ir+mi)(ii,jj);
+                outputM(size_spinor + i_output + ii*(4*irrep_list(ir).l+2) + mi, i_output + jj*(4*irrep_list(ir).l+2) + mi) = inputSL(ir+mi)(ii,jj);
+                outputM(i_output + ii*(4*irrep_list(ir).l+2) + mi, size_spinor + i_output + jj*(4*irrep_list(ir).l+2) + mi) = inputLS(ir+mi)(ii,jj);
+                outputM(size_spinor + i_output + ii*(4*irrep_list(ir).l+2) + mi, size_spinor + i_output + jj*(4*irrep_list(ir).l+2) + mi) = inputSS(ir+mi)(ii,jj);
             }
             i_output += (4*irrep_list(ir).l+2) * irrep_list(ir).size;
         }

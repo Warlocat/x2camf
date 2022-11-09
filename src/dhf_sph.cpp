@@ -757,7 +757,7 @@ void DHF_SPH::setOCC(const string& filename, const string& atomName)
     int int_tmp, int_tmp2, int_tmp3;
     ifstream ifs;
     ifs.open(filename);
-    cout << ifs.eof() << endl;
+    cout << ifs.fail() << endl;
     if (!ifs.fail())
     {
         while(!ifs.eof())
@@ -930,7 +930,7 @@ void DHF_SPH::setOCC(const string& filename, const string& atomName)
         fullFock:       Fock                Fock
     When necessary, the program will recalculate two-electron integrals.
 */
-vMatrixXd DHF_SPH::get_amfi_unc(INT_SPH& int_sph_, const bool& twoC, const string& Xmethod, bool amfi_with_gaunt, bool amfi_with_gauge)
+vMatrixXd DHF_SPH::get_amfi_unc(INT_SPH& int_sph_, const bool& twoC, const string& Xmethod, bool amfi_with_gaunt, bool amfi_with_gauge, bool amfi4c)
 {
     cout << "Running DHF_SPH::get_amfi_unc" << endl;
     if(with_gaunt && !amfi_with_gaunt)
@@ -940,7 +940,7 @@ vMatrixXd DHF_SPH::get_amfi_unc(INT_SPH& int_sph_, const bool& twoC, const strin
         if(with_gauge && !amfi_with_gauge)
             amfi_with_gauge = true;
     }
-    if(!with_gaunt && amfi_with_gaunt || twoC)
+    if((!with_gaunt && amfi_with_gaunt) || twoC)
     {
         countTime(StartTimeCPU,StartTimeWall);
         int_sph_.get_h2e_JK_gaunt_direct(gauntLSLS_JK,gauntLSSL_JK);
@@ -1020,7 +1020,7 @@ vMatrixXd DHF_SPH::get_amfi_unc(INT_SPH& int_sph_, const bool& twoC, const strin
     }
     if(twoC)
     {
-        return get_amfi_unc_2c(SSLL_SD, SSSS_SD, amfi_with_gaunt);
+        return get_amfi_unc_2c(SSLL_SD, SSSS_SD, amfi_with_gaunt, amfi4c);
     }
     else 
     {
@@ -1040,11 +1040,11 @@ vMatrixXd DHF_SPH::get_amfi_unc(INT_SPH& int_sph_, const bool& twoC, const strin
             countTime(EndTimeCPU,EndTimeWall);
             printTime("Extra 2e-integrals");
         }
-        return get_amfi_unc(SSLL_SD, SSSS_SD, gauntLSLS_SD, gauntLSSL_SD, density, Xmethod, amfi_with_gaunt);
+        return get_amfi_unc(SSLL_SD, SSSS_SD, gauntLSLS_SD, gauntLSSL_SD, density, Xmethod, amfi_with_gaunt, amfi4c);
     }
 }
 
-vMatrixXd DHF_SPH::get_amfi_unc(const int2eJK& h2eSSLL_SD, const int2eJK& h2eSSSS_SD, const int2eJK& gauntLSLS_SD, const int2eJK& gauntLSSL_SD, const vMatrixXd& density_, const string& Xmethod, const bool& amfi_with_gaunt)
+vMatrixXd DHF_SPH::get_amfi_unc(const int2eJK& h2eSSLL_SD, const int2eJK& h2eSSSS_SD, const int2eJK& gauntLSLS_SD, const int2eJK& gauntLSSL_SD, const vMatrixXd& density_, const string& Xmethod, const bool& amfi_with_gaunt, bool amfi4c)
 {
     if(!converged)
     {
@@ -1052,7 +1052,7 @@ vMatrixXd DHF_SPH::get_amfi_unc(const int2eJK& h2eSSLL_SD, const int2eJK& h2eSSS
         cout << "!!  WARNING: Dirac HF did NOT converge  !!" << endl;
         cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << endl;
     }
-    vMatrixXd amfi_unc(Nirrep), h1e_4c_full(Nirrep), overlap_4c_full(Nirrep);
+    vMatrixXd amfi_unc(Nirrep), SO_4c(Nirrep), h1e_4c_full(Nirrep), overlap_4c_full(Nirrep);
     /*
         Construct h1e_4c_full and overlap_4c_full 
     */
@@ -1084,7 +1084,7 @@ vMatrixXd DHF_SPH::get_amfi_unc(const int2eJK& h2eSSLL_SD, const int2eJK& h2eSSS
     {
         int ir_c = all2compact(ir);
         int size_tmp = irrep_list(ir).size;
-        MatrixXd SO_4c(2*size_tmp,2*size_tmp);
+        SO_4c(ir).resize(2*size_tmp,2*size_tmp);
         /* 
             Evaluate SO integrals in 4c basis
             The structure is the same as 2e Coulomb integrals in fock matrix 
@@ -1092,10 +1092,10 @@ vMatrixXd DHF_SPH::get_amfi_unc(const int2eJK& h2eSSLL_SD, const int2eJK& h2eSSS
         for(int mm = 0; mm < size_tmp; mm++)
         for(int nn = 0; nn <= mm; nn++)
         {
-            SO_4c(mm,nn) = 0.0;
-            SO_4c(mm+size_tmp,nn) = 0.0;
-            if(mm != nn) SO_4c(nn+size_tmp,mm) = 0.0;
-            SO_4c(mm+size_tmp,nn+size_tmp) = 0.0;
+            SO_4c(ir)(mm,nn) = 0.0;
+            SO_4c(ir)(mm+size_tmp,nn) = 0.0;
+            if(mm != nn) SO_4c(ir)(nn+size_tmp,mm) = 0.0;
+            SO_4c(ir)(mm+size_tmp,nn+size_tmp) = 0.0;
             for(int jr = 0; jr < occMax_irrep; jr++)
             {
                 int jr_c = all2compact(jr);
@@ -1104,32 +1104,32 @@ vMatrixXd DHF_SPH::get_amfi_unc(const int2eJK& h2eSSLL_SD, const int2eJK& h2eSSS
                 for(int rr = 0; rr < size_tmp2; rr++)
                 {
                     int emn = mm*size_tmp+nn, esr = ss*size_tmp2+rr, emr = mm*size_tmp2+rr, esn = ss*size_tmp+nn;
-                    SO_4c(mm,nn) += density_(jr)(size_tmp2+ss,size_tmp2+rr) * h2eSSLL_SD.J[jr_c][ir_c][esr][emn];
-                    SO_4c(mm+size_tmp,nn) -= density_(jr)(ss,size_tmp2+rr) * h2eSSLL_SD.K[ir_c][jr_c][emr][esn];
+                    SO_4c(ir)(mm,nn) += density_(jr)(size_tmp2+ss,size_tmp2+rr) * h2eSSLL_SD.J[jr_c][ir_c][esr][emn];
+                    SO_4c(ir)(mm+size_tmp,nn) -= density_(jr)(ss,size_tmp2+rr) * h2eSSLL_SD.K[ir_c][jr_c][emr][esn];
                     if(mm != nn) 
                     {
                         int enr = nn*size_tmp2+rr, esm = ss*size_tmp+mm;
-                        SO_4c(nn+size_tmp,mm) -= density_(jr)(ss,size_tmp2+rr) * h2eSSLL_SD.K[ir_c][jr_c][enr][esm];
+                        SO_4c(ir)(nn+size_tmp,mm) -= density_(jr)(ss,size_tmp2+rr) * h2eSSLL_SD.K[ir_c][jr_c][enr][esm];
                     }
-                    SO_4c(mm+size_tmp,nn+size_tmp) += density_(jr)(size_tmp2+ss,size_tmp2+rr) * h2eSSSS_SD.J[ir_c][jr_c][emn][esr] + density_(jr)(ss,rr) * h2eSSLL_SD.J[ir_c][jr_c][emn][esr];
+                    SO_4c(ir)(mm+size_tmp,nn+size_tmp) += density_(jr)(size_tmp2+ss,size_tmp2+rr) * h2eSSSS_SD.J[ir_c][jr_c][emn][esr] + density_(jr)(ss,rr) * h2eSSLL_SD.J[ir_c][jr_c][emn][esr];
                     if(amfi_with_gaunt)
                     {
                         int enm = nn*size_tmp+mm, ers = rr*size_tmp2+ss, erm = rr*size_tmp+mm, ens = nn*size_tmp2+ss;
-                        SO_4c(mm,nn) -= density_(jr)(size_tmp2+ss,size_tmp2+rr) * gauntLSSL_SD.K[ir_c][jr_c][emr][esn];
-                        SO_4c(mm+size_tmp,nn+size_tmp) -= density_(jr)(ss,rr) * gauntLSSL_SD.K[jr_c][ir_c][esn][emr];
-                        SO_4c(mm+size_tmp,nn) += density_(jr)(size_tmp2+ss,rr)*gauntLSLS_SD.J[ir_c][jr_c][enm][ers] + density_(jr)(ss,size_tmp2+rr) * gauntLSSL_SD.J[jr_c][ir_c][esr][emn];
+                        SO_4c(ir)(mm,nn) -= density_(jr)(size_tmp2+ss,size_tmp2+rr) * gauntLSSL_SD.K[ir_c][jr_c][emr][esn];
+                        SO_4c(ir)(mm+size_tmp,nn+size_tmp) -= density_(jr)(ss,rr) * gauntLSSL_SD.K[jr_c][ir_c][esn][emr];
+                        SO_4c(ir)(mm+size_tmp,nn) += density_(jr)(size_tmp2+ss,rr)*gauntLSLS_SD.J[ir_c][jr_c][enm][ers] + density_(jr)(ss,size_tmp2+rr) * gauntLSSL_SD.J[jr_c][ir_c][esr][emn];
                         if(mm != nn) 
                         {
                             int ern = rr*size_tmp+nn, ems = mm*size_tmp2+ss;
-                            SO_4c(nn+size_tmp,mm) += density_(jr)(size_tmp2+ss,rr)*gauntLSLS_SD.J[ir_c][jr_c][emn][ers] + density_(jr)(ss,size_tmp2+rr) * gauntLSSL_SD.J[jr_c][ir_c][esr][enm];
+                            SO_4c(ir)(nn+size_tmp,mm) += density_(jr)(size_tmp2+ss,rr)*gauntLSLS_SD.J[ir_c][jr_c][emn][ers] + density_(jr)(ss,size_tmp2+rr) * gauntLSSL_SD.J[jr_c][ir_c][esr][enm];
                         }
                     }
                 }
             }
-            SO_4c(nn,mm) = SO_4c(mm,nn);
-            SO_4c(nn+size_tmp,mm+size_tmp) = SO_4c(mm+size_tmp,nn+size_tmp);
-            SO_4c(nn,mm+size_tmp) = SO_4c(mm+size_tmp,nn);
-            SO_4c(mm,nn+size_tmp) = SO_4c(nn+size_tmp,mm);
+            SO_4c(ir)(nn,mm) = SO_4c(ir)(mm,nn);
+            SO_4c(ir)(nn+size_tmp,mm+size_tmp) = SO_4c(ir)(mm+size_tmp,nn+size_tmp);
+            SO_4c(ir)(nn,mm+size_tmp) = SO_4c(ir)(mm+size_tmp,nn);
+            SO_4c(ir)(mm,nn+size_tmp) = SO_4c(ir)(nn+size_tmp,mm);
         }
         /* 
             Evaluate X with various options
@@ -1209,19 +1209,22 @@ vMatrixXd DHF_SPH::get_amfi_unc(const int2eJK& h2eSSLL_SD, const int2eJK& h2eSSS
             Evaluate R and amfi
         */
         x2cRRR(ir) = X2C::get_R(overlap_4c_full(ir),x2cXXX(ir));
-        amfi_unc(ir) = SO_4c.block(0,0,size_tmp,size_tmp) + SO_4c.block(0,size_tmp,size_tmp,size_tmp) * x2cXXX(ir) + x2cXXX(ir).transpose() * SO_4c.block(size_tmp,0,size_tmp,size_tmp) + x2cXXX(ir).transpose() * SO_4c.block(size_tmp,size_tmp,size_tmp,size_tmp) * x2cXXX(ir);
+        amfi_unc(ir) = SO_4c(ir).block(0,0,size_tmp,size_tmp) + SO_4c(ir).block(0,size_tmp,size_tmp,size_tmp) * x2cXXX(ir) + x2cXXX(ir).transpose() * SO_4c(ir).block(size_tmp,0,size_tmp,size_tmp) + x2cXXX(ir).transpose() * SO_4c(ir).block(size_tmp,size_tmp,size_tmp,size_tmp) * x2cXXX(ir);
         amfi_unc(ir) = x2cRRR(ir).transpose() * amfi_unc(ir) * x2cRRR(ir);
     }
 
     X_calculated = true;
-    return amfi_unc;
+    if(amfi4c)
+        return SO_4c;
+    else
+        return amfi_unc;
 }
 
 /* 
     Evaluate amfi SOC integrals in j-adapted spinor basis for two-component calculation
     X matrices are obtained from the corresponding (SF)X2C-1e procedure.
 */
-vMatrixXd DHF_SPH::get_amfi_unc_2c(const int2eJK& h2eSSLL_SD, const int2eJK& h2eSSSS_SD, const bool& amfi_with_gaunt)
+vMatrixXd DHF_SPH::get_amfi_unc_2c(const int2eJK& h2eSSLL_SD, const int2eJK& h2eSSSS_SD, const bool& amfi_with_gaunt, bool amfi4c)
 {
     if(!converged)
     {
@@ -1230,7 +1233,7 @@ vMatrixXd DHF_SPH::get_amfi_unc_2c(const int2eJK& h2eSSLL_SD, const int2eJK& h2e
         cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << endl;
     }
 
-    vMatrixXd amfi_unc(Nirrep), h1e_2c_full(Nirrep), overlap_2c_full(Nirrep);
+    vMatrixXd amfi_unc(Nirrep), SO_4c(Nirrep), h1e_2c_full(Nirrep), overlap_2c_full(Nirrep);
     /*
         Construct h1e_2c_full and overlap_2c_full 
     */
@@ -1273,7 +1276,7 @@ vMatrixXd DHF_SPH::get_amfi_unc_2c(const int2eJK& h2eSSLL_SD, const int2eJK& h2e
     {
         int ir_c = all2compact(ir);
         int size_tmp = irrep_list(ir).size;
-        MatrixXd SO_4c(2*size_tmp,2*size_tmp);
+        SO_4c(ir).resize(2*size_tmp,2*size_tmp);
         /* 
             Evaluate SO integrals in 4c basis
             The structure is the same as 2e Coulomb integrals in fock matrix 
@@ -1281,10 +1284,10 @@ vMatrixXd DHF_SPH::get_amfi_unc_2c(const int2eJK& h2eSSLL_SD, const int2eJK& h2e
         for(int mm = 0; mm < size_tmp; mm++)
         for(int nn = 0; nn <= mm; nn++)
         {
-            SO_4c(mm,nn) = 0.0;
-            SO_4c(mm+size_tmp,nn) = 0.0;
-            if(mm != nn) SO_4c(nn+size_tmp,mm) = 0.0;
-            SO_4c(mm+size_tmp,nn+size_tmp) = 0.0;
+            SO_4c(ir)(mm,nn) = 0.0;
+            SO_4c(ir)(mm+size_tmp,nn) = 0.0;
+            if(mm != nn) SO_4c(ir)(nn+size_tmp,mm) = 0.0;
+            SO_4c(ir)(mm+size_tmp,nn+size_tmp) = 0.0;
             for(int jr = 0; jr < occMax_irrep; jr++)
             {
                 int jr_c = all2compact(jr);
@@ -1293,40 +1296,43 @@ vMatrixXd DHF_SPH::get_amfi_unc_2c(const int2eJK& h2eSSLL_SD, const int2eJK& h2e
                 for(int rr = 0; rr < size_tmp2; rr++)
                 {
                     int emn = mm*size_tmp+nn, esr = ss*size_tmp2+rr, emr = mm*size_tmp2+rr, esn = ss*size_tmp+nn;
-                    SO_4c(mm,nn) += density_tmp(jr)(size_tmp2+ss,size_tmp2+rr) * h2eSSLL_SD.J[jr_c][ir_c][esr][emn];
-                    SO_4c(mm+size_tmp,nn) -= density_tmp(jr)(ss,size_tmp2+rr) * h2eSSLL_SD.K[ir_c][jr_c][emr][esn];
+                    SO_4c(ir)(mm,nn) += density_tmp(jr)(size_tmp2+ss,size_tmp2+rr) * h2eSSLL_SD.J[jr_c][ir_c][esr][emn];
+                    SO_4c(ir)(mm+size_tmp,nn) -= density_tmp(jr)(ss,size_tmp2+rr) * h2eSSLL_SD.K[ir_c][jr_c][emr][esn];
                     if(mm != nn) 
                     {
                         int enr = nn*size_tmp2+rr, esm = ss*size_tmp+mm;
-                        SO_4c(nn+size_tmp,mm) -= density_tmp(jr)(ss,size_tmp2+rr) * h2eSSLL_SD.K[ir_c][jr_c][enr][esm];
+                        SO_4c(ir)(nn+size_tmp,mm) -= density_tmp(jr)(ss,size_tmp2+rr) * h2eSSLL_SD.K[ir_c][jr_c][enr][esm];
                     }
-                    SO_4c(mm+size_tmp,nn+size_tmp) += density_tmp(jr)(size_tmp2+ss,size_tmp2+rr) * h2eSSSS_SD.J[ir_c][jr_c][emn][esr] + density_tmp(jr)(ss,rr) * h2eSSLL_SD.J[ir_c][jr_c][emn][esr];
+                    SO_4c(ir)(mm+size_tmp,nn+size_tmp) += density_tmp(jr)(size_tmp2+ss,size_tmp2+rr) * h2eSSSS_SD.J[ir_c][jr_c][emn][esr] + density_tmp(jr)(ss,rr) * h2eSSLL_SD.J[ir_c][jr_c][emn][esr];
                     if(amfi_with_gaunt)
                     {
                         int enm = nn*size_tmp+mm, ers = rr*size_tmp2+ss, erm = rr*size_tmp+mm, ens = nn*size_tmp2+ss;
-                        SO_4c(mm,nn) -= density_tmp(jr)(size_tmp2+ss,size_tmp2+rr) * gauntLSSL_JK.K[ir_c][jr_c][emr][esn];
-                        SO_4c(mm+size_tmp,nn+size_tmp) -= density_tmp(jr)(ss,rr) * gauntLSSL_JK.K[jr_c][ir_c][esn][emr];
-                        SO_4c(mm+size_tmp,nn) += density_tmp(jr)(size_tmp2+ss,rr)*gauntLSLS_JK.J[ir_c][jr_c][enm][ers] + density_tmp(jr)(ss,size_tmp2+rr) * gauntLSSL_JK.J[jr_c][ir_c][esr][emn];
+                        SO_4c(ir)(mm,nn) -= density_tmp(jr)(size_tmp2+ss,size_tmp2+rr) * gauntLSSL_JK.K[ir_c][jr_c][emr][esn];
+                        SO_4c(ir)(mm+size_tmp,nn+size_tmp) -= density_tmp(jr)(ss,rr) * gauntLSSL_JK.K[jr_c][ir_c][esn][emr];
+                        SO_4c(ir)(mm+size_tmp,nn) += density_tmp(jr)(size_tmp2+ss,rr)*gauntLSLS_JK.J[ir_c][jr_c][enm][ers] + density_tmp(jr)(ss,size_tmp2+rr) * gauntLSSL_JK.J[jr_c][ir_c][esr][emn];
                         if(mm != nn) 
                         {
                             int ern = rr*size_tmp+nn, ems = mm*size_tmp2+ss;
-                            SO_4c(nn+size_tmp,mm) += density_tmp(jr)(size_tmp2+ss,rr)*gauntLSLS_JK.J[ir_c][jr_c][emn][ers] + density_tmp(jr)(ss,size_tmp2+rr) * gauntLSSL_JK.J[jr_c][ir_c][esr][enm];
+                            SO_4c(ir)(nn+size_tmp,mm) += density_tmp(jr)(size_tmp2+ss,rr)*gauntLSLS_JK.J[ir_c][jr_c][emn][ers] + density_tmp(jr)(ss,size_tmp2+rr) * gauntLSSL_JK.J[jr_c][ir_c][esr][enm];
                         }
                     }
                 }
             }
-            SO_4c(nn,mm) = SO_4c(mm,nn);
-            SO_4c(nn+size_tmp,mm+size_tmp) = SO_4c(mm+size_tmp,nn+size_tmp);
-            SO_4c(nn,mm+size_tmp) = SO_4c(mm+size_tmp,nn);
-            SO_4c(mm,nn+size_tmp) = SO_4c(nn+size_tmp,mm);
+            SO_4c(ir)(nn,mm) = SO_4c(ir)(mm,nn);
+            SO_4c(ir)(nn+size_tmp,mm+size_tmp) = SO_4c(ir)(mm+size_tmp,nn+size_tmp);
+            SO_4c(ir)(nn,mm+size_tmp) = SO_4c(ir)(mm+size_tmp,nn);
+            SO_4c(ir)(mm,nn+size_tmp) = SO_4c(ir)(nn+size_tmp,mm);
         }
         
-        amfi_unc(ir) = SO_4c.block(0,0,size_tmp,size_tmp) + SO_4c.block(0,size_tmp,size_tmp,size_tmp) * x2cXXX(ir) + x2cXXX(ir).transpose() * SO_4c.block(size_tmp,0,size_tmp,size_tmp) + x2cXXX(ir).transpose() * SO_4c.block(size_tmp,size_tmp,size_tmp,size_tmp) * x2cXXX(ir);
+        amfi_unc(ir) = SO_4c(ir).block(0,0,size_tmp,size_tmp) + SO_4c(ir).block(0,size_tmp,size_tmp,size_tmp) * x2cXXX(ir) + x2cXXX(ir).transpose() * SO_4c(ir).block(size_tmp,0,size_tmp,size_tmp) + x2cXXX(ir).transpose() * SO_4c(ir).block(size_tmp,size_tmp,size_tmp,size_tmp) * x2cXXX(ir);
         amfi_unc(ir) = x2cRRR(ir).transpose() * amfi_unc(ir) * x2cRRR(ir);
     }
 
     X_calculated = true;
-    return amfi_unc;
+    if(amfi4c)
+        return SO_4c;
+    else
+        return amfi_unc;
 }
 
 

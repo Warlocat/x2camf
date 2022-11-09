@@ -32,14 +32,25 @@ def amfi(x2cobj, spin_free = True, two_c = True, with_gaunt = True, with_gauge =
         exp_a = numpy.asarray(exp_a)
         amf_int[atom] = _amf(atom_number, shell, exp_a, soc_int_flavor)
 
-    xmol, contr_coeff = x2cobj.get_xmol()
-    amf_matrix = numpy.zeros((xmol.nao_2c(), xmol.nao_2c()))
-    atom_slices = xmol.aoslice_2c_by_atom()
-    print(atom_slices)
-    for ia in range(xmol.natm):
-        ishl0, ishl1, c0, c1 = atom_slices[ia]
-        amf_matrix[c0:c1,c0:c1] = amf_int[xmol.elements[ia]]
-    return amf_matrix
+    
+    if(spin_free and two_c):
+        xmol, contr_coeff = x2cobj.get_xmol()
+        amf_matrix = numpy.zeros((xmol.nao_2c()*2, xmol.nao_2c()*2))
+        atom_slices = xmol.aoslice_2c_by_atom()
+        print(atom_slices)
+        for ia in range(xmol.natm):
+            ishl0, ishl1, c0, c1 = atom_slices[ia]
+            amf_matrix[c0*2:c1*2,c0*2:c1*2] = amf_int[xmol.elements[ia]]
+        return amf_matrix
+    else:
+        xmol, contr_coeff = x2cobj.get_xmol()
+        amf_matrix = numpy.zeros((xmol.nao_2c(), xmol.nao_2c()))
+        atom_slices = xmol.aoslice_2c_by_atom()
+        print(atom_slices)
+        for ia in range(xmol.natm):
+            ishl0, ishl1, c0, c1 = atom_slices[ia]
+            amf_matrix[c0:c1,c0:c1] = amf_int[xmol.elements[ia]]
+        return amf_matrix
 
 
 # takes an atom number basis and flavor of soc integral and returns the amf matrix

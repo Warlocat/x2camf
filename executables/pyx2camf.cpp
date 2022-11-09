@@ -27,7 +27,7 @@ Eigen::MatrixXd amfi(const int input_string, const int atom_number,
     bool gauge = input_config[3];
     bool gauNuc = input_config[4];
     bool aoc = input_config[5];
-    bool allint = true, renormS = false; // internal parameters, don't change.
+    bool allint = true, renormS = false, amfi4c = twoC&&spinFree; // internal parameters, don't change.
     Eigen::VectorXi shell_vec(nbas);
     Eigen::VectorXd exp_a_vec(nbas);
     for (int i = 0; i < nbas; i++){
@@ -41,7 +41,7 @@ Eigen::MatrixXd amfi(const int input_string, const int atom_number,
     {
         cout << endl << endl;
         cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << endl;
-        cout << "!!  WARNING: Average-of-configuration calculations are INCORRECT   !!" << endl;
+        cout << "!!  WARNING: Average-of-configuration calculations MIGHT BE WRONG  !!" << endl;
         cout << "!!  for atoms with more than one partially occupied l-shell, e.g., !!" << endl;
         cout << "!!  uranium atom with both 5f and 6d partially occupied.           !!" << endl;
         cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << endl;
@@ -56,8 +56,12 @@ Eigen::MatrixXd amfi(const int input_string, const int atom_number,
     }
     scfer->convControl = 1e-10;
     scfer->runSCF(twoC, renormS);
-    vMatrixXd amfi = scfer->get_amfi_unc(intor, twoC);
-    MatrixXd amfi_all = Rotate::unite_irrep(amfi, intor.irrep_list);
+    vMatrixXd amfi = scfer->get_amfi_unc(intor, twoC, "partialFock", Gaunt, gauge, amfi4c);
+    MatrixXd amfi_all;
+    if(amfi4c)
+        amfi_all = Rotate::unite_irrep_4c(amfi, intor.irrep_list);
+    else
+        amfi_all = Rotate::unite_irrep(amfi, intor.irrep_list);
 
     delete scfer;
     return amfi_all;
