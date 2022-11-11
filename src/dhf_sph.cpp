@@ -1334,7 +1334,14 @@ vMatrixXd DHF_SPH::get_amfi_unc_2c(const int2eJK& h2eSSLL_SD, const int2eJK& h2e
     else
         return amfi_unc;
 }
-
+/* 
+    Return SO_4c before x2c transformation.
+    This is for perturbative treatment of SOC inetegrals and testing purpose.
+*/
+vMatrixXd DHF_SPH::get_amfi_unc_4c(INT_SPH& int_sph_, const bool& twoC, const string& Xmethod, bool amfi_with_gaunt, bool amfi_with_gauge)
+{
+    return DHF_SPH::get_amfi_unc(int_sph_, twoC,Xmethod, amfi_with_gaunt, amfi_with_gauge, true);
+}
 
 /*
     Get coeff for basis set

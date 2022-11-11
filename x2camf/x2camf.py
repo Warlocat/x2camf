@@ -5,16 +5,22 @@ from pyscf.x2c import x2c
 from pyscf.gto import mole
 import numpy
 
-def amfi(x2cobj, spin_free = True, two_c = True, with_gaunt = True, with_gauge = True, gaussian_nuclear = False, aoc = False):
+def amfi(x2cobj, spin_free = True, two_c = True, with_gaunt = True, with_gauge = True, gaussian_nuclear = False, aoc = False, pt = False):
     mol = x2cobj.mol
     #computes the internal integer for soc integral flavor.
     soc_int_flavor = 0
-    soc_int_flavor += spin_free << 0
-    soc_int_flavor += two_c << 1
-    soc_int_flavor += with_gaunt << 2
-    soc_int_flavor += with_gauge << 3
-    soc_int_flavor += gaussian_nuclear << 4
-    soc_int_flavor += aoc << 5
+    if(pt):
+        soc_int_flavor += with_gaunt << 0
+        soc_int_flavor += with_gauge << 1
+        soc_int_flavor += gaussian_nuclear << 2
+        soc_int_flavor += aoc << 3
+    else:
+        soc_int_flavor += spin_free << 0
+        soc_int_flavor += two_c << 1
+        soc_int_flavor += with_gaunt << 2
+        soc_int_flavor += with_gauge << 3
+        soc_int_flavor += gaussian_nuclear << 4
+        soc_int_flavor += aoc << 5
 
     uniq_atoms = set([a[0] for a in mol._atom])
     amf_int = {}
@@ -30,10 +36,13 @@ def amfi(x2cobj, spin_free = True, two_c = True, with_gaunt = True, with_gauge =
             exp_a.append(bas[-1][0])
         shell = numpy.asarray(shell)
         exp_a = numpy.asarray(exp_a)
-        amf_int[atom] = _amf(atom_number, shell, exp_a, soc_int_flavor)
+        if(pt):
+            amf_int[atom] = _amf_pt(atom_number, shell, exp_a, soc_int_flavor)
+        else:
+            amf_int[atom] = _amf(atom_number, shell, exp_a, soc_int_flavor)
 
     
-    if(spin_free and two_c):
+    if(pt):
         xmol, contr_coeff = x2cobj.get_xmol()
         amf_matrix = numpy.zeros((xmol.nao_2c()*2, xmol.nao_2c()*2))
         atom_slices = xmol.aoslice_2c_by_atom()
@@ -66,6 +75,17 @@ def _amf(atom_number, shell, exp_a, soc_int_flavor):
     nshell = shell[-1]+1
 
     amf_mat = libx2camf.amfi(soc_int_flavor, atom_number, nshell, nbas, shell, exp_a)
+    return amf_mat
+
+def _amf_pt(atom_number, shell, exp_a, soc_int_flavor):
+    if atom_number > 118 or atom_number < 1:
+        raise ValueError("atom number must be between 1 and 118")
+    
+
+    nbas = shell.shape[0]
+    nshell = shell[-1]+1
+
+    amf_mat = libx2camf.amfi_pt(soc_int_flavor, atom_number, nshell, nbas, shell, exp_a)
     return amf_mat
 
 if __name__ == '__main__':
