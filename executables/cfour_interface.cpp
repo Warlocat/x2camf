@@ -63,14 +63,6 @@ int main()
     {
         cout << atomListUnique[ii] << "\t" << basisListUnique[ii] << endl;
     }
-    string method = "";
-    if(amfiMethod[0])   method = method + "aoc-HF Dirac-Coulomb";
-    else method = method + "fractional-occupation Dirac-Coulomb";
-    if(amfiMethod[1])   method = method + "-Gaunt";
-    if(amfiMethod[2])   method = method + "-gauge\n";
-    if(amfiMethod[4])   method = method + " with Gaussian nuclear model";
-    if(amfiMethod[3])   method = method + " using entire picture change correction";
-    cout << "amfi Method input: " << method << endl;
 
     if(amfiMethod[0])
     {

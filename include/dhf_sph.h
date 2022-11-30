@@ -89,6 +89,7 @@ public:
     
 
     void basisGenerator(string basisName, string filename, const INT_SPH& intor, const INT_SPH& intorAll, const bool& sf = true, const string& tag = "DE4");
+    void basisGenerator(string basisName, string filename, const INT_SPH& intor, const MatrixXi& basisInfo, const Matrix<VectorXi,-1,1>& deconInfo, const bool& sf = true);
 };
 
 

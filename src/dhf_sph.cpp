@@ -14,7 +14,14 @@ using namespace Eigen;
 DHF_SPH::DHF_SPH(INT_SPH& int_sph_, const string& filename, const bool& spinFree, const bool& twoC, const bool& with_gaunt_, const bool& with_gauge_, const bool& allInt, const bool& gaussian_nuc):
 irrep_list(int_sph_.irrep_list), with_gaunt(with_gaunt_), with_gauge(with_gauge_), shell_list(int_sph_.shell_list)
 {
-    cout << "Initializing Dirac-HF for " << int_sph_.atomName << " atom." << endl;
+    string method = "HF";
+    if(twoC) method = "2c-" + method;
+    else method = "4c-" + method;
+    if(spinFree) method = "SF-" + method;
+    if(with_gaunt_) method = method + " with Gaunt";
+    if(with_gauge_) method = method + " with Gaunt";
+    if(gaussian_nuc) method = method + " with Gaussian nuclear model";
+    cout << "Initializing " << method << " for " << int_sph_.atomName << " atom." << endl;
     Nirrep = int_sph_.irrep_list.rows();
     size_basis_spinor = int_sph_.size_gtou_spinor;
 
@@ -1684,4 +1691,88 @@ void DHF_SPH::basisGenerator(string basisName, string filename, const INT_SPH& i
     ofs.close();
 
     return;
+}
+
+void DHF_SPH::basisGenerator(string basisName, string filename, const INT_SPH& intor, const MatrixXi& basisInfo, const Matrix<VectorXi,-1,1>& deconInfo, const bool& sf)
+{
+    ofstream ofs;
+    int maxL = irrep_list(irrep_list.rows()-1).l;
+    vMatrixXd coeff_final(maxL+1);
+    for(int ir = 0; ir <= irrep_list.rows(); ir+=2*irrep_list(ir).two_j+2)
+    {
+        int ll = irrep_list(ir).l;
+        if(ll >= basisInfo.rows())
+        {
+            coeff_final(ll) = MatrixXd::Identity(coeff(ir).rows(),coeff(ir).rows());
+        }
+        else 
+        {
+            if(ll == 0 || sf)
+            {
+                coeff_final(ll) = MatrixXd::Zero(coeff(ir).rows(), basisInfo(ll,0) + basisInfo(ll,1));
+                for(int ii = 0; ii < coeff(ir).rows(); ii++)
+                for(int jj = 0; jj < basisInfo(ll,0); jj++)
+                {
+                    coeff_final(ll)(ii,jj) = coeff(ir)(ii,jj);
+                }
+            }
+            else
+            {
+                coeff_final(ll) = MatrixXd::Zero(coeff(ir).rows(), 2*basisInfo(ll,0) + basisInfo(ll,1));
+                for(int ii = 0; ii < coeff(ir).rows(); ii++)
+                {
+                    for(int jj = 0; jj < basisInfo(ll,0); jj++)
+                    {
+                        coeff_final(ll)(ii,jj) = coeff(ir)(ii,jj);
+                    }
+                    for(int jj = 0; jj < basisInfo(ll,0); jj++)
+                    {
+                        coeff_final(ll)(ii,basisInfo(ll,0)+jj) = coeff(ir+irrep_list(ir).two_j+1)(ii,jj);
+                    }
+                }
+            }
+            for(int ii = 1; ii <= basisInfo(ll,1); ii++)
+            {
+                coeff_final(ll)(coeff_final(ll).rows() - deconInfo(ll)(ii-1), coeff_final(ll).cols() - ii) = 1.0;
+                for(int jj = 0; jj < basisInfo(ll,0); jj++)
+                {
+                    coeff_final(ll)(coeff_final(ll).rows() - deconInfo(ll)(ii-1), jj) = 0.0;
+                }
+            }
+        }
+    }
+    ofs.open(filename,std::ofstream::app);
+        ofs << basisName  << endl;
+        ofs << "obtained from atomic calculation" << endl;
+        ofs << endl;
+        ofs << maxL+1 << endl;
+        for(int jj = 0; jj <= maxL; jj++)
+        {
+            ofs << "    " << jj;
+        }
+        ofs << endl;
+        for(int jj = 0; jj <= maxL; jj++)
+        {
+            ofs << "    " << coeff_final(jj).cols();
+        }
+        ofs << endl;
+        for(int jj = 0; jj <= maxL; jj++)
+        {
+            ofs << "    " << coeff_final(jj).rows();
+        }
+        ofs << endl;
+        ofs << fixed << setprecision(8);
+        for(int ll = 0; ll < maxL+1; ll++)
+        {
+            for(int ii = 0; ii < intor.shell_list(ll).exp_a.size(); ii++)
+            {
+                if((ii+1) %5 == 1)  ofs << endl;
+                ofs << "    " << intor.shell_list(ll).exp_a(ii);
+            }
+            ofs << endl;
+            ofs << endl;
+            ofs << coeff_final(ll) << endl;
+        }
+        ofs << endl << endl;
+    ofs.close();
 }

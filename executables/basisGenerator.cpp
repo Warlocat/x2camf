@@ -16,6 +16,8 @@ using namespace std;
 /* Global information */
 string atomName, basisSetPVXZ, basisSetAll, flags, newTag, filenameOuput;
 bool spinFree = true, aoc = true, finiteN = false;
+MatrixXi basisInfo;
+Matrix<VectorXi,-1,1> deconInfo; 
 
 /* Read input file and set global variables */
 void readInput(const string filename);
@@ -55,7 +57,7 @@ int main()
 
     scfer->convControl = 1e-9;
     scfer->runSCF(true,false);
-    scfer->basisGenerator(basisSetAll, filenameOuput, intor, intorAll, spinFree, newTag);
+    scfer->basisGenerator(basisSetAll, filenameOuput, intor, basisInfo, deconInfo, spinFree);
     // print mo coefficients for convenience
     cout << fixed << setprecision(8);
     for(int ir = 0; ir < scfer->irrep_list.rows(); ir += scfer->irrep_list(ir).two_j+1)
@@ -72,6 +74,7 @@ int main()
 void readInput(const string filename)
 {
     ifstream ifs;
+    int Ntmp;
     ifs.open(filename);
     if(!ifs)
     {
@@ -91,6 +94,17 @@ void readInput(const string filename)
         basisSetAll = removeSpaces(basisSetAll);
         cout << atomName << endl << basisSetPVXZ << endl;
         cout << "spin free: " << spinFree << endl << "aoc: " << aoc << endl << "newTag: " << newTag << endl;
+
+        ifs >> Ntmp;
+        basisInfo.resize(Ntmp,2);
+        deconInfo.resize(Ntmp);
+        for(int ii = 0; ii < Ntmp; ii++)
+        {
+            ifs >> basisInfo(ii,0) >> basisInfo(ii,1);
+            deconInfo(ii).resize(basisInfo(ii,1));
+            for(int jj = 0; jj < basisInfo(ii,1); jj++)
+                ifs >> deconInfo(ii)(jj);
+        }
     ifs.close();
 }
 
