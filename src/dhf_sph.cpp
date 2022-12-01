@@ -1698,7 +1698,7 @@ void DHF_SPH::basisGenerator(string basisName, string filename, const INT_SPH& i
     ofstream ofs;
     int maxL = irrep_list(irrep_list.rows()-1).l;
     vMatrixXd coeff_final(maxL+1);
-    for(int ir = 0; ir <= irrep_list.rows(); ir+=2*irrep_list(ir).two_j+2)
+    for(int ir = 0; ir < irrep_list.rows(); ir+=4*irrep_list(ir).l+2)
     {
         int ll = irrep_list(ir).l;
         if(ll >= basisInfo.rows())
@@ -1737,6 +1737,7 @@ void DHF_SPH::basisGenerator(string basisName, string filename, const INT_SPH& i
                 for(int jj = 0; jj < basisInfo(ll,0); jj++)
                 {
                     coeff_final(ll)(coeff_final(ll).rows() - deconInfo(ll)(ii-1), jj) = 0.0;
+                    if(!sf && ll>=1) coeff_final(ll)(coeff_final(ll).rows() - deconInfo(ll)(ii-1), basisInfo(ll,0)+jj) = 0.0;
                 }
             }
         }

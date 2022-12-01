@@ -26,7 +26,7 @@ int main()
 {
     readInput("input");
     INT_SPH intor(atomName, basisSetPVXZ);
-    INT_SPH intorAll(atomName, basisSetAll);
+    // INT_SPH intorAll(atomName, basisSetAll);
     DHF_SPH *scfer, *scfer2;
 
     if(aoc)

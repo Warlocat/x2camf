@@ -34,7 +34,7 @@ public:
     Matrix<intShell, Dynamic, 1> shell_list;
     int size_basis_spinor, Nirrep, Nirrep_compact, occMax_irrep, occMax_irrep_compact;
     Matrix<irrep_jm, Dynamic, 1> irrep_list;
-    int maxIter = 100, size_DIIS = 8;
+    int maxIter = 100, size_DIIS = 8, printLevel = 0;
     double convControl = 1e-8, ene_scf;
     vMatrixXd coeff;
     vVectorXd ene_orb;
