@@ -1777,3 +1777,40 @@ void DHF_SPH::basisGenerator(string basisName, string filename, const INT_SPH& i
         ofs << endl << endl;
     ofs.close();
 }
+
+
+double DHF_SPH::radialDensity(double rr)
+{
+    if(irrep_list(0).size*2 != density(0).rows())
+    {
+        cout << "ERROR: using two-component in radialDensity." << endl;
+        exit(99);
+    }
+    if(!converged)
+    {
+        cout << "WARNING: SCF not converged in radialDensity." << endl;
+    }
+
+    double rho = 0.0;
+    for(int ir = 0; ir < Nirrep; ir+=irrep_list(ir).two_j+1)
+    {
+        int size = irrep_list(ir).size, two_j = irrep_list(ir).two_j, two_mj = irrep_list(ir).two_mj, ll = irrep_list(ir).l;
+        double kappa = (two_j + 1.0) * (ll - two_j/2.0);
+        double lk = ll + kappa + 1.0;
+        for(int mm = 0; mm < size; mm++)
+        for(int nn = 0; nn < size; nn++)
+        {
+            double norm_m = shell_list(ll).norm(mm), alpha_m = shell_list(ll).exp_a(mm);
+            double norm_n = shell_list(ll).norm(nn), alpha_n = shell_list(ll).exp_a(nn);
+            rho += density(ir)(mm,nn)/norm_m/norm_n*pow(rr,2*ll)*exp(-(alpha_m+alpha_n)*rr*rr)*(two_j+1);
+            double tmp = 4.0*alpha_m*alpha_n*pow(rr,2*ll+2);
+            if(ll>=1) 
+            {
+                tmp -= 2.0*lk*(alpha_m+alpha_n)*pow(rr,2*ll);
+                tmp += lk*lk*pow(rr,2*ll-2);
+            }
+            rho += density(ir)(mm+size,nn+size)/norm_m/norm_n*tmp*exp(-(alpha_m+alpha_n)*rr*rr)/4.0/speedOfLight/speedOfLight*(two_j+1);
+        }
+    }
+    return rho;
+}

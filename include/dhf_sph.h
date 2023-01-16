@@ -87,9 +87,12 @@ public:
     /* Return SO_4c before x2c transformation */
     vMatrixXd get_amfi_unc_4c(INT_SPH& int_sph_, const bool& twoC = false, const string& Xmethod = "partialFock", bool amfi_with_gaunt = false, bool amfi_with_gauge = false);
     
-
+    /* Generate basis set */
     void basisGenerator(string basisName, string filename, const INT_SPH& intor, const INT_SPH& intorAll, const bool& sf = true, const string& tag = "DE4");
     void basisGenerator(string basisName, string filename, const INT_SPH& intor, const MatrixXi& basisInfo, const Matrix<VectorXi,-1,1>& deconInfo, const bool& sf = true);
+
+    /* Evaluate atomic radial density \rho(r) */
+    double radialDensity(double rr);
 };
 
 
