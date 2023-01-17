@@ -146,7 +146,7 @@ MatrixXd DHF_SPH_CA::evaluateDensity_aoc(const MatrixXd& coeff_, const VectorXd&
 */
 void DHF_SPH_CA::runSCF(const bool& twoC, const bool& renormSmall)
 {
-    if(renormSmall)
+    if(renormSmall && !twoC)
     {
         renormalize_small();
     }

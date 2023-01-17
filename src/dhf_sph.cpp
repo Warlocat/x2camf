@@ -343,7 +343,7 @@ void DHF_SPH::runSCF(const bool& twoC, const bool& renormSmall)
 }
 void DHF_SPH::runSCF(const bool& twoC, const bool& renormSmall, vMatrixXd* initialGuess)
 {
-    if(renormSmall)
+    if(renormSmall && !twoC)
     {
         renormalize_small();
     }
@@ -418,6 +418,7 @@ void DHF_SPH::runSCF(const bool& twoC, const bool& renormSmall, vMatrixXd* initi
             /* Special case for H atom */
             if(abs(nelec-1) < 1e-5)
             {
+                cout << "Special treatment for fractional occupation of H atom." << endl;
                 eigensolverG_irrep(h1e_4c, overlap_half_i_4c, ene_orb, coeff);
                 density = evaluateDensity_spinor_irrep(twoC);
             }
@@ -764,7 +765,6 @@ void DHF_SPH::setOCC(const string& filename, const string& atomName)
     int int_tmp, int_tmp2, int_tmp3;
     ifstream ifs;
     ifs.open(filename);
-    cout << ifs.fail() << endl;
     if (!ifs.fail())
     {
         while(!ifs.eof())
@@ -1779,12 +1779,12 @@ void DHF_SPH::basisGenerator(string basisName, string filename, const INT_SPH& i
 }
 
 
-double DHF_SPH::radialDensity(double rr)
+double DHF_SPH::radialDensity(double rr, const vMatrixXd& den)
 {
-    if(irrep_list(0).size*2 != density(0).rows())
+    bool twoC = true;
+    if(irrep_list(0).size*2 == density(0).rows())
     {
-        cout << "ERROR: using two-component in radialDensity." << endl;
-        exit(99);
+        twoC = false;
     }
     if(!converged)
     {
@@ -1802,15 +1802,39 @@ double DHF_SPH::radialDensity(double rr)
         {
             double norm_m = shell_list(ll).norm(mm), alpha_m = shell_list(ll).exp_a(mm);
             double norm_n = shell_list(ll).norm(nn), alpha_n = shell_list(ll).exp_a(nn);
-            rho += density(ir)(mm,nn)/norm_m/norm_n*pow(rr,2*ll)*exp(-(alpha_m+alpha_n)*rr*rr)*(two_j+1);
-            double tmp = 4.0*alpha_m*alpha_n*pow(rr,2*ll+2);
-            if(ll>=1) 
+            rho += den(ir)(mm,nn)/norm_m/norm_n*pow(rr,2*ll)*exp(-(alpha_m+alpha_n)*rr*rr)*(two_j+1);
+            if(!twoC)
             {
-                tmp -= 2.0*lk*(alpha_m+alpha_n)*pow(rr,2*ll);
-                tmp += lk*lk*pow(rr,2*ll-2);
+                double tmp = 4.0*alpha_m*alpha_n*pow(rr,2*ll+2);
+                if(ll>=1) 
+                {
+                    tmp -= 2.0*lk*(alpha_m+alpha_n)*pow(rr,2*ll);
+                    tmp += lk*lk*pow(rr,2*ll-2);
+                }
+                rho += den(ir)(mm+size,nn+size)/norm_m/norm_n*tmp*exp(-(alpha_m+alpha_n)*rr*rr)/4.0/speedOfLight/speedOfLight*(two_j+1);
             }
-            rho += density(ir)(mm+size,nn+size)/norm_m/norm_n*tmp*exp(-(alpha_m+alpha_n)*rr*rr)/4.0/speedOfLight/speedOfLight*(two_j+1);
         }
     }
     return rho;
+}
+
+double DHF_SPH::radialDensity(double rr, const vVectorXd& occ)
+{
+    bool twoC = true;
+    if(irrep_list(0).size*2 == density(0).rows())
+    {
+        twoC = false;
+    }
+    
+    vMatrixXd den(density.rows());
+    for(int ir = 0; ir < occ.rows(); ir++)
+    {
+        den(ir) = evaluateDensity_spinor(coeff(ir),occ(ir),twoC);
+    }
+    return radialDensity(rr,den);
+}
+
+double DHF_SPH::radialDensity(double rr)
+{
+    return radialDensity(rr,density);
 }

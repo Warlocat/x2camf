@@ -93,6 +93,8 @@ public:
 
     /* Evaluate atomic radial density \rho(r) */
     double radialDensity(double rr);
+    double radialDensity(double rr, const vMatrixXd& den);
+    double radialDensity(double rr, const vVectorXd& occ);
 };
 
 
