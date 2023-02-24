@@ -1,4 +1,5 @@
 #include"dhf_sph.h"
+#include"mkl_itrf.h"
 #include<iostream>
 #include<omp.h>
 #include<vector>
@@ -12,7 +13,7 @@ using namespace Eigen;
 
 
 DHF_SPH::DHF_SPH(INT_SPH& int_sph_, const string& filename, const bool& spinFree, const bool& twoC, const bool& with_gaunt_, const bool& with_gauge_, const bool& allInt, const bool& gaussian_nuc):
-irrep_list(int_sph_.irrep_list), with_gaunt(with_gaunt_), with_gauge(with_gauge_), shell_list(int_sph_.shell_list)
+irrep_list(int_sph_.irrep_list), with_gaunt(with_gaunt_), with_gauge(with_gauge_), shell_list(int_sph_.shell_list), twoComponent(twoC)
 {
     string method = "HF";
     if(twoC) method = "2c-" + method;
@@ -54,9 +55,12 @@ irrep_list(int_sph_.irrep_list), with_gaunt(with_gaunt_), with_gauge(with_gauge_
     cout << "l\t2j\t2mj\tOcc" << endl;
     for(int ii = 0; ii < Nirrep; ii++)
     {
-        cout << irrep_list(ii).l << "\t" << irrep_list(ii).two_j << "\t" << irrep_list(ii).two_mj << "\t" << occNumber(ii).transpose() << endl;
-        for(int jj = 0; jj < occNumber(ii).rows(); jj++)
-            nelec += occNumber(ii)(jj);
+        cout << irrep_list(ii).l << "\t" << irrep_list(ii).two_j << "\t" << irrep_list(ii).two_mj;
+        for(int jj = 0; jj < occNumber[ii].size(); jj++)
+            cout << "\t" << occNumber[ii][jj];
+        cout << endl;
+        for(int jj = 0; jj < occNumber[ii].size(); jj++)
+            nelec += occNumber[ii][jj];
     }
     cout << "Highest occupied irrep: " << occMax_irrep << endl;
     cout << "Total number of electrons: " << nelec << endl << endl;
@@ -172,22 +176,22 @@ irrep_list(int_sph_.irrep_list), with_gaunt(with_gaunt_), with_gauge(with_gauge_
         for(int ii = 0; ii < occMax_irrep; ii++)
         {
             int size_tmp = irrep_list(ii).size;
-            fock_4c(ii).resize(size_tmp*2,size_tmp*2);
-            h1e_4c(ii).resize(size_tmp*2,size_tmp*2);
-            overlap_4c(ii).resize(size_tmp*2,size_tmp*2);
+            fock_4c[ii].resize(size_tmp*2*size_tmp*2);
+            h1e_4c[ii].resize(size_tmp*2*size_tmp*2);
+            overlap_4c[ii].resize(size_tmp*2*size_tmp*2);
             for(int mm = 0; mm < size_tmp; mm++)
             for(int nn = 0; nn < size_tmp; nn++)
             {
-                overlap_4c(ii)(mm,nn) = overlap(ii)(mm,nn);
-                overlap_4c(ii)(size_tmp+mm,nn) = 0.0;
-                overlap_4c(ii)(mm,size_tmp+nn) = 0.0;
-                overlap_4c(ii)(size_tmp+mm,size_tmp+nn) = kinetic(ii)(mm,nn) / 2.0 / speedOfLight / speedOfLight;
-                h1e_4c(ii)(mm,nn) = Vnuc(ii)(mm,nn);
-                h1e_4c(ii)(size_tmp+mm,nn) = kinetic(ii)(mm,nn);
-                h1e_4c(ii)(mm,size_tmp+nn) = kinetic(ii)(mm,nn);
-                h1e_4c(ii)(size_tmp+mm,size_tmp+nn) = WWW(ii)(mm,nn)/4.0/speedOfLight/speedOfLight - kinetic(ii)(mm,nn);
+                overlap_4c[ii][mm*size_tmp*2+nn] = overlap(ii)(mm,nn);
+                overlap_4c[ii][(size_tmp+mm)*size_tmp*2+nn] = 0.0;
+                overlap_4c[ii][mm*size_tmp*2+size_tmp+nn] = 0.0;
+                overlap_4c[ii][(size_tmp+mm)*size_tmp*2+size_tmp+nn] = kinetic(ii)(mm,nn) / 2.0 / speedOfLight / speedOfLight;
+                h1e_4c[ii][mm*size_tmp*2+nn] = Vnuc(ii)(mm,nn);
+                h1e_4c[ii][(size_tmp+mm)*size_tmp*2+nn] = kinetic(ii)(mm,nn);
+                h1e_4c[ii][mm*size_tmp*2+size_tmp+nn] = kinetic(ii)(mm,nn);
+                h1e_4c[ii][(size_tmp+mm)*size_tmp*2+size_tmp+nn] = WWW(ii)(mm,nn)/4.0/speedOfLight/speedOfLight - kinetic(ii)(mm,nn);
             }
-            overlap_half_i_4c(ii) = matrix_half_inverse(overlap_4c(ii));
+            overlap_half_i_4c[ii] = matrix_half_inverse(overlap_4c[ii], size_tmp*2);
         }   
     }
     else
@@ -200,13 +204,13 @@ irrep_list(int_sph_.irrep_list), with_gaunt(with_gaunt_), with_gauge(with_gauge_
         */
         for(int ir = 0; ir < occMax_irrep; ir++)
         {
-            fock_4c(ir).resize(irrep_list(ir).size,irrep_list(ir).size);
+            int size_tmp = irrep_list(ir).size;
+            fock_4c[ir].resize(size_tmp*size_tmp);
             x2cXXX(ir) = X2C::get_X(overlap(ir),kinetic(ir),WWW(ir),Vnuc(ir));
             x2cRRR(ir) = X2C::get_R(overlap(ir),kinetic(ir),x2cXXX(ir));
-            h1e_4c(ir) = X2C::evaluate_h1e_x2c(overlap(ir),kinetic(ir),WWW(ir),Vnuc(ir),x2cXXX(ir),x2cRRR(ir));
-            // h1e_4c(ir) = kinetic(ir) + Vnuc(ir);
-            overlap_4c(ir) = overlap(ir);
-            overlap_half_i_4c(ir) = matrix_half_inverse(overlap_4c(ir));
+            h1e_4c[ir] = eigen2vector(X2C::evaluate_h1e_x2c(overlap(ir),kinetic(ir),WWW(ir),Vnuc(ir),x2cXXX(ir),x2cRRR(ir)), size_tmp);
+            overlap_4c[ir] = eigen2vector(overlap(ir), size_tmp);
+            overlap_half_i_4c[ir] = matrix_half_inverse(overlap_4c[ir], size_tmp);
         }   
     }
 }
@@ -285,10 +289,16 @@ void DHF_SPH::symmetrize_JK_gaunt(int2eJK& h2e, const int& Ncompact)
 /*
     The generalized eigen solver
 */
-void DHF_SPH::eigensolverG_irrep(const vMatrixXd& inputM, const vMatrixXd& s_h_i, vVectorXd& values, vMatrixXd& vectors)
+void DHF_SPH::eigensolverG_irrep(const vVectorXd& inputM, const vVectorXd& s_h_i, vVectorXd& values, vMatrixXd& vectors)
 {
     for(int ir = 0; ir < occMax_irrep; ir += irrep_list(ir).two_j+1)
-        eigensolverG(inputM(ir),s_h_i(ir),values(ir),vectors(ir));
+    {
+        int n = twoComponent ? irrep_list(ir).size : irrep_list(ir).size*2;
+        vector<double> tmpV;
+        eigensolverG(inputM[ir], s_h_i[ir], values[ir], tmpV, n);
+        vectors(ir) = vector2eigen(tmpV, n);
+    }
+        
     return;
 }
 
@@ -309,15 +319,23 @@ double DHF_SPH::evaluateChange_irrep(const vMatrixXd& M1, const vMatrixXd& M2)
 /*
     Evaluate error matrix in DIIS
 */
-MatrixXd DHF_SPH::evaluateErrorDIIS(const MatrixXd& fock_, const MatrixXd& overlap_, const MatrixXd& density_)
+MatrixXd DHF_SPH::evaluateErrorDIIS(const vector<double>& fock_, const vector<double>& overlap_, const MatrixXd& density_, const int& N)
 {
-    MatrixXd tmp = fock_*density_*overlap_ - overlap_*density_*fock_;
-    int size = fock_.rows();
-    MatrixXd err(size*size,1);
-    for(int ii = 0; ii < size; ii++)
-    for(int jj = 0; jj < size; jj++)
+    vector<double> tmpD(N*N), tmp1, tmp2;
+    for(int ii = 0; ii < N; ii++)
+    for(int jj = 0; jj < N; jj++)
     {
-        err(ii*size+jj,0) = tmp(ii,jj);
+        tmpD[ii*N+jj] = density_(ii,jj);
+    }
+    dgemm_itrf('n','n',N,N,N,1.0,fock_,tmpD,0.0,tmp1);
+    dgemm_itrf('n','n',N,N,N,1.0,tmp1,overlap_,0.0,tmp2);
+    dgemm_itrf('n','n',N,N,N,1.0,overlap_,tmpD,0.0,tmp1);
+    dgemm_itrf('n','n',N,N,N,-1.0,tmp1,fock_,1.0,tmp2);
+    MatrixXd err(N*N,1);
+    for(int ii = 0; ii < N; ii++)
+    for(int jj = 0; jj < N; jj++)
+    {
+        err(ii*N+jj,0) = tmp2[ii*N+jj];
     }
     return err;
 }
@@ -343,6 +361,10 @@ void DHF_SPH::runSCF(const bool& twoC, const bool& renormSmall)
 }
 void DHF_SPH::runSCF(const bool& twoC, const bool& renormSmall, vMatrixXd* initialGuess)
 {
+    vector<int> nbas(occMax_irrep);
+    for(int ir = 0; ir < occMax_irrep; ir++)
+        nbas[ir] = twoC ? irrep_list(ir).size : irrep_list(ir).size*2;
+
     if(renormSmall && !twoC)
     {
         renormalize_small();
@@ -372,37 +394,38 @@ void DHF_SPH::runSCF(const bool& twoC, const bool& renormSmall, vMatrixXd* initi
             for(int ir = 0; ir < occMax_irrep; ir += irrep_list(ir).two_j+1) 
             {
                 int size_tmp = irrep_list(ir).size;
-                evaluateFock(fock_4c(ir),twoC,density,size_tmp,ir);
+                evaluateFock(fock_4c[ir],twoC,density,size_tmp,ir);
             }
         }
         else
         {
-            int tmp_size = fock4DIIS[0].size();
-            MatrixXd B4DIIS(tmp_size+1,tmp_size+1);
-            VectorXd vec_b(tmp_size+1);    
-            for(int ii = 0; ii < tmp_size; ii++)
+            int tmp_size = fock4DIIS[0].size() + 1;
+            vector<double> B4DIIS(tmp_size*tmp_size);
+            vector<double> vec_b(tmp_size), C;    
+            for(int ii = 0; ii < tmp_size - 1; ii++)
             {    
                 for(int jj = 0; jj <= ii; jj++)
                 {
-                    B4DIIS(ii,jj) = 0.0;
+                    B4DIIS[ii*tmp_size+jj] = 0.0;
                     for(int ir = 0; ir < occMax_irrep; ir += irrep_list(ir).two_j+1)
-                        B4DIIS(ii,jj) += (error4DIIS[ir][ii].adjoint()*error4DIIS[ir][jj])(0,0);
-                    B4DIIS(jj,ii) = B4DIIS(ii,jj);
+                        B4DIIS[ii*tmp_size+jj] += (error4DIIS[ir][ii].adjoint()*error4DIIS[ir][jj])(0,0);
+                    B4DIIS[jj*tmp_size+ii] = B4DIIS[ii*tmp_size+jj];
                 }
-                B4DIIS(tmp_size, ii) = -1.0;
-                B4DIIS(ii, tmp_size) = -1.0;
-                vec_b(ii) = 0.0;
+                B4DIIS[(tmp_size-1)*tmp_size+ii] = -1.0;
+                B4DIIS[ii*tmp_size+(tmp_size-1)] = -1.0;
+                vec_b[ii] = 0.0;
             }
-            B4DIIS(tmp_size, tmp_size) = 0.0;
-            vec_b(tmp_size) = -1.0;
-            VectorXd C = B4DIIS.partialPivLu().solve(vec_b);
+            B4DIIS[(tmp_size-1)*tmp_size+(tmp_size-1)] = 0.0;
+            vec_b[tmp_size-1] = -1.0;
+            liearEqn_d(B4DIIS, vec_b, tmp_size, C);
             for(int ir = 0; ir < occMax_irrep; ir += irrep_list(ir).two_j+1)
             {
-                fock_4c(ir) = MatrixXd::Zero(fock_4c(ir).rows(),fock_4c(ir).cols());
-                for(int ii = 0; ii < tmp_size; ii++)
+                MatrixXd tmpF = MatrixXd::Zero(nbas[ir],nbas[ir]);
+                for(int ii = 0; ii < tmp_size - 1; ii++)
                 {
-                    fock_4c(ir) += C(ii) * fock4DIIS[ir][ii];
+                    tmpF += C[ii] * fock4DIIS[ir][ii];
                 }
+                fock_4c[ir] = eigen2vector(tmpF, nbas[ir]);
             }
         }
 
@@ -430,29 +453,18 @@ void DHF_SPH::runSCF(const bool& twoC, const bool& renormSmall, vMatrixXd* initi
             for(int ir = 0; ir < occMax_irrep; ir += irrep_list(ir).two_j+1)
             for(int ii = 1; ii <= irrep_list(ir).size; ii++)
             {
-                if(twoC) cout << "\t" << ii << "\t\t" << setprecision(15) << ene_orb(ir)(ii - 1) << endl;
-                else cout << "\t" << ii << "\t\t" << setprecision(15) << ene_orb(ir)(irrep_list(ir).size + ii - 1) << endl;
+                if(twoC) cout << "\t" << ii << "\t\t" << setprecision(15) << ene_orb[ir][ii - 1] << endl;
+                else cout << "\t" << ii << "\t\t" << setprecision(15) << ene_orb[ir][irrep_list(ir).size + ii - 1] << endl;
             }
 
             ene_scf = 0.0;
             for(int ir = 0; ir < occMax_irrep; ir += irrep_list(ir).two_j+1)
             {
-                int size_tmp = irrep_list(ir).size;
-                if(twoC)
+                for(int ii = 0; ii < nbas[ir]; ii++)
+                for(int jj = 0; jj < nbas[ir]; jj++)
                 {
-                    for(int ii = 0; ii < size_tmp; ii++)
-                    for(int jj = 0; jj < size_tmp; jj++)
-                    {
-                        ene_scf += 0.5 * density(ir)(ii,jj) * (h1e_4c(ir)(jj,ii) + fock_4c(ir)(jj,ii)) * (irrep_list(ir).two_j+1.0);
-                    }
-                }
-                else
-                {
-                    for(int ii = 0; ii < size_tmp * 2; ii++)
-                    for(int jj = 0; jj < size_tmp * 2; jj++)
-                    {
-                        ene_scf += 0.5 * density(ir)(ii,jj) * (h1e_4c(ir)(jj,ii) + fock_4c(ir)(jj,ii)) * (irrep_list(ir).two_j+1.0);
-                    }
+                    ene_scf += 0.5 * density(ir)(ii,jj) * (h1e_4c[ir][jj*nbas[ir]+ii] + 
+                                     fock_4c[ir][jj*nbas[ir]+ii]) * (irrep_list(ir).two_j+1.0);
                 }
             }
             if(twoC) cout << "Final X2C-1e HF energy is " << setprecision(15) << ene_scf << " hartree." << endl;
@@ -462,18 +474,19 @@ void DHF_SPH::runSCF(const bool& twoC, const bool& renormSmall, vMatrixXd* initi
         for(int ir = 0; ir < occMax_irrep; ir += irrep_list(ir).two_j+1)    
         {
             int size_tmp = irrep_list(ir).size;
-            evaluateFock(fock_4c(ir),twoC,density,size_tmp,ir);
+            int size2 = twoC ? size_tmp : size_tmp*2;
+            evaluateFock(fock_4c[ir],twoC,density,size_tmp,ir);
             if(error4DIIS[ir].size() >= size_DIIS)
             {
                 error4DIIS[ir].erase(error4DIIS[ir].begin());
-                error4DIIS[ir].push_back(evaluateErrorDIIS(fock_4c(ir),overlap_4c(ir),density(ir)));
+                error4DIIS[ir].push_back(evaluateErrorDIIS(fock_4c[ir],overlap_4c[ir],density(ir),size2));
                 fock4DIIS[ir].erase(fock4DIIS[ir].begin());
-                fock4DIIS[ir].push_back(fock_4c(ir));
+                fock4DIIS[ir].push_back(vector2eigen(fock_4c[ir],size2));
             }
             else
             {
-                error4DIIS[ir].push_back(evaluateErrorDIIS(fock_4c(ir),overlap_4c(ir),density(ir)));
-                fock4DIIS[ir].push_back(fock_4c(ir));
+                error4DIIS[ir].push_back(evaluateErrorDIIS(fock_4c[ir],overlap_4c[ir],density(ir),size2));
+                fock4DIIS[ir].push_back(vector2eigen(fock_4c[ir],size2));
             }
         }
     }
@@ -482,8 +495,8 @@ void DHF_SPH::runSCF(const bool& twoC, const bool& renormSmall, vMatrixXd* initi
     {
         for(int jj = 1; jj < irrep_list(ir).two_j+1; jj++)
         {
-            fock_4c(ir+jj) = fock_4c(ir);
-            ene_orb(ir+jj) = ene_orb(ir);
+            fock_4c[ir+jj] = fock_4c[ir];
+            ene_orb[ir+jj] = ene_orb[ir];
             coeff(ir+jj) = coeff(ir);
             density(ir+jj) = density(ir);
         }
@@ -501,10 +514,10 @@ void DHF_SPH::renormalize_small()
     norm_s.resize(occMax_irrep);
     for(int ii = 0; ii < occMax_irrep; ii++)
     {
-        norm_s(ii).resize(irrep_list(ii).size);
+        norm_s[ii].resize(irrep_list(ii).size);
         for(int jj = 0; jj < irrep_list(ii).size; jj++)
         {
-            norm_s(ii)(jj) = sqrt(kinetic(ii)(jj,jj) / 2.0 / speedOfLight / speedOfLight);
+            norm_s[ii][jj] = sqrt(kinetic(ii)(jj,jj) / 2.0 / speedOfLight / speedOfLight);
         }
     }
     cout << "Renormalizing small component...." << endl;
@@ -516,12 +529,12 @@ void DHF_SPH::renormalize_small()
         for(int mm = 0; mm < size_tmp; mm++)
         for(int nn = 0; nn < size_tmp; nn++)
         {
-            overlap_4c(ii)(size_tmp+mm,size_tmp+nn) /= norm_s(ii)(mm) * norm_s(ii)(nn);
-            h1e_4c(ii)(size_tmp+mm,nn) /= norm_s(ii)(mm);
-            h1e_4c(ii)(mm,size_tmp+nn) /= norm_s(ii)(nn);
-            h1e_4c(ii)(size_tmp+mm,size_tmp+nn) /= norm_s(ii)(mm) * norm_s(ii)(nn);
+            overlap_4c[ii][(size_tmp+mm)*size_tmp*2+size_tmp+nn] /= norm_s[ii][mm] * norm_s[ii][nn];
+            h1e_4c[ii][(size_tmp+mm)*size_tmp*2+nn] /= norm_s[ii][mm];
+            h1e_4c[ii][mm*size_tmp*2+size_tmp+nn] /= norm_s[ii][nn];
+            h1e_4c[ii][(size_tmp+mm)*size_tmp*2+size_tmp+nn] /= norm_s[ii][mm] * norm_s[ii][nn];
         }
-        overlap_half_i_4c(ii) = matrix_half_inverse(overlap_4c(ii));
+        overlap_half_i_4c[ii] = matrix_half_inverse(overlap_4c[ii], size_tmp*2);
     }
     for(int ir = 0; ir < occMax_irrep_compact; ir++)
     for(int jr = 0; jr < occMax_irrep_compact; jr++)
@@ -532,15 +545,15 @@ void DHF_SPH::renormalize_small()
         for(int jj = 0; jj < sizej*sizej; jj++)
         {
             int a = ii / sizei, b = ii - a * sizei, c = jj / sizej, d = jj - c * sizej;
-            h2eSSLL_JK.J[ir][jr][ii][jj] /= norm_s(Iirrep)(a) * norm_s(Iirrep)(b);
-            h2eSSSS_JK.J[ir][jr][ii][jj] /= norm_s(Iirrep)(a) * norm_s(Iirrep)(b) * norm_s(Jirrep)(c) * norm_s(Jirrep)(d);
+            h2eSSLL_JK.J[ir][jr][ii][jj] /= norm_s[Iirrep][a] * norm_s[Iirrep][b];
+            h2eSSSS_JK.J[ir][jr][ii][jj] /= norm_s[Iirrep][a] * norm_s[Iirrep][b] * norm_s[Jirrep][c] * norm_s[Jirrep][d];
         }
         for(int ii = 0; ii < sizei*sizej; ii++)
         for(int jj = 0; jj < sizej*sizei; jj++)
         {
             int a = ii / sizej, b = ii - a * sizej, c = jj / sizei, d = jj - c * sizei;
-            h2eSSLL_JK.K[ir][jr][ii][jj] /= norm_s(Iirrep)(a) * norm_s(Jirrep)(b);
-            h2eSSSS_JK.K[ir][jr][ii][jj] /= norm_s(Iirrep)(a) * norm_s(Jirrep)(b) * norm_s(Jirrep)(c) * norm_s(Iirrep)(d);
+            h2eSSLL_JK.K[ir][jr][ii][jj] /= norm_s[Iirrep][a] * norm_s[Jirrep][b];
+            h2eSSSS_JK.K[ir][jr][ii][jj] /= norm_s[Iirrep][a] * norm_s[Jirrep][b] * norm_s[Jirrep][c] * norm_s[Iirrep][d];
         }
         if(with_gaunt)
         {
@@ -548,15 +561,15 @@ void DHF_SPH::renormalize_small()
             for(int jj = 0; jj < sizej*sizej; jj++)
             {
                 int a = ii / sizei, b = ii - a * sizei, c = jj / sizej, d = jj - c * sizej;
-                gauntLSLS_JK.J[ir][jr][ii][jj] /= norm_s(Iirrep)(b) * norm_s(Jirrep)(d);
-                gauntLSSL_JK.J[ir][jr][ii][jj] /= norm_s(Iirrep)(b) * norm_s(Jirrep)(c);
+                gauntLSLS_JK.J[ir][jr][ii][jj] /= norm_s[Iirrep][b] * norm_s[Jirrep][d];
+                gauntLSSL_JK.J[ir][jr][ii][jj] /= norm_s[Iirrep][b] * norm_s[Jirrep][c];
             }
             for(int ii = 0; ii < sizei*sizej; ii++)
             for(int jj = 0; jj < sizej*sizei; jj++)
             {
                 int a = ii / sizej, b = ii - a * sizej, c = jj / sizei, d = jj - c * sizei;
-                gauntLSLS_JK.K[ir][jr][ii][jj] /= norm_s(Jirrep)(b) * norm_s(Iirrep)(d);
-                gauntLSSL_JK.K[ir][jr][ii][jj] /= norm_s(Jirrep)(b) * norm_s(Jirrep)(c);
+                gauntLSLS_JK.K[ir][jr][ii][jj] /= norm_s[Jirrep][b] * norm_s[Iirrep][d];
+                gauntLSSL_JK.K[ir][jr][ii][jj] /= norm_s[Jirrep][b] * norm_s[Jirrep][c];
             }
         }
     }
@@ -575,13 +588,13 @@ void DHF_SPH::renormalize_h2e(int2eJK& h2eInput, const string& intType)
         {
             int a = ii / sizei, b = ii - a * sizei, c = jj / sizej, d = jj - c * sizej;
             if(intType == "SSLL")
-                h2eInput.J[ir][jr][ii][jj] /= norm_s(Iirrep)(a) * norm_s(Iirrep)(b);
+                h2eInput.J[ir][jr][ii][jj] /= norm_s[Iirrep][a] * norm_s[Iirrep][b];
             else if(intType == "SSSS")
-                h2eInput.J[ir][jr][ii][jj] /= norm_s(Iirrep)(a) * norm_s(Iirrep)(b) * norm_s(Jirrep)(c) * norm_s(Jirrep)(d);
+                h2eInput.J[ir][jr][ii][jj] /= norm_s[Iirrep][a] * norm_s[Iirrep][b] * norm_s[Jirrep][c] * norm_s[Jirrep][d];
             else if(intType == "LSLS")
-                h2eInput.J[ir][jr][ii][jj] /= norm_s(Iirrep)(b) * norm_s(Jirrep)(d);
+                h2eInput.J[ir][jr][ii][jj] /= norm_s[Iirrep][b] * norm_s[Jirrep][d];
             else if(intType == "LSSL")
-                h2eInput.J[ir][jr][ii][jj] /= norm_s(Iirrep)(b) * norm_s(Jirrep)(c);
+                h2eInput.J[ir][jr][ii][jj] /= norm_s[Iirrep][b] * norm_s[Jirrep][c];
             else
             {
                 cout << "ERROR: Unkown intType in renormalize_h2e" << endl;
@@ -593,13 +606,13 @@ void DHF_SPH::renormalize_h2e(int2eJK& h2eInput, const string& intType)
         {
             int a = ii / sizej, b = ii - a * sizej, c = jj / sizei, d = jj - c * sizei;
             if(intType == "SSLL")
-                h2eInput.K[ir][jr][ii][jj] /= norm_s(Iirrep)(a) * norm_s(Jirrep)(b);
+                h2eInput.K[ir][jr][ii][jj] /= norm_s[Iirrep][a] * norm_s[Jirrep][b];
             else if(intType == "SSSS")
-                h2eInput.K[ir][jr][ii][jj] /= norm_s(Iirrep)(a) * norm_s(Jirrep)(b) * norm_s(Jirrep)(c) * norm_s(Iirrep)(d);
+                h2eInput.K[ir][jr][ii][jj] /= norm_s[Iirrep][a] * norm_s[Jirrep][b] * norm_s[Jirrep][c] * norm_s[Iirrep][d];
             else if(intType == "LSLS")
-                h2eInput.K[ir][jr][ii][jj] /= norm_s(Jirrep)(b) * norm_s(Iirrep)(d);
+                h2eInput.K[ir][jr][ii][jj] /= norm_s[Jirrep][b] * norm_s[Iirrep][d];
             else if(intType == "LSSL")
-                h2eInput.K[ir][jr][ii][jj] /= norm_s(Jirrep)(b) * norm_s(Jirrep)(c);
+                h2eInput.K[ir][jr][ii][jj] /= norm_s[Jirrep][b] * norm_s[Jirrep][c];
             else
             {
                 cout << "ERROR: Unkown intType in renormalize_h2e" << endl;
@@ -645,13 +658,46 @@ MatrixXd DHF_SPH::evaluateDensity_spinor(const MatrixXd& coeff_, const VectorXd&
         return den;
     }
 }
+MatrixXd DHF_SPH::evaluateDensity_spinor(const MatrixXd& coeff_, const vector<double>& occNumber_, const bool& twoC)
+{
+    if(!twoC)
+    {
+        int size = coeff_.cols()/2;
+        MatrixXd den(2*size,2*size);
+        den = MatrixXd::Zero(2*size,2*size);        
+        for(int aa = 0; aa < size; aa++)
+        for(int bb = 0; bb < size; bb++)
+        {
+            for(int ii = 0; ii < occNumber_.size(); ii++)
+            {
+                den(aa,bb) += occNumber_[ii] * coeff_(aa,ii+size) * coeff_(bb,ii+size);
+                den(size+aa,bb) += occNumber_[ii] * coeff_(size+aa,ii+size) * coeff_(bb,ii+size);
+                den(aa,size+bb) += occNumber_[ii] * coeff_(aa,ii+size) * coeff_(size+bb,ii+size);
+                den(size+aa,size+bb) += occNumber_[ii] * coeff_(size+aa,ii+size) * coeff_(size+bb,ii+size);
+            }
+        }
+        return den;
+    }
+    else
+    {
+        int size = coeff_.cols();
+        MatrixXd den(size,size);
+        den = MatrixXd::Zero(size,size);        
+        for(int aa = 0; aa < size; aa++)
+        for(int bb = 0; bb < size; bb++)
+        for(int ii = 0; ii < occNumber_.size(); ii++)
+            den(aa,bb) += occNumber_[ii] * coeff_(aa,ii) * coeff_(bb,ii);
+        
+        return den;
+    }
+}
 
 vMatrixXd DHF_SPH::evaluateDensity_spinor_irrep(const bool& twoC)
 {
     vMatrixXd den(occMax_irrep);
     for(int ir = 0; ir < occMax_irrep; ir += irrep_list(ir).two_j+1)
     {
-        den(ir) = evaluateDensity_spinor(coeff(ir),occNumber(ir), twoC);
+        den(ir) = evaluateDensity_spinor(coeff(ir),occNumber[ir], twoC);
     }
 
     return den;
@@ -660,12 +706,13 @@ vMatrixXd DHF_SPH::evaluateDensity_spinor_irrep(const bool& twoC)
 /* 
     evaluate Fock matrix 
 */
-void DHF_SPH::evaluateFock(MatrixXd& fock, const bool& twoC, const vMatrixXd& den, const int& size, const int& Iirrep)
+void DHF_SPH::evaluateFock(vector<double>& fock, const bool& twoC, const vMatrixXd& den, const int& size, const int& Iirrep)
 {
     int ir = all2compact(Iirrep);
     if(!twoC)
     {
-        fock.resize(size*2,size*2);
+        int size2 = size*2;
+        fock.resize(size2*size2);
         #pragma omp parallel  for
         for(int NN = 0; NN < size*(size+1)/2; NN++)
         {
@@ -680,10 +727,10 @@ void DHF_SPH::evaluateFock(MatrixXd& fock, const bool& twoC, const vMatrixXd& de
             }
             nn = NN - mm*(mm+1)/2;
             
-            fock(mm,nn) = h1e_4c(Iirrep)(mm,nn);
-            fock(mm+size,nn) = h1e_4c(Iirrep)(mm+size,nn);
-            if(mm != nn) fock(nn+size,mm) = h1e_4c(Iirrep)(nn+size,mm);
-            fock(mm+size,nn+size) = h1e_4c(Iirrep)(mm+size,nn+size);
+            fock[mm*size2+nn] = h1e_4c[Iirrep][mm*size2+nn];
+            fock[(mm+size)*size2+nn] = h1e_4c[Iirrep][(mm+size)*size2+nn];
+            if(mm != nn) fock[(nn+size)*size2+mm] = h1e_4c[Iirrep][(nn+size)*size2+mm];
+            fock[(mm+size)*size2+nn+size] = h1e_4c[Iirrep][(mm+size)*size2+nn+size];
             for(int jr = 0; jr < occMax_irrep_compact; jr++)
             {
                 int Jirrep = compact2all(jr);
@@ -693,37 +740,37 @@ void DHF_SPH::evaluateFock(MatrixXd& fock, const bool& twoC, const vMatrixXd& de
                 for(int rr = 0; rr < size_tmp2; rr++)
                 {
                     int emn = mm*size+nn, esr = ss*size_tmp2+rr, emr = mm*size_tmp2+rr, esn = ss*size+nn;
-                    fock(mm,nn) += twojP1*den(Jirrep)(ss,rr) * h2eLLLL_JK.J[ir][jr][emn][esr] + twojP1*den(Jirrep)(size_tmp2+ss,size_tmp2+rr) * h2eSSLL_JK.J[jr][ir][esr][emn];
-                    fock(mm+size,nn) -= twojP1*den(Jirrep)(ss,size_tmp2+rr) * h2eSSLL_JK.K[ir][jr][emr][esn];
+                    fock[mm*size2+nn] += twojP1*den(Jirrep)(ss,rr) * h2eLLLL_JK.J[ir][jr][emn][esr] + twojP1*den(Jirrep)(size_tmp2+ss,size_tmp2+rr) * h2eSSLL_JK.J[jr][ir][esr][emn];
+                    fock[(mm+size)*size2+nn] -= twojP1*den(Jirrep)(ss,size_tmp2+rr) * h2eSSLL_JK.K[ir][jr][emr][esn];
                     if(mm != nn) 
                     {
                         int enr = nn*size_tmp2+rr, esm = ss*size+mm;
-                        fock(nn+size,mm) -= twojP1*den(Jirrep)(ss,size_tmp2+rr) * h2eSSLL_JK.K[ir][jr][enr][esm];
+                        fock[(nn+size)*size2+mm] -= twojP1*den(Jirrep)(ss,size_tmp2+rr) * h2eSSLL_JK.K[ir][jr][enr][esm];
                     }
-                    fock(mm+size,nn+size) += twojP1*den(Jirrep)(size_tmp2+ss,size_tmp2+rr) * h2eSSSS_JK.J[ir][jr][emn][esr] + twojP1*den(Jirrep)(ss,rr) * h2eSSLL_JK.J[ir][jr][emn][esr];
+                    fock[(mm+size)*size2+nn+size] += twojP1*den(Jirrep)(size_tmp2+ss,size_tmp2+rr) * h2eSSSS_JK.J[ir][jr][emn][esr] + twojP1*den(Jirrep)(ss,rr) * h2eSSLL_JK.J[ir][jr][emn][esr];
                     if(with_gaunt)
                     {
                         int enm = nn*size+mm, ers = rr*size_tmp2+ss, erm = rr*size+mm, ens = nn*size_tmp2+ss;
-                        fock(mm,nn) -= twojP1*den(Jirrep)(size_tmp2+ss,size_tmp2+rr) * gauntLSSL_JK.K[ir][jr][emr][esn];
-                        fock(mm+size,nn+size) -= twojP1*den(Jirrep)(ss,rr) * gauntLSSL_JK.K[jr][ir][esn][emr];
-                        fock(mm+size,nn) += twojP1*den(Jirrep)(size_tmp2+ss,rr)*gauntLSLS_JK.J[ir][jr][enm][ers] + twojP1*den(Jirrep)(ss,size_tmp2+rr) * gauntLSSL_JK.J[jr][ir][esr][emn];
+                        fock[mm*size2+nn] -= twojP1*den(Jirrep)(size_tmp2+ss,size_tmp2+rr) * gauntLSSL_JK.K[ir][jr][emr][esn];
+                        fock[(mm+size)*size2+nn+size] -= twojP1*den(Jirrep)(ss,rr) * gauntLSSL_JK.K[jr][ir][esn][emr];
+                        fock[(mm+size)*size2+nn] += twojP1*den(Jirrep)(size_tmp2+ss,rr)*gauntLSLS_JK.J[ir][jr][enm][ers] + twojP1*den(Jirrep)(ss,size_tmp2+rr) * gauntLSSL_JK.J[jr][ir][esr][emn];
                         if(mm != nn) 
                         {
                             int ern = rr*size+nn, ems = mm*size_tmp2+ss;
-                            fock(nn+size,mm) += twojP1*den(Jirrep)(size_tmp2+ss,rr)*gauntLSLS_JK.J[ir][jr][emn][ers] + twojP1*den(Jirrep)(ss,size_tmp2+rr) * gauntLSSL_JK.J[jr][ir][esr][enm];
+                            fock[(nn+size)*size2+mm] += twojP1*den(Jirrep)(size_tmp2+ss,rr)*gauntLSLS_JK.J[ir][jr][emn][ers] + twojP1*den(Jirrep)(ss,size_tmp2+rr) * gauntLSSL_JK.J[jr][ir][esr][enm];
                         }
                     }
                 }
             }
-            fock(nn,mm) = fock(mm,nn);
-            fock(nn+size,mm+size) = fock(mm+size,nn+size);
-            fock(nn,mm+size) = fock(mm+size,nn);
-            fock(mm,nn+size) = fock(nn+size,mm);
+            fock[nn*size2+mm] = fock[mm*size2+nn];
+            fock[(nn+size)*size2+mm+size] = fock[(mm+size)*size2+nn+size];
+            fock[nn*size2+mm+size] = fock[(mm+size)*size2+nn];
+            fock[mm*size2+nn+size] = fock[(nn+size)*size2+mm];
         }
     }
     else
     {
-        fock.resize(size,size);
+        fock.resize(size*size);
         #pragma omp parallel  for
         for(int NN = 0; NN < size*(size+1)/2; NN++)
         {
@@ -737,7 +784,7 @@ void DHF_SPH::evaluateFock(MatrixXd& fock, const bool& twoC, const vMatrixXd& de
                 mm = tmp_i;
             }
             nn = NN - mm*(mm+1)/2;
-            fock(mm,nn) = h1e_4c(Iirrep)(mm,nn);
+            fock[mm*size+nn] = h1e_4c[Iirrep][mm*size+nn];
             for(int jr = 0; jr < occMax_irrep_compact; jr++)
             {
                 int Jirrep = compact2all(jr);
@@ -747,10 +794,10 @@ void DHF_SPH::evaluateFock(MatrixXd& fock, const bool& twoC, const vMatrixXd& de
                 for(int rr = 0; rr < size_tmp2; rr++)
                 {
                     int emn = mm*size+nn, esr = ss*size_tmp2+rr, emr = mm*size_tmp2+rr, esn = ss*size+nn;
-                    fock(mm,nn) += twojP1*den(Jirrep)(ss,rr) * h2eLLLL_JK.J[ir][jr][emn][esr];
+                    fock[mm*size+nn] += twojP1*den(Jirrep)(ss,rr) * h2eLLLL_JK.J[ir][jr][emn][esr];
                 }
             }
-            fock(nn,mm) = fock(mm,nn);
+            fock[nn*size+mm] = fock[mm*size+nn];
         }
     }
 }
@@ -910,14 +957,13 @@ void DHF_SPH::setOCC(const string& filename, const string& atomName)
         double d_tmp = (double)(vecd_tmp(ii) - int_tmp3*(irrep_list(int_tmp2).two_j + 1)) / (double)(irrep_list(int_tmp2).two_j + 1);
         for(int jj = 0; jj < irrep_list(int_tmp2).two_j + 1; jj++)
         {
-            occNumber(int_tmp2+jj).resize(irrep_list(int_tmp2+jj).size);
-            occNumber(int_tmp2+jj) = VectorXd::Zero(irrep_list(int_tmp2+jj).size);
+            occNumber[int_tmp2+jj].resize(irrep_list(int_tmp2+jj).size, 0.0);
             for(int kk = 0; kk < int_tmp3; kk++)
             {    
-                occNumber(int_tmp2+jj)(kk) = 1.0;
+                occNumber[int_tmp2+jj][kk] = 1.0;
             }
-            if(occNumber(int_tmp2+jj).rows() > int_tmp3)
-                occNumber(int_tmp2+jj)(int_tmp3) = d_tmp;
+            if(occNumber[int_tmp2+jj].size() > int_tmp3)
+                occNumber[int_tmp2+jj][int_tmp3] = d_tmp;
         }
         occMax_irrep += irrep_list(int_tmp2).two_j+1;
         int_tmp2 += irrep_list(int_tmp2).two_j+1;
@@ -1059,31 +1105,32 @@ vMatrixXd DHF_SPH::get_amfi_unc(const int2eJK& h2eSSLL_SD, const int2eJK& h2eSSS
         cout << "!!  WARNING: Dirac HF did NOT converge  !!" << endl;
         cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << endl;
     }
-    vMatrixXd amfi_unc(Nirrep), SO_4c(Nirrep), h1e_4c_full(Nirrep), overlap_4c_full(Nirrep);
+    vMatrixXd amfi_unc(Nirrep), SO_return(Nirrep);
+    vVectorXd overlap_4c_full(Nirrep), h1e_4c_full(Nirrep), SO_4c(Nirrep);
     /*
         Construct h1e_4c_full and overlap_4c_full 
     */
     for(int ir = 0; ir < occMax_irrep; ir++)
     {
-        h1e_4c_full(ir) = h1e_4c(ir);
-        overlap_4c_full(ir) = overlap_4c(ir);
+        h1e_4c_full[ir] = h1e_4c[ir];
+        overlap_4c_full[ir] = overlap_4c[ir];
     }   
     for(int ir = occMax_irrep; ir < Nirrep; ir++)
     {
         int size_tmp = irrep_list(ir).size;
-        h1e_4c_full(ir).resize(size_tmp*2,size_tmp*2);
-        overlap_4c_full(ir).resize(size_tmp*2,size_tmp*2);
+        h1e_4c_full[ir].resize(size_tmp*2*size_tmp*2);
+        overlap_4c_full[ir].resize(size_tmp*2*size_tmp*2);
         for(int mm = 0; mm < size_tmp; mm++)
         for(int nn = 0; nn < size_tmp; nn++)
         {
-            overlap_4c_full(ir)(mm,nn) = overlap(ir)(mm,nn);
-            overlap_4c_full(ir)(size_tmp+mm,nn) = 0.0;
-            overlap_4c_full(ir)(mm,size_tmp+nn) = 0.0;
-            overlap_4c_full(ir)(size_tmp+mm,size_tmp+nn) = kinetic(ir)(mm,nn) / 2.0 / speedOfLight / speedOfLight;
-            h1e_4c_full(ir)(mm,nn) = Vnuc(ir)(mm,nn);
-            h1e_4c_full(ir)(size_tmp+mm,nn) = kinetic(ir)(mm,nn);
-            h1e_4c_full(ir)(mm,size_tmp+nn) = kinetic(ir)(mm,nn);
-            h1e_4c_full(ir)(size_tmp+mm,size_tmp+nn) = WWW(ir)(mm,nn)/4.0/speedOfLight/speedOfLight - kinetic(ir)(mm,nn);
+            overlap_4c_full[ir][mm*size_tmp*2+nn] = overlap(ir)(mm,nn);
+            overlap_4c_full[ir][(size_tmp+mm)*size_tmp*2+nn] = 0.0;
+            overlap_4c_full[ir][mm*size_tmp*2+size_tmp+nn] = 0.0;
+            overlap_4c_full[ir][(size_tmp+mm)*size_tmp*2+size_tmp+nn] = kinetic(ir)(mm,nn) / 2.0 / speedOfLight / speedOfLight;
+            h1e_4c_full[ir][mm*size_tmp*2+nn] = Vnuc(ir)(mm,nn);
+            h1e_4c_full[ir][(size_tmp+mm)*size_tmp*2+nn] = kinetic(ir)(mm,nn);
+            h1e_4c_full[ir][mm*size_tmp*2+size_tmp+nn] = kinetic(ir)(mm,nn);
+            h1e_4c_full[ir][(size_tmp+mm)*size_tmp*2+size_tmp+nn] = WWW(ir)(mm,nn)/4.0/speedOfLight/speedOfLight - kinetic(ir)(mm,nn);
         }
     }
     
@@ -1091,7 +1138,7 @@ vMatrixXd DHF_SPH::get_amfi_unc(const int2eJK& h2eSSLL_SD, const int2eJK& h2eSSS
     {
         int ir_c = all2compact(ir);
         int size_tmp = irrep_list(ir).size;
-        SO_4c(ir).resize(2*size_tmp,2*size_tmp);
+        SO_4c[ir].resize(2*size_tmp*2*size_tmp);
         /* 
             Evaluate SO integrals in 4c basis
             The structure is the same as 2e Coulomb integrals in fock matrix 
@@ -1099,10 +1146,10 @@ vMatrixXd DHF_SPH::get_amfi_unc(const int2eJK& h2eSSLL_SD, const int2eJK& h2eSSS
         for(int mm = 0; mm < size_tmp; mm++)
         for(int nn = 0; nn <= mm; nn++)
         {
-            SO_4c(ir)(mm,nn) = 0.0;
-            SO_4c(ir)(mm+size_tmp,nn) = 0.0;
-            if(mm != nn) SO_4c(ir)(nn+size_tmp,mm) = 0.0;
-            SO_4c(ir)(mm+size_tmp,nn+size_tmp) = 0.0;
+            SO_4c[ir][mm*size_tmp*2+nn] = 0.0;
+            SO_4c[ir][(size_tmp+mm)*size_tmp*2+nn] = 0.0;
+            if(mm != nn) SO_4c[ir][(nn+size_tmp)*size_tmp*2+mm] = 0.0;
+            SO_4c[ir][(size_tmp+mm)*size_tmp*2+size_tmp+nn] = 0.0;
             for(int jr = 0; jr < occMax_irrep; jr++)
             {
                 int jr_c = all2compact(jr);
@@ -1111,32 +1158,32 @@ vMatrixXd DHF_SPH::get_amfi_unc(const int2eJK& h2eSSLL_SD, const int2eJK& h2eSSS
                 for(int rr = 0; rr < size_tmp2; rr++)
                 {
                     int emn = mm*size_tmp+nn, esr = ss*size_tmp2+rr, emr = mm*size_tmp2+rr, esn = ss*size_tmp+nn;
-                    SO_4c(ir)(mm,nn) += density_(jr)(size_tmp2+ss,size_tmp2+rr) * h2eSSLL_SD.J[jr_c][ir_c][esr][emn];
-                    SO_4c(ir)(mm+size_tmp,nn) -= density_(jr)(ss,size_tmp2+rr) * h2eSSLL_SD.K[ir_c][jr_c][emr][esn];
+                    SO_4c[ir][mm*size_tmp*2+nn] += density_(jr)(size_tmp2+ss,size_tmp2+rr) * h2eSSLL_SD.J[jr_c][ir_c][esr][emn];
+                    SO_4c[ir][(size_tmp+mm)*size_tmp*2+nn] -= density_(jr)(ss,size_tmp2+rr) * h2eSSLL_SD.K[ir_c][jr_c][emr][esn];
                     if(mm != nn) 
                     {
                         int enr = nn*size_tmp2+rr, esm = ss*size_tmp+mm;
-                        SO_4c(ir)(nn+size_tmp,mm) -= density_(jr)(ss,size_tmp2+rr) * h2eSSLL_SD.K[ir_c][jr_c][enr][esm];
+                        SO_4c[ir][(nn+size_tmp)*size_tmp*2+mm] -= density_(jr)(ss,size_tmp2+rr) * h2eSSLL_SD.K[ir_c][jr_c][enr][esm];
                     }
-                    SO_4c(ir)(mm+size_tmp,nn+size_tmp) += density_(jr)(size_tmp2+ss,size_tmp2+rr) * h2eSSSS_SD.J[ir_c][jr_c][emn][esr] + density_(jr)(ss,rr) * h2eSSLL_SD.J[ir_c][jr_c][emn][esr];
+                    SO_4c[ir][(size_tmp+mm)*size_tmp*2+size_tmp+nn] += density_(jr)(size_tmp2+ss,size_tmp2+rr) * h2eSSSS_SD.J[ir_c][jr_c][emn][esr] + density_(jr)(ss,rr) * h2eSSLL_SD.J[ir_c][jr_c][emn][esr];
                     if(amfi_with_gaunt)
                     {
                         int enm = nn*size_tmp+mm, ers = rr*size_tmp2+ss, erm = rr*size_tmp+mm, ens = nn*size_tmp2+ss;
-                        SO_4c(ir)(mm,nn) -= density_(jr)(size_tmp2+ss,size_tmp2+rr) * gauntLSSL_SD.K[ir_c][jr_c][emr][esn];
-                        SO_4c(ir)(mm+size_tmp,nn+size_tmp) -= density_(jr)(ss,rr) * gauntLSSL_SD.K[jr_c][ir_c][esn][emr];
-                        SO_4c(ir)(mm+size_tmp,nn) += density_(jr)(size_tmp2+ss,rr)*gauntLSLS_SD.J[ir_c][jr_c][enm][ers] + density_(jr)(ss,size_tmp2+rr) * gauntLSSL_SD.J[jr_c][ir_c][esr][emn];
+                        SO_4c[ir][mm*size_tmp*2+nn] -= density_(jr)(size_tmp2+ss,size_tmp2+rr) * gauntLSSL_SD.K[ir_c][jr_c][emr][esn];
+                        SO_4c[ir][(size_tmp+mm)*size_tmp*2+size_tmp+nn] -= density_(jr)(ss,rr) * gauntLSSL_SD.K[jr_c][ir_c][esn][emr];
+                        SO_4c[ir][(size_tmp+mm)*size_tmp*2+nn] += density_(jr)(size_tmp2+ss,rr)*gauntLSLS_SD.J[ir_c][jr_c][enm][ers] + density_(jr)(ss,size_tmp2+rr) * gauntLSSL_SD.J[jr_c][ir_c][esr][emn];
                         if(mm != nn) 
                         {
                             int ern = rr*size_tmp+nn, ems = mm*size_tmp2+ss;
-                            SO_4c(ir)(nn+size_tmp,mm) += density_(jr)(size_tmp2+ss,rr)*gauntLSLS_SD.J[ir_c][jr_c][emn][ers] + density_(jr)(ss,size_tmp2+rr) * gauntLSSL_SD.J[jr_c][ir_c][esr][enm];
+                            SO_4c[ir][(nn+size_tmp)*size_tmp*2+mm] += density_(jr)(size_tmp2+ss,rr)*gauntLSLS_SD.J[ir_c][jr_c][emn][ers] + density_(jr)(ss,size_tmp2+rr) * gauntLSSL_SD.J[jr_c][ir_c][esr][enm];
                         }
                     }
                 }
             }
-            SO_4c(ir)(nn,mm) = SO_4c(ir)(mm,nn);
-            SO_4c(ir)(nn+size_tmp,mm+size_tmp) = SO_4c(ir)(mm+size_tmp,nn+size_tmp);
-            SO_4c(ir)(nn,mm+size_tmp) = SO_4c(ir)(mm+size_tmp,nn);
-            SO_4c(ir)(mm,nn+size_tmp) = SO_4c(ir)(nn+size_tmp,mm);
+            SO_4c[ir][nn*size_tmp*2+mm] = SO_4c[ir][mm*size_tmp*2+nn];
+            SO_4c[ir][(size_tmp+nn)*size_tmp*2+size_tmp+mm] = SO_4c[ir][(size_tmp+mm)*size_tmp*2+size_tmp+nn];
+            SO_4c[ir][nn*size_tmp*2+mm+size_tmp] = SO_4c[ir][(size_tmp+mm)*size_tmp*2+nn];
+            SO_4c[ir][mm*size_tmp*2+nn+size_tmp] = SO_4c[ir][(nn+size_tmp)*size_tmp*2+mm];
         }
         /* 
             Evaluate X with various options
@@ -1157,14 +1204,15 @@ vMatrixXd DHF_SPH::get_amfi_unc(const int2eJK& h2eSSLL_SD, const int2eJK& h2eSSS
                     x2cXXX(ir) = X2C::get_X(overlap(ir),kinetic(ir),WWW(ir),Vnuc(ir));
                 else if(Xmethod == "fullFock")
                 {
-                    MatrixXd fock_tmp(2*size_tmp,2*size_tmp), overlap_half_i_4c_tmp = matrix_half_inverse(overlap_4c_full(ir));
+                    MatrixXd fock_tmp(2*size_tmp,2*size_tmp);
+                    vector<double> overlap_half_i_4c_tmp = matrix_half_inverse(overlap_4c_full[ir],2*size_tmp);
                     for(int mm = 0; mm < size_tmp; mm++)
                     for(int nn = 0; nn <= mm; nn++)
                     {
-                        fock_tmp(mm,nn) = h1e_4c_full(ir)(mm,nn);
-                        fock_tmp(mm+size_tmp,nn) = h1e_4c_full(ir)(mm+size_tmp,nn);
-                        if(mm != nn) fock_tmp(nn+size_tmp,mm) = h1e_4c_full(ir)(nn+size_tmp,mm);
-                        fock_tmp(mm+size_tmp,nn+size_tmp) = h1e_4c_full(ir)(mm+size_tmp,nn+size_tmp);
+                        fock_tmp(mm,nn) = h1e_4c_full[ir][mm*size_tmp*2+nn];
+                        fock_tmp(mm+size_tmp,nn) = h1e_4c_full[ir][(size_tmp+mm)*size_tmp*2+nn];
+                        if(mm != nn) fock_tmp(nn+size_tmp,mm) = h1e_4c_full[ir][(nn+size_tmp)*size_tmp*2+mm];
+                        fock_tmp(mm+size_tmp,nn+size_tmp) = h1e_4c_full[ir][(size_tmp+mm)*size_tmp*2+size_tmp+nn];
                         for(int jr = 0; jr < occMax_irrep; jr++)
                         {
                             int jr_c = all2compact(jr);
@@ -1200,10 +1248,13 @@ vMatrixXd DHF_SPH::get_amfi_unc(const int2eJK& h2eSSLL_SD, const int2eJK& h2eSSS
                         fock_tmp(nn,mm+size_tmp) = fock_tmp(mm+size_tmp,nn);
                         fock_tmp(mm,nn+size_tmp) = fock_tmp(nn+size_tmp,mm);
                     }
-                    MatrixXd coeff_tmp;
-                    VectorXd ene_orb_tmp;
-                    eigensolverG(fock_tmp,overlap_half_i_4c_tmp,ene_orb_tmp,coeff_tmp);
-                    x2cXXX(ir) = X2C::get_X(coeff_tmp);
+                    vector<double> ene_orb_tmp, coeff_tmp;
+                    vector<double> tmpF(fock_tmp.rows()*fock_tmp.rows()), tmpV;
+                    for(int mm = 0; mm < fock_tmp.rows(); mm++)
+                    for(int nn = 0; nn < fock_tmp.rows(); nn++)
+                        tmpF[mm*fock_tmp.rows()+nn] = fock_tmp(mm,nn);
+                    eigensolverG(tmpF,overlap_half_i_4c_tmp,ene_orb_tmp,coeff_tmp, fock_tmp.rows());
+                    x2cXXX(ir) = X2C::get_X(coeff_tmp, fock_tmp.rows());
                 }
                 else
                 {
@@ -1215,14 +1266,15 @@ vMatrixXd DHF_SPH::get_amfi_unc(const int2eJK& h2eSSLL_SD, const int2eJK& h2eSSS
         /* 
             Evaluate R and amfi
         */
-        x2cRRR(ir) = X2C::get_R(overlap_4c_full(ir),x2cXXX(ir));
-        amfi_unc(ir) = SO_4c(ir).block(0,0,size_tmp,size_tmp) + SO_4c(ir).block(0,size_tmp,size_tmp,size_tmp) * x2cXXX(ir) + x2cXXX(ir).transpose() * SO_4c(ir).block(size_tmp,0,size_tmp,size_tmp) + x2cXXX(ir).transpose() * SO_4c(ir).block(size_tmp,size_tmp,size_tmp,size_tmp) * x2cXXX(ir);
+        SO_return(ir) = vector2eigen(SO_4c[ir], irrep_list(ir).size*2);
+        x2cRRR(ir) = X2C::get_R(overlap_4c_full[ir],x2cXXX(ir),irrep_list(ir).size*2);
+        amfi_unc(ir) = SO_return(ir).block(0,0,size_tmp,size_tmp) + SO_return(ir).block(0,size_tmp,size_tmp,size_tmp) * x2cXXX(ir) + x2cXXX(ir).transpose() * SO_return(ir).block(size_tmp,0,size_tmp,size_tmp) + x2cXXX(ir).transpose() * SO_return(ir).block(size_tmp,size_tmp,size_tmp,size_tmp) * x2cXXX(ir);
         amfi_unc(ir) = x2cRRR(ir).transpose() * amfi_unc(ir) * x2cRRR(ir);
     }
 
     X_calculated = true;
     if(amfi4c)
-        return SO_4c;
+        return SO_return;
     else
         return amfi_unc;
 }
@@ -1240,21 +1292,26 @@ vMatrixXd DHF_SPH::get_amfi_unc_2c(const int2eJK& h2eSSLL_SD, const int2eJK& h2e
         cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << endl;
     }
 
-    vMatrixXd amfi_unc(Nirrep), SO_4c(Nirrep), h1e_2c_full(Nirrep), overlap_2c_full(Nirrep);
+    vMatrixXd amfi_unc(Nirrep), SO_4c(Nirrep), h1e_2c_full(Nirrep);
+    vVectorXd overlap_2c_full(Nirrep);
     /*
         Construct h1e_2c_full and overlap_2c_full 
     */
     for(int ir = 0; ir < occMax_irrep; ir++)
     {
-        h1e_2c_full(ir) = h1e_4c(ir);
-        overlap_2c_full(ir) = overlap_4c(ir);
+        h1e_2c_full(ir) = vector2eigen(h1e_4c[ir], irrep_list(ir).size);
+        overlap_2c_full[ir] = overlap_4c[ir];
     }   
     for(int ir = occMax_irrep; ir < Nirrep; ir++)
     {
         x2cXXX(ir) = X2C::get_X(overlap(ir),kinetic(ir),WWW(ir),Vnuc(ir));
         x2cRRR(ir) = X2C::get_R(overlap(ir),kinetic(ir),x2cXXX(ir));
         h1e_2c_full(ir) = X2C::evaluate_h1e_x2c(overlap(ir),kinetic(ir),WWW(ir),Vnuc(ir),x2cXXX(ir),x2cRRR(ir));
-        overlap_2c_full(ir) = overlap(ir);
+        int N = irrep_list(ir).size;
+        overlap_2c_full[ir].resize(N*N);
+        for(int ii = 0; ii < N; ii++)
+        for(int jj = 0; jj < N; jj++)
+            overlap_2c_full[ir][ii*N+jj] = overlap(ir)(ii,jj);
     }
     /*
         Calculate 4-c density using approximate PES C_L and C_S
@@ -1276,7 +1333,7 @@ vMatrixXd DHF_SPH::get_amfi_unc_2c(const int2eJK& h2eSSLL_SD, const int2eJK& h2e
             coeff_tmp(ir)(ii,size_tmp+jj) = coeff_L_tmp(ir)(ii,jj);
             coeff_tmp(ir)(size_tmp+ii,size_tmp+jj) = coeff_S_tmp(ir)(ii,jj);
         }
-        density_tmp(ir) = evaluateDensity_spinor(coeff_tmp(ir),occNumber(ir),false);
+        density_tmp(ir) = evaluateDensity_spinor(coeff_tmp(ir),occNumber[ir],false);
     }
 
     for(int ir = 0; ir < Nirrep; ir++)
@@ -1367,13 +1424,12 @@ vMatrixXd DHF_SPH::get_coeff_bs(const bool& twoC)
         return coeff;
     else
     {
-        vMatrixXd overlap_2c(occMax_irrep), XXX(occMax_irrep), RRR(occMax_irrep), coeff_2c(occMax_irrep);
+        vMatrixXd XXX(occMax_irrep), RRR(occMax_irrep), coeff_2c(occMax_irrep);
         for(int ir = 0; ir < occMax_irrep; ir++)
         {
-            overlap_2c(ir) = overlap_4c(ir).block(0,0,overlap_4c(ir).rows()/2,overlap_4c(ir).cols()/2);
             VectorXd ene_mo_tmp;
             XXX(ir) = X2C::get_X(coeff(ir));
-            RRR(ir) = X2C::get_R(overlap_4c(ir),XXX(ir));
+            RRR(ir) = X2C::get_R(overlap_4c[ir],XXX(ir),irrep_list(ir).size*2);
             coeff_2c(ir) = RRR(ir).inverse()*coeff(ir).block(0,coeff(ir).rows()/2,coeff(ir).rows()/2,coeff(ir).rows()/2);
         }
         return coeff_2c;
@@ -1384,22 +1440,27 @@ vMatrixXd DHF_SPH::get_coeff_bs(const bool& twoC)
 /*
     Get private variable
 */
-vMatrixXd DHF_SPH::get_fock_4c()
+vVectorXd DHF_SPH::get_fock_4c()
 {
     return fock_4c;
 }
-vMatrixXd DHF_SPH::get_fock_4c_2ePart()
+vVectorXd DHF_SPH::get_fock_4c_2ePart()
 {
-    vMatrixXd fock_2e(occMax_irrep);
+    vVectorXd fock_2e(occMax_irrep);
     for(int ii = 0; ii < occMax_irrep; ii++)
-        fock_2e(ii) = fock_4c(ii) - h1e_4c(ii);
+    {
+        fock_2e[ii].resize(fock_4c[ii].size());
+        for(int jj = 0; jj < fock_4c[ii].size(); jj++)
+            fock_2e[ii][jj] = fock_4c[ii][jj] - h1e_4c[ii][jj];
+    }
+        
     return fock_2e;
 }
-vMatrixXd DHF_SPH::get_h1e_4c()
+vVectorXd DHF_SPH::get_h1e_4c()
 {
     return h1e_4c;
 }
-vMatrixXd DHF_SPH::get_overlap_4c()
+vVectorXd DHF_SPH::get_overlap_4c()
 {
     return overlap_4c;
 }
@@ -1437,8 +1498,8 @@ vMatrixXd DHF_SPH::get_X_normalized()
             for(int ii = 0; ii < size; ii++)
             for(int jj = 0; jj < size; jj++)
             {
-                tmp1(ii,jj) = overlap_half_i_4c(ir)(ii,jj);
-                tmp2(ii,jj) = overlap_half_i_4c(ir)(size+ii,size+jj);
+                tmp1(ii,jj) = overlap_half_i_4c[ir][ii*size*2+jj];
+                tmp2(ii,jj) = overlap_half_i_4c[ir][(size+ii)*size*2+size+jj];
             }
             tmp2 = tmp2.inverse();
             X_tilde(ir) = tmp2*x2cXXX(ir)*tmp1;
@@ -1457,9 +1518,9 @@ vMatrixXd DHF_SPH::get_X_normalized()
 void DHF_SPH::set_h1e_4c(const vMatrixXd& inputM)
 {
     cout << "VERY DANGEROUS!! You changed h1e_4c!!" << endl;
-    for(int ir = 0; ir < h1e_4c.rows(); ir++)
+    for(int ir = 0; ir < inputM.rows(); ir++)
     {
-        h1e_4c(ir) = inputM(ir);
+        h1e_4c[ir] = eigen2vector(inputM(ir), inputM(ir).rows());
     }
     return;
 }
@@ -1479,29 +1540,29 @@ void DHF_SPH::basisGenerator(string basisName, string filename, const INT_SPH& i
     {
         basisSmall(ll).resize(3);
         basisSmall(ll)(0) = ll;
-        basisSmall(ll)(1) = intor.shell_list(ll).coeff.cols();
-        basisSmall(ll)(2) = intor.shell_list(ll).coeff.rows();
+        basisSmall(ll)(1) = intor.shell_list(ll).ncon;
+        basisSmall(ll)(2) = intor.shell_list(ll).nunc;
         /*  
             Reorganize coeff in intor
             make sure all the contracted coefficients are put to the left 
         */
         vector<int> vec_i;
-        for(int ii = 0; ii < intor.shell_list(ll).coeff.cols(); ii++)
+        for(int ii = 0; ii < intor.shell_list(ll).ncon; ii++)
         {
-            if(abs(intor.shell_list(ll).coeff(0,ii)) >= 1e-12)
+            if(abs(intor.shell_list(ll).coeff[ii]) >= 1e-12)
                 vec_i.push_back(ii);
         }
-        for(int ii = 0; ii < intor.shell_list(ll).coeff.cols(); ii++)
+        for(int ii = 0; ii < intor.shell_list(ll).ncon; ii++)
         {
-            if(abs(intor.shell_list(ll).coeff(0,ii)) < 1e-12)
+            if(abs(intor.shell_list(ll).coeff[ii]) < 1e-12)
                 vec_i.push_back(ii);
         }
         MatrixXd tmp;
-        tmp = MatrixXd::Zero(intor.shell_list(ll).coeff.rows(),intor.shell_list(ll).coeff.cols());
-        for(int ii = 0; ii < intor.shell_list(ll).coeff.cols(); ii++)
-        for(int jj = 0; jj < intor.shell_list(ll).coeff.rows(); jj++)
+        tmp = MatrixXd::Zero(intor.shell_list(ll).nunc,intor.shell_list(ll).ncon);
+        for(int ii = 0; ii < intor.shell_list(ll).ncon; ii++)
+        for(int jj = 0; jj < intor.shell_list(ll).nunc; jj++)
         {
-            tmp(jj,ii) = intor.shell_list(ll).coeff(jj,vec_i[ii]);
+            tmp(jj,ii) = intor.shell_list(ll).coeff[jj*intor.shell_list(ll).ncon+vec_i[ii]];
         }
         resortedCoeffInput(ll) = tmp;
     }
@@ -1510,15 +1571,15 @@ void DHF_SPH::basisGenerator(string basisName, string filename, const INT_SPH& i
     {
         basisAll(ll).resize(3);
         basisAll(ll)(0) = ll;
-        basisAll(ll)(1) = intorAll.shell_list(ll).coeff.cols();
-        basisAll(ll)(2) = intorAll.shell_list(ll).coeff.rows();
+        basisAll(ll)(1) = intorAll.shell_list(ll).ncon;
+        basisAll(ll)(2) = intorAll.shell_list(ll).nunc;
     }
 
     // Count how many l-shells containing electrons to resize basisInfo
     int occL = 0;
     for(int ir = 0; ir < irrep_list.rows(); ir += 4*irrep_list(ir).l+2)
     {
-        if(occNumber(ir).rows() == 0) break;
+        if(occNumber[ir].size() == 0) break;
         occL++;
     }
     basisInfo.resize(occL);
@@ -1529,10 +1590,10 @@ void DHF_SPH::basisGenerator(string basisName, string filename, const INT_SPH& i
     for(int ir = 0; ir < irrep_list.rows(); ir += 4*irrep_list(ir).l+2)
     {
         int occN = 0;
-        if(occNumber(ir).rows() == 0) break;
-        for(int ii = 0; ii < occNumber(ir).rows(); ii++)
+        if(occNumber[ir].size() == 0) break;
+        for(int ii = 0; ii < occNumber[ir].size(); ii++)
         {
-            if(abs(occNumber(ir)(ii)) > 1e-4)
+            if(abs(occNumber[ir][ii]) > 1e-4)
                 occN++;
         }
         basisInfo(occL).resize(occN);
@@ -1561,11 +1622,11 @@ void DHF_SPH::basisGenerator(string basisName, string filename, const INT_SPH& i
         int ll = intorAll.irrep_list(ir).l, nLD = 0;
         // nPVXZ is the number of primitive Gaussian functions in original basis set
         // and is likely to be smaller than ll, which comes from the basisAll
-        int nPVXZ = (ll < intor.shell_list.rows() ? intor.shell_list(ll).exp_a.rows() : 0);
-        int nAll = intorAll.shell_list(ll).exp_a.rows();
+        int nPVXZ = (ll < intor.shell_list.rows() ? intor.shell_list(ll).exp_a.size() : 0);
+        int nAll = intorAll.shell_list(ll).exp_a.size();
         vector<int> n_closest;
         for(int ii = 0; ii < nPVXZ; ii++)
-            exp_a_final(ll).push_back(intor.shell_list(ll).exp_a(ii));
+            exp_a_final(ll).push_back(intor.shell_list(ll).exp_a[ii]);
 
         // Here we assume that the first nPVXZ basis functions are the same in intor and intorAll
         for(int ii = nPVXZ; ii < nAll; ii++)
@@ -1573,11 +1634,11 @@ void DHF_SPH::basisGenerator(string basisName, string filename, const INT_SPH& i
             // tmp_i'th function is the linearly dependent core-correlating function
             int tmp_i;
             double closest = 100000000000.0;
-            double alpha = intorAll.shell_list(ll).exp_a(ii);
+            double alpha = intorAll.shell_list(ll).exp_a[ii];
             bool LD = false;
             for(int jj = 0; jj < nPVXZ; jj++)
             {
-                double tmp = max(alpha/intor.shell_list(ll).exp_a(jj),intor.shell_list(ll).exp_a(jj)/alpha);
+                double tmp = max(alpha/intor.shell_list(ll).exp_a[jj],intor.shell_list(ll).exp_a[jj]/alpha);
                 if(tmp < 1.25)
                     LD = true;
                 if(tmp < closest)
@@ -1768,7 +1829,7 @@ void DHF_SPH::basisGenerator(string basisName, string filename, const INT_SPH& i
             for(int ii = 0; ii < intor.shell_list(ll).exp_a.size(); ii++)
             {
                 if((ii+1) %5 == 1)  ofs << endl;
-                ofs << "    " << intor.shell_list(ll).exp_a(ii);
+                ofs << "    " << intor.shell_list(ll).exp_a[ii];
             }
             ofs << endl;
             ofs << endl;
@@ -1800,8 +1861,8 @@ double DHF_SPH::radialDensity(double rr, const vMatrixXd& den)
         for(int mm = 0; mm < size; mm++)
         for(int nn = 0; nn < size; nn++)
         {
-            double norm_m = shell_list(ll).norm(mm), alpha_m = shell_list(ll).exp_a(mm);
-            double norm_n = shell_list(ll).norm(nn), alpha_n = shell_list(ll).exp_a(nn);
+            double norm_m = shell_list(ll).norm[mm], alpha_m = shell_list(ll).exp_a[mm];
+            double norm_n = shell_list(ll).norm[nn], alpha_n = shell_list(ll).exp_a[nn];
             rho += den(ir)(mm,nn)/norm_m/norm_n*pow(rr,2*ll)*exp(-(alpha_m+alpha_n)*rr*rr)*(two_j+1);
             if(!twoC)
             {
@@ -1827,9 +1888,9 @@ double DHF_SPH::radialDensity(double rr, const vVectorXd& occ)
     }
     
     vMatrixXd den(density.rows());
-    for(int ir = 0; ir < occ.rows(); ir++)
+    for(int ir = 0; ir < occ.size(); ir++)
     {
-        den(ir) = evaluateDensity_spinor(coeff(ir),occ(ir),twoC);
+        den(ir) = evaluateDensity_spinor(coeff(ir),occ[ir],twoC);
     }
     return radialDensity(rr,den);
 }

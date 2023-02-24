@@ -358,7 +358,7 @@ int2eJK INT_SPH::get_h2e_JK_gaunt(const string& intType, const int& occMaxL) con
     for(int qshell = 0; qshell < occMaxShell; qshell++)
     {
         int l_q = shell_list(qshell).l, l_max = max(l_p,l_q), LmaxJ = min(l_p+l_p, l_q+l_q)+1, LmaxK = l_p+l_q+1;
-        int size_gtos_p = shell_list(pshell).coeff.rows(), size_gtos_q = shell_list(qshell).coeff.rows();
+        int size_gtos_p = shell_list(pshell).nunc, size_gtos_q = shell_list(qshell).nunc;
         int size_tmp_p = (l_p == 0) ? 1 : 2, size_tmp_q = (l_q == 0) ? 1 : 2;
         double array_radial_J[LmaxJ+1][size_gtos_p*size_gtos_p][size_gtos_q*size_gtos_q][size_tmp_p][size_tmp_q];
         double array_radial_K[LmaxK+1][size_gtos_p*size_gtos_q][size_gtos_q*size_gtos_p][size_tmp_p][size_tmp_q];
@@ -421,8 +421,8 @@ int2eJK INT_SPH::get_h2e_JK_gaunt(const string& intType, const int& occMaxL) con
             int kk = e2J/size_gtos_q, ll = e2J - kk*size_gtos_q;
             int e1K = ii*size_gtos_q+ll, e2K = kk*size_gtos_p+jj;
             MatrixXd radial_2e_list_J[LmaxJ+1], radial_2e_list_K[LmaxK+1];
-            double a_i_J = shell_list(pshell).exp_a(ii), a_j_J = shell_list(pshell).exp_a(jj), a_k_J = shell_list(qshell).exp_a(kk), a_l_J = shell_list(qshell).exp_a(ll);
-            double a_i_K = shell_list(pshell).exp_a(ii), a_j_K = shell_list(qshell).exp_a(ll), a_k_K = shell_list(qshell).exp_a(kk), a_l_K = shell_list(pshell).exp_a(jj);
+            double a_i_J = shell_list(pshell).exp_a[ii], a_j_J = shell_list(pshell).exp_a[jj], a_k_J = shell_list(qshell).exp_a[kk], a_l_J = shell_list(qshell).exp_a[ll];
+            double a_i_K = shell_list(pshell).exp_a[ii], a_j_K = shell_list(qshell).exp_a[ll], a_k_K = shell_list(qshell).exp_a[kk], a_l_K = shell_list(pshell).exp_a[jj];
         
             if(intType.substr(0,4) == "LSLS")
             {
@@ -487,8 +487,8 @@ int2eJK INT_SPH::get_h2e_JK_gaunt(const string& intType, const int& occMaxL) con
                 int index_tmp_q = (l_q > 0) ? 1 - (2*l_q+1 - twojj_q)/2 : 0;
                 int sym_ap = twojj_p - 2*l_p, sym_aq = twojj_q - 2*l_q;
                 double k_p = -(twojj_p+1.0)*sym_ap/2.0, k_q = -(twojj_q+1.0)*sym_aq/2.0;
-                double norm_J = shell_list(pshell).norm(ii) * shell_list(pshell).norm(jj) * shell_list(qshell).norm(kk) * shell_list(qshell).norm(ll), norm_K = shell_list(pshell).norm(ii) * shell_list(qshell).norm(ll) * shell_list(qshell).norm(kk) * shell_list(pshell).norm(jj);
-                double lk1 = 1+l_p+k_p, lk2 = 1+l_p+k_p, lk3 = 1+l_q+k_q, lk4 = 1+l_q+k_q, a1 = shell_list(pshell).exp_a(ii), a2 = shell_list(pshell).exp_a(jj), a3 = shell_list(qshell).exp_a(kk), a4 = shell_list(qshell).exp_a(ll);
+                double norm_J = shell_list(pshell).norm[ii] * shell_list(pshell).norm[jj] * shell_list(qshell).norm[kk] * shell_list(qshell).norm[ll], norm_K = shell_list(pshell).norm[ii] * shell_list(qshell).norm[ll] * shell_list(qshell).norm[kk] * shell_list(pshell).norm[jj];
+                double lk1 = 1+l_p+k_p, lk2 = 1+l_p+k_p, lk3 = 1+l_q+k_q, lk4 = 1+l_q+k_q, a1 = shell_list(pshell).exp_a[ii], a2 = shell_list(pshell).exp_a[jj], a3 = shell_list(qshell).exp_a[kk], a4 = shell_list(qshell).exp_a[ll];
 
                 for(int tmp = LmaxJ; tmp >= 0; tmp -= 2)
                 {
@@ -523,7 +523,7 @@ int2eJK INT_SPH::get_h2e_JK_gaunt(const string& intType, const int& occMaxL) con
                     }
                 }
                 lk2 = 1+l_q+k_q; lk4 = 1+l_p+k_p; 
-                a2 = shell_list(qshell).exp_a(ll); a4 = shell_list(pshell).exp_a(jj);
+                a2 = shell_list(qshell).exp_a[ll]; a4 = shell_list(pshell).exp_a[jj];
                 for(int tmp = LmaxK; tmp >= 0; tmp -= 2)
                 {
                     if(intType == "LSLS")
@@ -636,7 +636,7 @@ int2eJK INT_SPH::get_h2e_JK_gaunt_compact(const string& intType, const int& occM
         int l_q = shell_list(qshell).l, l_max = max(l_p,l_q), LmaxJ = min(l_p+l_p, l_q+l_q)+1, LmaxK = l_p+l_q+1;
         // This is correct but the author did not understand.
         // LmaxJ = 1;
-        int size_gtos_p = shell_list(pshell).coeff.rows(), size_gtos_q = shell_list(qshell).coeff.rows();
+        int size_gtos_p = shell_list(pshell).nunc, size_gtos_q = shell_list(qshell).nunc;
         int size_tmp_p = (l_p == 0) ? 1 : 2, size_tmp_q = (l_q == 0) ? 1 : 2;
         double array_angular_J[LmaxJ+1][size_tmp_p][size_tmp_q], array_angular_K[LmaxK+1][size_tmp_p][size_tmp_q];
         double radial_2e_list_J[size_gtos_p*size_gtos_p*size_gtos_q*size_gtos_q][LmaxJ+1][4];
@@ -650,8 +650,8 @@ int2eJK INT_SPH::get_h2e_JK_gaunt_compact(const string& intType, const int& occM
             int ii = e1J/size_gtos_p, jj = e1J - ii*size_gtos_p;
             int kk = e2J/size_gtos_q, ll = e2J - kk*size_gtos_q;
             int e1K = ii*size_gtos_q+ll, e2K = kk*size_gtos_p+jj;
-            double a_i_J = shell_list(pshell).exp_a(ii), a_j_J = shell_list(pshell).exp_a(jj), a_k_J = shell_list(qshell).exp_a(kk), a_l_J = shell_list(qshell).exp_a(ll);
-            double a_i_K = shell_list(pshell).exp_a(ii), a_j_K = shell_list(qshell).exp_a(ll), a_k_K = shell_list(qshell).exp_a(kk), a_l_K = shell_list(pshell).exp_a(jj);
+            double a_i_J = shell_list(pshell).exp_a[ii], a_j_J = shell_list(pshell).exp_a[jj], a_k_J = shell_list(qshell).exp_a[kk], a_l_J = shell_list(qshell).exp_a[ll];
+            double a_i_K = shell_list(pshell).exp_a[ii], a_j_K = shell_list(qshell).exp_a[ll], a_k_K = shell_list(qshell).exp_a[kk], a_l_K = shell_list(pshell).exp_a[jj];
         
             if(intType.substr(0,4) == "LSLS")
             {
@@ -767,8 +767,8 @@ int2eJK INT_SPH::get_h2e_JK_gaunt_compact(const string& intType, const int& occM
                 int ii = e1J/size_gtos_p, jj = e1J - ii*size_gtos_p;
                 int kk = e2J/size_gtos_q, ll = e2J - kk*size_gtos_q;
                 int e1K = ii*size_gtos_q+ll, e2K = kk*size_gtos_p+jj;
-                double norm_J = shell_list(pshell).norm(ii) * shell_list(pshell).norm(jj) * shell_list(qshell).norm(kk) * shell_list(qshell).norm(ll), norm_K = shell_list(pshell).norm(ii) * shell_list(qshell).norm(ll) * shell_list(qshell).norm(kk) * shell_list(pshell).norm(jj);
-                double lk1 = 1+l_p+k_p, lk2 = 1+l_p+k_p, lk3 = 1+l_q+k_q, lk4 = 1+l_q+k_q, a1 = shell_list(pshell).exp_a(ii), a2 = shell_list(pshell).exp_a(jj), a3 = shell_list(qshell).exp_a(kk), a4 = shell_list(qshell).exp_a(ll);
+                double norm_J = shell_list(pshell).norm[ii] * shell_list(pshell).norm[jj] * shell_list(qshell).norm[kk] * shell_list(qshell).norm[ll], norm_K = shell_list(pshell).norm[ii] * shell_list(qshell).norm[ll] * shell_list(qshell).norm[kk] * shell_list(pshell).norm[jj];
+                double lk1 = 1+l_p+k_p, lk2 = 1+l_p+k_p, lk3 = 1+l_q+k_q, lk4 = 1+l_q+k_q, a1 = shell_list(pshell).exp_a[ii], a2 = shell_list(pshell).exp_a[jj], a3 = shell_list(qshell).exp_a[kk], a4 = shell_list(qshell).exp_a[ll];
                 int_2e_JK.J[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q][e1J][e2J] = 0.0;
                 int_2e_JK.K[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q][e1K][e2K] = 0.0;
 
@@ -791,7 +791,7 @@ int2eJK INT_SPH::get_h2e_JK_gaunt_compact(const string& intType, const int& occM
                     int_2e_JK.J[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q][e1J][e2J] += radial_J * array_angular_J[tmp][int_tmp2_p][int_tmp2_q];
                 }
                 lk2 = 1+l_q+k_q; lk4 = 1+l_p+k_p; 
-                a2 = shell_list(qshell).exp_a(ll); a4 = shell_list(pshell).exp_a(jj);
+                a2 = shell_list(qshell).exp_a[ll]; a4 = shell_list(pshell).exp_a[jj];
                 for(int tmp = LmaxK; tmp >= 0; tmp -= 2)
                 {
                     if(intType == "LSLS")
@@ -855,7 +855,7 @@ int2eJK INT_SPH::get_h2e_JK_gauntSF_compact(const string& intType, const int& oc
     for(int qshell = 0; qshell < occMaxShell; qshell++)
     {
         int l_q = shell_list(qshell).l, l_max = max(l_p,l_q), LmaxJ = min(l_p+l_p, l_q+l_q)+1, LmaxK = l_p+l_q+1;
-        int size_gtos_p = shell_list(pshell).coeff.rows(), size_gtos_q = shell_list(qshell).coeff.rows();
+        int size_gtos_p = shell_list(pshell).nunc, size_gtos_q = shell_list(qshell).nunc;
         int size_tmp_p = (l_p == 0) ? 1 : 2, size_tmp_q = (l_q == 0) ? 1 : 2;
         double array_radial_J11[LmaxJ+1][size_gtos_p*size_gtos_p][size_gtos_q*size_gtos_q][size_tmp_p][size_tmp_q];
         double array_radial_K11[LmaxK+1][size_gtos_p*size_gtos_q][size_gtos_q*size_gtos_p][size_tmp_p][size_tmp_q];
@@ -933,8 +933,8 @@ int2eJK INT_SPH::get_h2e_JK_gauntSF_compact(const string& intType, const int& oc
             int kk = e2J/size_gtos_q, ll = e2J - kk*size_gtos_q;
             int e1K = ii*size_gtos_q+ll, e2K = kk*size_gtos_p+jj;
             MatrixXd radial_2e_list_J[LmaxJ+1], radial_2e_list_K[LmaxK+1];
-            double a_i_J = shell_list(pshell).exp_a(ii), a_j_J = shell_list(pshell).exp_a(jj), a_k_J = shell_list(qshell).exp_a(kk), a_l_J = shell_list(qshell).exp_a(ll);
-            double a_i_K = shell_list(pshell).exp_a(ii), a_j_K = shell_list(qshell).exp_a(ll), a_k_K = shell_list(qshell).exp_a(kk), a_l_K = shell_list(pshell).exp_a(jj);
+            double a_i_J = shell_list(pshell).exp_a[ii], a_j_J = shell_list(pshell).exp_a[jj], a_k_J = shell_list(qshell).exp_a[kk], a_l_J = shell_list(qshell).exp_a[ll];
+            double a_i_K = shell_list(pshell).exp_a[ii], a_j_K = shell_list(qshell).exp_a[ll], a_k_K = shell_list(qshell).exp_a[kk], a_l_K = shell_list(pshell).exp_a[jj];
         
             if(intType.substr(0,4) == "LSLS")
             {
@@ -999,8 +999,8 @@ int2eJK INT_SPH::get_h2e_JK_gauntSF_compact(const string& intType, const int& oc
                 int index_tmp_q = (l_q > 0) ? 1 - (2*l_q+1 - twojj_q)/2 : 0;
                 int sym_ap = twojj_p - 2*l_p, sym_aq = twojj_q - 2*l_q;
                 double k_p = -(twojj_p+1.0)*sym_ap/2.0, k_q = -(twojj_q+1.0)*sym_aq/2.0;
-                double norm_J = shell_list(pshell).norm(ii) * shell_list(pshell).norm(jj) * shell_list(qshell).norm(kk) * shell_list(qshell).norm(ll), norm_K = shell_list(pshell).norm(ii) * shell_list(qshell).norm(ll) * shell_list(qshell).norm(kk) * shell_list(pshell).norm(jj);
-                double lk1 = 1+l_p*2.0, lk2 = 1+l_p*2.0, lk3 = 1+l_q*2.0, lk4 = 1+l_q*2.0, a1 = shell_list(pshell).exp_a(ii), a2 = shell_list(pshell).exp_a(jj), a3 = shell_list(qshell).exp_a(kk), a4 = shell_list(qshell).exp_a(ll);
+                double norm_J = shell_list(pshell).norm[ii] * shell_list(pshell).norm[jj] * shell_list(qshell).norm[kk] * shell_list(qshell).norm[ll], norm_K = shell_list(pshell).norm[ii] * shell_list(qshell).norm[ll] * shell_list(qshell).norm[kk] * shell_list(pshell).norm[jj];
+                double lk1 = 1+l_p*2.0, lk2 = 1+l_p*2.0, lk3 = 1+l_q*2.0, lk4 = 1+l_q*2.0, a1 = shell_list(pshell).exp_a[ii], a2 = shell_list(pshell).exp_a[jj], a3 = shell_list(qshell).exp_a[kk], a4 = shell_list(qshell).exp_a[ll];
 
                 for(int tmp = LmaxJ; tmp >= 0; tmp -= 2)
                 {
@@ -1068,7 +1068,7 @@ int2eJK INT_SPH::get_h2e_JK_gauntSF_compact(const string& intType, const int& oc
                     }
                 }
                 lk2 = 1+l_q*2.0; lk4 = 1+l_p*2.0; 
-                a2 = shell_list(qshell).exp_a(ll); a4 = shell_list(pshell).exp_a(jj);
+                a2 = shell_list(qshell).exp_a[ll]; a4 = shell_list(pshell).exp_a[jj];
                 for(int tmp = LmaxK; tmp >= 0; tmp -= 2)
                 {
                     if(intType == "LSLS")

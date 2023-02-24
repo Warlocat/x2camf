@@ -20,36 +20,39 @@ vMatrixXd DHF_SPH::x2c2ePCC(vMatrixXd* coeff2c)
     {
         for(int ir = 0; ir < occMax_irrep; ir++)
         {
-            fock_4c(ir) = h1e_4c(ir);
+            fock_4c[ir] = h1e_4c[ir];
         }
     }
 
-    vMatrixXd fock_pcc(occMax_irrep), fock_4c_2e(occMax_irrep), fock_x2c2e(occMax_irrep), fock_x2c2e_2e(occMax_irrep), JK_x2c2c(occMax_irrep), coeff_2c(occMax_irrep), density_2c(occMax_irrep), density_pcc(occMax_irrep), h1e_x2c2e(occMax_irrep), h1e_x2c1e(occMax_irrep);
+    vMatrixXd fock_pcc(occMax_irrep), fock_x2c2e(occMax_irrep), fock_x2c2e_2e(occMax_irrep), coeff_2c(occMax_irrep), density_2c(occMax_irrep), density_pcc(occMax_irrep), h1e_x2c2e(occMax_irrep), h1e_x2c1e(occMax_irrep);
     vMatrixXd XXX(occMax_irrep), RRR(occMax_irrep), XXX_1e(occMax_irrep), RRR_1e(occMax_irrep);
     vMatrixXd overlap_2c(occMax_irrep), overlap_h_i_2c(occMax_irrep);
+    vVectorXd fock_4c_2e(occMax_irrep), JK_x2c2c(occMax_irrep);
 
 
     for(int ir = 0; ir < occMax_irrep; ir++)
     {
-        overlap_2c(ir) = overlap_4c(ir).block(0,0,overlap_4c(ir).rows()/2,overlap_4c(ir).cols()/2);
+        int size = irrep_list(ir).size*2;
+        MatrixXd SS = vector2eigen(overlap_4c[ir], size);
+        overlap_2c(ir) = SS.block(0,0,SS.rows()/2,SS.cols()/2);
         overlap_h_i_2c(ir) = matrix_half_inverse(overlap_2c(ir));
         
         XXX(ir) = X2C::get_X(coeff(ir));
-        RRR(ir) = X2C::get_R(overlap_4c(ir),XXX(ir));
+        RRR(ir) = X2C::get_R(overlap_4c[ir],XXX(ir), size);
         
-        h1e_x2c2e(ir) = X2C::transform_4c_2c(h1e_4c(ir), XXX(ir), RRR(ir));
+        h1e_x2c2e(ir) = X2C::transform_4c_2c(h1e_4c[ir], XXX(ir), RRR(ir));
         
         if(coeff2c == NULL)
         {
             VectorXd ene_mo_tmp;
-            fock_x2c2e(ir) = X2C::transform_4c_2c(fock_4c(ir), XXX(ir), RRR(ir));
+            fock_x2c2e(ir) = X2C::transform_4c_2c(fock_4c[ir], XXX(ir), RRR(ir));
             eigensolverG(fock_x2c2e(ir),overlap_h_i_2c(ir),ene_mo_tmp,coeff_2c(ir));
         }
         else
         {
             coeff_2c(ir) = (*coeff2c)(ir);
         }
-        density_2c(ir) = evaluateDensity_spinor(coeff_2c(ir),occNumber(ir),true);
+        density_2c(ir) = evaluateDensity_spinor(coeff_2c(ir),occNumber[ir],true);
 
         // X2C1E
         XXX_1e(ir) = X2C::get_X(overlap(ir),kinetic(ir),WWW(ir),Vnuc(ir));
@@ -60,13 +63,13 @@ vMatrixXd DHF_SPH::x2c2ePCC(vMatrixXd* coeff2c)
     for(int ir = 0; ir < occMax_irrep; ir++)
     {
         int size_nr = density_2c(ir).rows();
-        evaluateFock_2e(fock_4c_2e(ir),false,density,irrep_list(ir).size,ir);
-        evaluateFock_2e(JK_x2c2c(ir),true,density_2c,irrep_list(ir).size,ir);
-        fock_x2c2e_2e(ir) = X2C::transform_4c_2c(fock_4c_2e(ir), XXX(ir), RRR(ir));
+        evaluateFock_2e(fock_4c_2e[ir],false,density,irrep_list(ir).size,ir);
+        evaluateFock_2e(JK_x2c2c[ir],true,density_2c,irrep_list(ir).size,ir);
+        fock_x2c2e_2e(ir) = X2C::transform_4c_2c(fock_4c_2e[ir], XXX(ir), RRR(ir));
     }
     for(int ir = 0; ir < occMax_irrep; ir++)
     {  
-        fock_pcc(ir) = fock_x2c2e_2e(ir) - JK_x2c2c(ir) + h1e_x2c2e(ir) - h1e_x2c1e(ir);
+        fock_pcc(ir) = fock_x2c2e_2e(ir) - vector2eigen(JK_x2c2c[ir], h1e_x2c1e.rows()) + h1e_x2c2e(ir) - h1e_x2c1e(ir);
     }
 
     x2cXXX = XXX;
@@ -83,26 +86,29 @@ vMatrixXd DHF_SPH::h_x2c2e(vMatrixXd* coeff2c)
         cout << "SCF did not converge. x2c2ePCC cannot be used!" << endl;
         exit(99);
     }
-    vMatrixXd fock_pcc(occMax_irrep), fock_4c_2e(occMax_irrep), fock_x2c2e(occMax_irrep), fock_x2c2e_2e(occMax_irrep), JK_x2c2c(occMax_irrep), coeff_2c(occMax_irrep), density_2c(occMax_irrep), density_pcc(occMax_irrep), h1e_x2c2e(occMax_irrep), h1e_x2c1e(occMax_irrep), densityCore_4c(occMax_irrep), densityCore_2c(occMax_irrep), fock_pcc_mo(occMax_irrep);
+    vMatrixXd fock_pcc(occMax_irrep), fock_x2c2e(occMax_irrep), fock_x2c2e_2e(occMax_irrep), coeff_2c(occMax_irrep), density_2c(occMax_irrep), density_pcc(occMax_irrep), h1e_x2c2e(occMax_irrep), h1e_x2c1e(occMax_irrep), densityCore_4c(occMax_irrep), densityCore_2c(occMax_irrep), fock_pcc_mo(occMax_irrep);
     vMatrixXd XXX(occMax_irrep), RRR(occMax_irrep), XXX_1e(occMax_irrep), RRR_1e(occMax_irrep);
     vMatrixXd overlap_2c(occMax_irrep), overlap_h_i_2c(occMax_irrep);
+    vVectorXd fock_4c_2e(occMax_irrep), JK_x2c2c(occMax_irrep);
 
     for(int ir = 0; ir < occMax_irrep; ir++)
     {
-        overlap_2c(ir) = overlap_4c(ir).block(0,0,overlap_4c(ir).rows()/2,overlap_4c(ir).cols()/2);
+        int size = irrep_list(ir).size*2;
+        MatrixXd SS = vector2eigen(overlap_4c[ir], size);
+        overlap_2c(ir) = SS.block(0,0,SS.rows()/2,SS.cols()/2);
         overlap_h_i_2c(ir) = matrix_half_inverse(overlap_2c(ir));
         VectorXd ene_mo_tmp;
         XXX(ir) = X2C::get_X(coeff(ir));
-        RRR(ir) = X2C::get_R(overlap_4c(ir),XXX(ir));
+        RRR(ir) = X2C::get_R(overlap_4c[ir],XXX(ir),XXX(ir).rows());
         
-        h1e_x2c2e(ir) = X2C::transform_4c_2c(h1e_4c(ir), XXX(ir), RRR(ir));
-        fock_x2c2e(ir) = X2C::transform_4c_2c(fock_4c(ir), XXX(ir), RRR(ir));
+        h1e_x2c2e(ir) = X2C::transform_4c_2c(h1e_4c[ir], XXX(ir), RRR(ir));
+        fock_x2c2e(ir) = X2C::transform_4c_2c(fock_4c[ir], XXX(ir), RRR(ir));
         if(coeff2c == NULL)
             eigensolverG(fock_x2c2e(ir),overlap_h_i_2c(ir),ene_mo_tmp,coeff_2c(ir));
         else
             coeff_2c(ir) = (*coeff2c)(ir);
 
-        density_2c(ir) = evaluateDensity_spinor(coeff_2c(ir),occNumber(ir),true);
+        density_2c(ir) = evaluateDensity_spinor(coeff_2c(ir),occNumber[ir],true);
 
         // X2C1E
         XXX_1e(ir) = X2C::get_X(overlap(ir),kinetic(ir),WWW(ir),Vnuc(ir));
@@ -113,9 +119,9 @@ vMatrixXd DHF_SPH::h_x2c2e(vMatrixXd* coeff2c)
     for(int ir = 0; ir < occMax_irrep; ir++)
     {
         int size_nr = density_2c(ir).rows();
-        evaluateFock_2e(fock_4c_2e(ir),false,density,irrep_list(ir).size,ir);
-        evaluateFock_2e(JK_x2c2c(ir),true,density_2c,irrep_list(ir).size,ir);
-        fock_x2c2e_2e(ir) = X2C::transform_4c_2c(fock_4c_2e(ir), XXX(ir), RRR(ir));
+        evaluateFock_2e(fock_4c_2e[ir],false,density,irrep_list(ir).size,ir);
+        evaluateFock_2e(JK_x2c2c[ir],true,density_2c,irrep_list(ir).size,ir);
+        fock_x2c2e_2e(ir) = X2C::transform_4c_2c(fock_4c_2e[ir], XXX(ir), RRR(ir));
     }
     for(int ir = 0; ir < occMax_irrep; ir++)
     {  
@@ -132,8 +138,9 @@ vMatrixXd DHF_SPH::h_x2c2e(vMatrixXd* coeff2c)
 /* 
     evaluate Fock matrix (only 2e/Coulomb)
 */
-void DHF_SPH::evaluateFock_2e(MatrixXd& fock, const bool& twoC, const vMatrixXd& den, const int& size, const int& Iirrep)
+void DHF_SPH::evaluateFock_2e(vector<double>& fock_, const bool& twoC, const vMatrixXd& den, const int& size, const int& Iirrep)
 {
+    MatrixXd fock;
     int ir = all2compact(Iirrep);
     if(!twoC)
     {
@@ -206,8 +213,9 @@ void DHF_SPH::evaluateFock_2e(MatrixXd& fock, const bool& twoC, const vMatrixXd&
             fock(nn,mm) = fock(mm,nn);
         }
     }
+    fock_ = eigen2vector(fock, fock.rows());
 }
-void DHF_SPH::evaluateFock_J(MatrixXd& fock, const bool& twoC, const vMatrixXd& den, const int& size, const int& Iirrep)
+void DHF_SPH::evaluateFock_J(vector<double>& fock_, const bool& twoC, const vMatrixXd& den, const int& size, const int& Iirrep)
 {
     cout << "evaluateFock_J is closed now" << endl;
     exit(99);

@@ -24,43 +24,12 @@ const double au2ev = 27.21138386;
 const string orbL[8] = {"S","P","D","F","G","H","I","K"};
 
 typedef Matrix<MatrixXd,-1,1> vMatrixXd;
-typedef Matrix<MatrixXcd,-1,1> vMatrixXcd;
-typedef Matrix<VectorXd,-1,1> vVectorXd;
-typedef Matrix<MatrixXd,-1,-1> mMatrixXd;
+typedef vector<vector<double>> vVectorXd;
 
 
 /*
     Read and write matrix
 */
-template<typename T> void writeMatrixBinary(const Matrix<T,-1,-1>& inputM, const string& filename)
-{
-    ofstream ofs;
-    ofs.open(filename, ios::binary);
-        for(int ii = 0; ii < inputM.rows(); ii++)
-        for(int jj = 0; jj < inputM.cols(); jj++)
-        {
-            ofs.write((char*) &inputM(ii,jj), sizeof(T));
-        }
-    ofs.close();
-    return;
-}
-template<typename T> void readMatrixBinary(Matrix<T,-1,-1>& inputM, const string& filename)
-{
-    ifstream ifs;
-    ifs.open(filename, ios::binary);
-    if(!ifs)
-    {
-        cout << "ERROR opening file " << filename << endl;
-        exit(99);
-    }
-        for(int ii = 0; ii < inputM.rows(); ii++)
-        for(int jj = 0; jj < inputM.cols(); jj++)
-        {
-            ifs.read((char*) &inputM(ii,jj), sizeof(T));
-        }
-    ifs.close();
-    return;
-}
 template<typename T> void writeMatrixBinary(T* inputM, const int& size, const string& filename)
 {
     ofstream ofs;
@@ -96,9 +65,9 @@ template<typename T> void readMatrixBinary(T* inputM, const int& size, const str
 */
 struct intShell
 {
-    VectorXd exp_a, norm;
-    MatrixXd coeff;
-    int l;
+    vector<double> exp_a, norm;
+    vector<double> coeff;
+    int l, ncon, nunc;
 };
 /*
     Irreducible rep |j, l, m_j>
@@ -126,26 +95,34 @@ complex<double> U_SH_trans(const int& mu, const int& mm);
 double evaluateChange(const MatrixXd& M1, const MatrixXd& M2);
 /* evaluate M^{-1/2} */
 MatrixXd matrix_half_inverse(const MatrixXd& inputM);
+vector<double> matrix_half_inverse(const vector<double>& inputM, const int& N);
 /* evaluate M^{1/2} */
 MatrixXd matrix_half(const MatrixXd& inputM);
+vector<double> matrix_half(const vector<double>& inputM, const int& N);
 /* solver for generalized eigen equation MC=SCE, s_h_i = S^{1/2} */
 void eigensolverG(const MatrixXd& inputM, const MatrixXd& s_h_i, VectorXd& values, MatrixXd& vectors);
+void eigensolverG(const vector<double>& inputM, const vector<double>& s_h_i, vector<double>& values, vector<double>& vectors, const int& N);
 /* remove all spaces in a string) */
 string removeSpaces(const string& flags);
 /* Split function in python */
 vector<string> stringSplit(const string& flags);
 vector<string> stringSplit(const string& flags, const char delimiter);
+/* Eigen */
+vector<double> eigen2vector(const MatrixXd& inputM, const int& N);
+MatrixXd vector2eigen(const vector<double>& inputM, const int& N);
 
 /* Static functions used in X2C */
 namespace X2C
 {
     MatrixXd get_X(const MatrixXd& S_, const MatrixXd& T_, const MatrixXd& W_, const MatrixXd& V_);
     MatrixXd get_X(const MatrixXd& coeff);
+    MatrixXd get_X(const vector<double>& coeff, const int& N);
     MatrixXd get_R(const MatrixXd& S_, const MatrixXd& T_, const MatrixXd& X_);
     MatrixXd get_R(const MatrixXd& S_4c, const MatrixXd& X_);
+    MatrixXd get_R(const vector<double>& S_4c, const MatrixXd& X_, const int& N);
     MatrixXd evaluate_h1e_x2c(const MatrixXd& S_, const MatrixXd& T_, const MatrixXd& W_, const MatrixXd& V_);
     MatrixXd evaluate_h1e_x2c(const MatrixXd& S_, const MatrixXd& T_, const MatrixXd& W_, const MatrixXd& V_, const MatrixXd& X_, const MatrixXd& R_);
-    MatrixXd transform_4c_2c(const MatrixXd& M_4c, const MatrixXd XXX, const MatrixXd& RRR);
+    MatrixXd transform_4c_2c(const vector<double>& M_4c, const MatrixXd XXX, const MatrixXd& RRR);
 }
 
 

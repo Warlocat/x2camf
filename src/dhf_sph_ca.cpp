@@ -1,5 +1,7 @@
 #include"dhf_sph_ca.h"
+#include"mkl_itrf.h"
 #include<iostream>
+#include<algorithm>
 #include<omp.h>
 #include<vector>
 #include<ctime>
@@ -15,12 +17,11 @@ DHF_SPH(int_sph_,filename,spinFree,twoC,with_gaunt_,with_gauge_,allInt,gaussian_
 {
     vector<int> openIrreps;
     for(int ir = 0; ir < occMax_irrep; ir+=4*irrep_list(ir).l+2)
-    // for(int ir = 0; ir < occMax_irrep; ir+=irrep_list(ir).two_j+1)
     {
-        for(int ii = 0; ii < occNumber(ir).rows(); ii++)
+        for(int ii = 0; ii < occNumber[ir].size(); ii++)
         {
             // if 1 > occNumber(ir)(ii) > 0
-            if(abs(occNumber(ir)(ii)) > 1e-4 && occNumber(ir)(ii) < 0.9999)
+            if(abs(occNumber[ir][ii]) > 1e-4 && occNumber[ir][ii] < 0.9999)
             {
                 openIrreps.push_back(ir);
                 break;
@@ -32,7 +33,6 @@ DHF_SPH(int_sph_,filename,spinFree,twoC,with_gaunt_,with_gauge_,allInt,gaussian_
     for(int ii = 0; ii < NOpenShells; ii++)
     {
         MM_list.push_back(irrep_list(openIrreps[ii]).l*4+2);  
-        // MM_list.push_back(irrep_list(openIrreps[ii]).two_j+1);   
     }
     occNumberShells[0] = occNumber;
     for(int ii = 1; ii < occNumberShells.size()-1; ii++)
@@ -43,32 +43,33 @@ DHF_SPH(int_sph_,filename,spinFree,twoC,with_gaunt_,with_gauge_,allInt,gaussian_
     {
         for(int ii = 1; ii < occNumberShells.size()-1; ii++)
         {
-            occNumberShells[ii](ir) = VectorXd::Zero(irrep_list(ir).size);
+            occNumberShells[ii][ir].resize(irrep_list(ir).size, 0.0);
         }
-        occNumberShells[NOpenShells+1](ir) = VectorXd::Ones(irrep_list(ir).size);
+        occNumberShells[NOpenShells+1][ir].resize(irrep_list(ir).size, 1.0);
             
-        for(int ii = 0; ii < occNumber(ir).rows(); ii++)
+        for(int ii = 0; ii < occNumber[ir].size(); ii++)
         {
-            if(abs(occNumber(ir)(ii)) > 1e-4)
+            if(abs(occNumber[ir][ii]) > 1e-4)
             {
                 // if 1 > occNumber(ir)(ii) > 0
-                if(occNumber(ir)(ii) < 0.9999)
+                if(occNumber[ir][ii] < 0.9999)
                 {
                     if(ir == openIrreps[f_list.size()])
                     {
-                        f_list.push_back(occNumber(ir)(ii));
+                        f_list.push_back(occNumber[ir][ii]);
                         NN_list.push_back(f_list[f_list.size()-1]*MM_list[f_list.size()-1]);
                     }
-                    occNumberShells[0](ir)(ii) = 0.0;
-                    occNumberShells[f_list.size()](ir)(ii) = 1.0;
+                    occNumberShells[0][ir][ii] = 0.0;
+                    occNumberShells[f_list.size()][ir][ii] = 1.0;
                 }
-                occNumberShells[NOpenShells+1](ir)(ii) = 0.0;
+                occNumberShells[NOpenShells+1][ir][ii] = 0.0;
             }
         }
     }
     for(int ir = occMax_irrep; ir < irrep_list.rows(); ir++)
     {
-        occNumberShells[NOpenShells+1](ir) = VectorXd::Ones(irrep_list(ir).size);
+        for(int jj = 0; jj < irrep_list(ir).size; jj++)
+            occNumberShells[NOpenShells+1][ir][jj] = 1.0;
     }
 
     cout << "Open shell occupations:" << endl;
@@ -76,11 +77,19 @@ DHF_SPH(int_sph_,filename,spinFree,twoC,with_gaunt_,with_gauge_,allInt,gaussian_
     {
         cout << "l = " << irrep_list(ir).l << endl;
         for(int ii = 0; ii < occNumberShells.size(); ii++)
-            cout << ii << ": " << occNumberShells[ii](ir).transpose() << endl;
+        {
+            cout << ii << ":"; 
+            for(int jj = 0; jj < occNumberShells[ii][ir].size(); jj++)
+                cout << "\t" << occNumberShells[ii][ir][jj];
+            cout << endl;
+        }
     }
     for(int ir = occMax_irrep; ir < irrep_list.rows(); ir++)
     {
-        cout << occNumberShells.size()-1 << ": " << occNumberShells[occNumberShells.size()-1](ir).transpose() << endl;
+        cout << occNumberShells.size()-1 << ":";
+        for(int jj = 0; jj < occNumberShells[occNumberShells.size()-1][ir].size(); jj++)
+            cout << "\t" << occNumberShells[occNumberShells.size()-1][ir][jj];
+        cout << endl;
     }
     cout << "Configuration-averaged HF initialization." << endl;
     cout << "Number of open shells: " << NOpenShells << endl;
@@ -139,13 +148,54 @@ MatrixXd DHF_SPH_CA::evaluateDensity_aoc(const MatrixXd& coeff_, const VectorXd&
         return den;
     }
 }
-
+MatrixXd DHF_SPH_CA::evaluateDensity_aoc(const MatrixXd& coeff_, const vector<double>& occNumber_, const bool& twoC)
+{
+    if(!twoC)
+    {
+        int size = coeff_.cols()/2;
+        MatrixXd den(2*size,2*size);
+        den = MatrixXd::Zero(2*size,2*size);        
+        for(int aa = 0; aa < size; aa++)
+        for(int bb = 0; bb < size; bb++)
+        {
+            for(int ii = 0; ii < occNumber_.size(); ii++)
+            {
+                if(abs(occNumber_[ii] - 1.0) < 1e-5)
+                {    
+                    den(aa,bb) += coeff_(aa,ii+size) * coeff_(bb,ii+size);
+                    den(size+aa,bb) += coeff_(size+aa,ii+size) * coeff_(bb,ii+size);
+                    den(aa,size+bb) += coeff_(aa,ii+size) * coeff_(size+bb,ii+size);
+                    den(size+aa,size+bb) += coeff_(size+aa,ii+size) * coeff_(size+bb,ii+size);
+                }
+            }
+        }
+        return den;
+    }
+    else
+    {
+        int size = coeff_.cols();
+        MatrixXd den(size,size);
+        den = MatrixXd::Zero(size,size);        
+        for(int aa = 0; aa < size; aa++)
+        for(int bb = 0; bb < size; bb++)
+        for(int ii = 0; ii < occNumber_.size(); ii++)
+        {
+            if(abs(occNumber_[ii] - 1.0) < 1e-5)
+                den(aa,bb) += coeff_(aa,ii) * coeff_(bb,ii);
+        }
+        return den;
+    }
+}
 
 /*
     SCF procedure for 4-c and 2-c calculation
 */
 void DHF_SPH_CA::runSCF(const bool& twoC, const bool& renormSmall)
 {
+    vector<int> nbas(occMax_irrep);
+    for(int ir = 0; ir < occMax_irrep; ir++)
+        nbas[ir] = twoC ? irrep_list(ir).size : irrep_list(ir).size*2;
+
     if(renormSmall && !twoC)
     {
         renormalize_small();
@@ -172,12 +222,12 @@ void DHF_SPH_CA::runSCF(const bool& twoC, const bool& renormSmall)
     for(int ir = 0; ir < occMax_irrep; ir+=irrep_list(ir).two_j+1)
     {
         for(int ii = 0; ii < NOpenShells+2; ii++)
-            densityShells(ii)(ir) = evaluateDensity_aoc(coeff(ir),occNumberShells[ii](ir),twoC);
+            densityShells(ii)(ir) = evaluateDensity_aoc(coeff(ir),occNumberShells[ii][ir],twoC);
     }
     for(int ir = occMax_irrep; ir < irrep_list.rows(); ir+=irrep_list(ir).two_j+1)
     {
         //WORNG
-        densityShells(NOpenShells+1)(ir) = evaluateDensity_aoc(coeff(ir),occNumberShells[NOpenShells+1](ir),twoC);
+        densityShells(NOpenShells+1)(ir) = evaluateDensity_aoc(coeff(ir),occNumberShells[NOpenShells+1][ir],twoC);
     }
 
     for(int iter = 1; iter <= maxIter; iter++)
@@ -187,38 +237,39 @@ void DHF_SPH_CA::runSCF(const bool& twoC, const bool& renormSmall)
             for(int ir = 0; ir < occMax_irrep; ir += irrep_list(ir).two_j+1)    
             {
                 int size_tmp = irrep_list(ir).size;
-                evaluateFock(fock_4c(ir),twoC,densityShells,size_tmp,ir);
+                evaluateFock(fock_4c[ir],twoC,densityShells,size_tmp,ir);
             }
         }
         else
         {
-            int tmp_size = fock4DIIS[0].size();
-            MatrixXd B4DIIS(tmp_size+1,tmp_size+1);
-            VectorXd vec_b(tmp_size+1);    
-            for(int ii = 0; ii < tmp_size; ii++)
+            int tmp_size = fock4DIIS[0].size() + 1;
+            vector<double> B4DIIS(tmp_size*tmp_size);
+            vector<double> vec_b(tmp_size), C;    
+            for(int ii = 0; ii < tmp_size - 1; ii++)
             {    
                 for(int jj = 0; jj <= ii; jj++)
                 {
-                    B4DIIS(ii,jj) = 0.0;
+                    B4DIIS[ii*tmp_size+jj] = 0.0;
                     for(int ir = 0; ir < occMax_irrep; ir += irrep_list(ir).two_j+1)
                     for(int kk = 0; kk < NOpenShells+1; kk++)
-                        B4DIIS(ii,jj) += (error4DIIS(ir,kk)[ii].adjoint()*error4DIIS(ir,kk)[jj])(0,0);
-                    B4DIIS(jj,ii) = B4DIIS(ii,jj);
+                        B4DIIS[ii*tmp_size+jj] += (error4DIIS(ir,kk)[ii].adjoint()*error4DIIS(ir,kk)[jj])(0,0);
+                    B4DIIS[jj*tmp_size+ii] = B4DIIS[ii*tmp_size+jj];
                 }
-                B4DIIS(tmp_size, ii) = -1.0;
-                B4DIIS(ii, tmp_size) = -1.0;
-                vec_b(ii) = 0.0;
+                B4DIIS[(tmp_size-1)*tmp_size+ii] = -1.0;
+                B4DIIS[ii*tmp_size+(tmp_size-1)] = -1.0;
+                vec_b[ii] = 0.0;
             }
-            B4DIIS(tmp_size, tmp_size) = 0.0;
-            vec_b(tmp_size) = -1.0;
-            VectorXd C = B4DIIS.partialPivLu().solve(vec_b);
+            B4DIIS[(tmp_size-1)*tmp_size+(tmp_size-1)] = 0.0;
+            vec_b[tmp_size-1] = -1.0;
+            liearEqn_d(B4DIIS, vec_b, tmp_size, C);
             for(int ir = 0; ir < occMax_irrep; ir += irrep_list(ir).two_j+1)
             {
-                fock_4c(ir) = MatrixXd::Zero(fock_4c(ir).rows(),fock_4c(ir).cols());
-                for(int ii = 0; ii < tmp_size; ii++)
+                MatrixXd tmpF = MatrixXd::Zero(nbas[ir],nbas[ir]);
+                for(int ii = 0; ii < tmp_size - 1; ii++)
                 {
-                    fock_4c(ir) += C(ii) * fock4DIIS[ir][ii];
+                    tmpF += C[ii] * fock4DIIS[ir][ii];
                 }
+                fock_4c[ir] = eigen2vector(tmpF, nbas[ir]);
             }
         }
         eigensolverG_irrep(fock_4c, overlap_half_i_4c, ene_orb, coeff);
@@ -226,12 +277,12 @@ void DHF_SPH_CA::runSCF(const bool& twoC, const bool& renormSmall)
         for(int ir = 0; ir < occMax_irrep; ir+=irrep_list(ir).two_j+1)
         {
             for(int ii = 0; ii < NOpenShells+2; ii++)
-                newDensityShells(ii)(ir) = evaluateDensity_aoc(coeff(ir),occNumberShells[ii](ir),twoC);
+                newDensityShells(ii)(ir) = evaluateDensity_aoc(coeff(ir),occNumberShells[ii][ir],twoC);
         }
         for(int ir = occMax_irrep; ir < irrep_list.rows(); ir+=irrep_list(ir).two_j+1)
         {
             //WORNG
-            newDensityShells(NOpenShells+1)(ir) = evaluateDensity_aoc(coeff(ir),occNumberShells[NOpenShells+1](ir),twoC);
+            newDensityShells(NOpenShells+1)(ir) = evaluateDensity_aoc(coeff(ir),occNumberShells[NOpenShells+1][ir],twoC);
         }
         d_density = 0.0;
         for(int ii = 0; ii < NOpenShells+1; ii++)
@@ -251,8 +302,8 @@ void DHF_SPH_CA::runSCF(const bool& twoC, const bool& renormSmall)
             for(int ir = 0; ir < occMax_irrep; ir += irrep_list(ir).two_j+1)
             for(int ii = 1; ii <= irrep_list(ir).size; ii++)
             {
-                if(twoC) cout << "\t" << ii << "\t\t" << setprecision(15) << ene_orb(ir)(ii - 1) << endl;
-                else cout << "\t" << ii << "\t\t" << setprecision(15) << ene_orb(ir)(irrep_list(ir).size + ii - 1) << endl;
+                if(twoC) cout << "\t" << ii << "\t\t" << setprecision(15) << ene_orb[ir][ii - 1] << endl;
+                else cout << "\t" << ii << "\t\t" << setprecision(15) << ene_orb[ir][irrep_list(ir).size + ii - 1] << endl;
             }
             
             ene_scf = evaluateEnergy(twoC);
@@ -263,15 +314,16 @@ void DHF_SPH_CA::runSCF(const bool& twoC, const bool& renormSmall)
         for(int ir = 0; ir < occMax_irrep; ir += irrep_list(ir).two_j+1)    
         {
             int size_tmp = irrep_list(ir).size;
-            evaluateFock(fock_4c(ir),twoC,densityShells,size_tmp,ir);
-
-            eigensolverG(fock_4c(ir), overlap_half_i_4c(ir), ene_orb(ir), coeff(ir));
+            evaluateFock(fock_4c[ir],twoC,densityShells,size_tmp,ir);
+            vector<double> tmpV;
+            eigensolverG(fock_4c[ir], overlap_half_i_4c[ir], ene_orb[ir], tmpV, nbas[ir]);
+            coeff(ir) = vector2eigen(tmpV, nbas[ir]);
             for(int ii = 0; ii < NOpenShells+2; ii++)
             {
-                newDensityShells(ii)(ir) = evaluateDensity_aoc(coeff(ir),occNumberShells[ii](ir),twoC);
+                newDensityShells(ii)(ir) = evaluateDensity_aoc(coeff(ir),occNumberShells[ii][ir],twoC);
                 error4DIIS(ir,ii).push_back(evaluateErrorDIIS(densityShells(ii)(ir),newDensityShells(ii)(ir)));
             }
-            fock4DIIS[ir].push_back(fock_4c(ir));
+            fock4DIIS[ir].push_back(vector2eigen(fock_4c[ir], nbas[ir]));
     
             if(error4DIIS(ir,0).size() > size_DIIS)
             {
@@ -292,7 +344,7 @@ void DHF_SPH_CA::runSCF(const bool& twoC, const bool& renormSmall)
         {
             // fock_4c is not inlcuded here becaues the Fock matrix of AOC-SCF is not well-defined.
             // In 2e-PCC, fock_4c will be recalculated using AOC density matrix and methods in DHF_SPH.
-            ene_orb(ir+jj) = ene_orb(ir);
+            ene_orb[ir+jj] = ene_orb[ir];
             coeff(ir+jj) = coeff(ir);
             density(ir+jj) = density(ir);
             for(int ii = 0; ii < NOpenShells+2; ii++)
@@ -308,7 +360,7 @@ void DHF_SPH_CA::runSCF(const bool& twoC, const bool& renormSmall)
 /* 
     evaluate Fock matrix 
 */
-void DHF_SPH_CA::evaluateFock(MatrixXd& fock_c, const bool& twoC, const Matrix<vMatrixXd,-1,1>& densities, const int& size, const int& Iirrep)
+void DHF_SPH_CA::evaluateFock(vector<double>& fock_c, const bool& twoC, const Matrix<vMatrixXd,-1,1>& densities, const int& size, const int& Iirrep)
 {
     int ir = all2compact(Iirrep);
     vMatrixXd R(NOpenShells+2);
@@ -393,14 +445,17 @@ void DHF_SPH_CA::evaluateFock(MatrixXd& fock_c, const bool& twoC, const Matrix<v
         }
     }
 
-    fock_c = h1e_4c(Iirrep);
+    MatrixXd tmpF = vector2eigen(h1e_4c[Iirrep], Q(0).rows());
     for(int ii = 0; ii < NOpenShells+1; ii++)
     {
         if(ii != 0)
             Q(ii) = Q(ii)*f_list[ii-1];
-        fock_c += Q(ii);
+        tmpF += Q(ii);
     }
-    MatrixXd S = overlap_4c(Iirrep);
+    MatrixXd S(tmpF.rows(),tmpF.cols());
+    for(int ii = 0; ii < tmpF.rows(); ii++)
+    for(int jj = 0; jj < tmpF.rows(); jj++)
+        S(ii,jj) = overlap_4c[Iirrep][ii*tmpF.rows()+jj];
     MatrixXd LM;
     if(twoC)  LM = MatrixXd::Zero(size,size);
     else      LM = MatrixXd::Zero(2*size,2*size);
@@ -411,26 +466,10 @@ void DHF_SPH_CA::evaluateFock(MatrixXd& fock_c, const bool& twoC, const Matrix<v
         double a_u = MM_list[ii-1]*(NN_list[ii-1]-1.0)/NN_list[ii-1]/(MM_list[ii-1]-1.0);
         double alpha_u = (1-a_u)/(1-f_u);
         LM += S*R(ii)*Q(ii)*(alpha_u*f_u*R(0)+(a_u-1.0)*(0.5*R(ii)+R(NOpenShells+1)))*S;
-        // for(int jj = ii+1; jj < NOpenShells+1; jj++)
-        // {
-        //     double a_v = MM_list[jj-1]*(NN_list[jj-1]-1.0)/NN_list[jj-1]/(MM_list[jj-1]-1.0);
-        //     double f_v = f_list[jj-1];
-        //     if(abs(f_u-f_v) > 1e-4)
-        //     {
-        //         LM += S*R[ii]*( (a_u-1.0)/(f_u-f_v)*Q(ii) + (a_v-1.0)/(f_v-f_u)*Q(jj) ) *R(jj)*S;
-        //         // LM += S*R[ii]*( (a_u-1.0)/(f_u-f_v)*f_u*Q(ii) + (a_v-1.0)/(f_v-f_u)*f_v*Q(jj) ) *R(jj)*S;
-        //     }
-        //     else
-        //     {
-        //         auto tmp = S*R(ii)*(-fock_c + (a_u-1.0)*Q(ii) - (a_v-1.0)*Q(jj))*R(jj)*S;
-        //         // cout << tmp << endl << endl;
-        //         LM += tmp;
-        //         // LM += S*R(ii)*(-fock_c + (a_u-1.0)*Q(ii) - (a_v-1.0)*Q(jj))*R(jj)*S;
-        //         // LM += S*R(ii)*(-fock_c + (a_u-1.0)*f_u*Q(ii) - (a_v-1.0)*f_v*Q(jj))*R(jj)*S;
-        //     }
-        // }
     }
-    fock_c += LM + LM.adjoint();
+    tmpF += LM + LM.adjoint();
+
+    fock_c = eigen2vector(tmpF, tmpF.rows());
 }
 double DHF_SPH_CA::evaluateEnergy(const bool& twoC)
 {
@@ -520,7 +559,7 @@ double DHF_SPH_CA::evaluateEnergy(const bool& twoC)
             double f_i;
             if(ii == 0) f_i = 1.0;
             else f_i = f_list[ii-1];
-            MatrixXd fock_e = h1e_4c(Iirrep)+0.5*Q(0);
+            MatrixXd fock_e = vector2eigen(h1e_4c[Iirrep], Q(0).rows()) + 0.5*Q(0);
             for(int jj = 1; jj < NOpenShells+1; jj++)
             {
                 double f_j;

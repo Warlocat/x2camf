@@ -14,20 +14,23 @@ protected:
     VectorXi all2compact,compact2all;
     vMatrixXd overlap, kinetic, WWW, Vnuc;
     int2eJK h2eLLLL_JK, h2eSSLL_JK, h2eSSSS_JK, gauntLSLS_JK, gauntLSSL_JK;
-    vMatrixXd density, fock_4c, h1e_4c, overlap_4c, overlap_half_i_4c, x2cXXX, x2cRRR;
+    vMatrixXd density, x2cXXX, x2cRRR;
+    vVectorXd overlap_4c, overlap_half_i_4c, fock_4c, h1e_4c;
     vVectorXd norm_s;
     vVectorXd occNumber;
     double d_density, nelec;
     bool converged = false, renormalizedSmall = false, with_gaunt = false, with_gauge = false, X_calculated = false;
+    bool twoComponent = false;
     
     /* evaluate density martix */
     MatrixXd evaluateDensity_spinor(const MatrixXd& coeff_, const VectorXd& occNumber_, const bool& twoC = false);
+    MatrixXd evaluateDensity_spinor(const MatrixXd& coeff_, const vector<double>& occNumber_, const bool& twoC = false);
     vMatrixXd evaluateDensity_spinor_irrep(const bool& twoC = false);
     
-    MatrixXd evaluateErrorDIIS(const MatrixXd& fock_, const MatrixXd& overlap_, const MatrixXd& density_);
+    MatrixXd evaluateErrorDIIS(const vector<double>& fock_, const vector<double>& overlap_, const MatrixXd& density_, const int& N);
     MatrixXd evaluateErrorDIIS(const MatrixXd& den_old, const MatrixXd& den_new);
     /* solver for generalized eigen equation MC=SCE, s_h_i = S^{1/2} */
-    void eigensolverG_irrep(const vMatrixXd& inputM, const vMatrixXd& s_h_i, vVectorXd& values, vMatrixXd& vectors);
+    void eigensolverG_irrep(const vVectorXd& inputM, const vVectorXd& s_h_i, vVectorXd& values, vMatrixXd& vectors);
     double evaluateChange_irrep(const vMatrixXd& M1, const vMatrixXd& M2);
 
 public:
@@ -38,7 +41,6 @@ public:
     double convControl = 1e-8, ene_scf;
     vMatrixXd coeff;
     vVectorXd ene_orb;
-    VectorXd ene_orb_total;
 
     DHF_SPH(INT_SPH& int_sph_, const string& filename, const bool& spinFree = false, const bool& twoC = false, const bool& with_gaunt_ = false, const bool& with_gauge_ = false, const bool& allInt = false, const bool& gaussian_nuc = false);
     virtual ~DHF_SPH();
@@ -54,22 +56,22 @@ public:
     void setOCC(const string& filename, const string& atomName);
 
     /* evaluate Fock matrix */
-    void evaluateFock(MatrixXd& fock, const bool& twoC, const vMatrixXd& den, const int& size, const int& Iirrep);
+    void evaluateFock(vector<double>& fock, const bool& twoC, const vMatrixXd& den, const int& size, const int& Iirrep);
 
     /* x2c2e picture change */
     virtual vMatrixXd x2c2ePCC(vMatrixXd* coeff2c = NULL);
     vMatrixXd h_x2c2e(vMatrixXd* coeff2c = NULL);
-    void evaluateFock_2e(MatrixXd& fock, const bool& twoC, const vMatrixXd& den, const int& size, const int& Iirrep);
-    void evaluateFock_J(MatrixXd& fock, const bool& twoC, const vMatrixXd& den, const int& size, const int& Iirrep);
+    void evaluateFock_2e(vector<double>& fock, const bool& twoC, const vMatrixXd& den, const int& size, const int& Iirrep);
+    void evaluateFock_J(vector<double>& fock, const bool& twoC, const vMatrixXd& den, const int& size, const int& Iirrep);
 
     /* Get Coeff for basis set */
     vMatrixXd get_coeff_bs(const bool& twoC = true);
 
     /* Get private variables */
-    vMatrixXd get_fock_4c();
-    vMatrixXd get_fock_4c_2ePart();
-    vMatrixXd get_h1e_4c();
-    vMatrixXd get_overlap_4c();
+    vVectorXd get_fock_4c();
+    vVectorXd get_fock_4c_2ePart();
+    vVectorXd get_h1e_4c();
+    vVectorXd get_overlap_4c();
     vMatrixXd get_density();
     vVectorXd get_occNumber();
     vMatrixXd get_X();

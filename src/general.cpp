@@ -6,6 +6,7 @@
 #include<cmath>
 #include<complex>
 #include<omp.h>
+#include"mkl_itrf.h"
 #include"general.h"
 using namespace std;
 using namespace Eigen;
@@ -134,9 +135,9 @@ double evaluateChange(const MatrixXd& M1, const MatrixXd& M2)
 MatrixXd matrix_half_inverse(const MatrixXd& inputM)
 {
     int size = inputM.rows();
-    SelfAdjointEigenSolver<MatrixXd> solver(inputM);
-    VectorXd eigenvalues = solver.eigenvalues();
-    MatrixXd eigenvectors = solver.eigenvectors();
+    VectorXd eigenvalues;
+    MatrixXd eigenvectors;
+    eigh_d(inputM,size,eigenvalues,eigenvectors);
  
     for(int ii = 0; ii < size; ii++)
     {
@@ -162,13 +163,42 @@ MatrixXd matrix_half_inverse(const MatrixXd& inputM)
 
     return tmp; 
 }
+vector<double> matrix_half_inverse(const vector<double>& inputM, const int& N)
+{
+    vector<double> eigenvalues(N), eigenvectors(N*N);
+    eigh_d(inputM,N,eigenvalues,eigenvectors);
+ 
+    for(int ii = 0; ii < N; ii++)
+    {
+        if(eigenvalues[ii] < 0)
+        {
+            cout << "ERROR: Matrix has negative eigenvalues!" << endl;
+            exit(99);
+        }
+        else
+        {
+            eigenvalues[ii] = 1.0 / sqrt(eigenvalues[ii]);
+        }
+    }
+
+    vector<double> tmp(N*N);
+    for(int ii = 0; ii < N; ii++)
+    for(int jj = 0; jj < N; jj++)
+    {
+        tmp[ii*N+jj] = 0.0;
+        for(int kk = 0; kk < N; kk++)
+            tmp[ii*N+jj] += eigenvectors[ii*N+kk] * eigenvalues[kk] * eigenvectors[jj*N+kk];
+    }
+
+    return tmp; 
+}
 
 MatrixXd matrix_half(const MatrixXd& inputM)
 {
     int size = inputM.rows();
-    SelfAdjointEigenSolver<MatrixXd> solver(inputM);
-    VectorXd eigenvalues = solver.eigenvalues();
-    MatrixXd eigenvectors = solver.eigenvectors();
+    VectorXd eigenvalues;
+    MatrixXd eigenvectors;
+    eigh_d(inputM,size,eigenvalues,eigenvectors);
     
     for(int ii = 0; ii < size; ii++)
     {
@@ -193,15 +223,55 @@ MatrixXd matrix_half(const MatrixXd& inputM)
 
     return tmp;
 }
+vector<double> matrix_half(const vector<double>& inputM, const int& N)
+{
+    vector<double> eigenvalues(N), eigenvectors(N*N);
+    eigh_d(inputM,N,eigenvalues,eigenvectors);
+ 
+    for(int ii = 0; ii < N; ii++)
+    {
+        if(eigenvalues[ii] < 0)
+        {
+            cout << "ERROR: Matrix has negative eigenvalues!" << endl;
+            exit(99);
+        }
+        else
+        {
+            eigenvalues[ii] = sqrt(eigenvalues[ii]);
+        }
+    }
+
+    vector<double> tmp(N*N);
+    for(int ii = 0; ii < N; ii++)
+    for(int jj = 0; jj < N; jj++)
+    {
+        tmp[ii*N+jj] = 0.0;
+        for(int kk = 0; kk < N; kk++)
+            tmp[ii*N+jj] += eigenvectors[ii*N+kk] * eigenvalues[kk] * eigenvectors[jj*N+kk];
+    }
+
+    return tmp; 
+}
 
 
 void eigensolverG(const MatrixXd& inputM, const MatrixXd& s_h_i, VectorXd& values, MatrixXd& vectors)
 {
-    MatrixXd tmp = s_h_i * inputM * s_h_i;
-    
-    SelfAdjointEigenSolver<MatrixXd> solver(tmp);
-    values = solver.eigenvalues();
-    vectors = s_h_i * solver.eigenvectors();
+    int n = inputM.rows();
+    MatrixXd tmp1,tmp;
+    dgemm_itrf('n','n',n,n,n,1.0,s_h_i,inputM,0.0,tmp1);
+    dgemm_itrf('n','n',n,n,n,1.0,tmp1,s_h_i,0.0,tmp);
+    eigh_d(tmp,tmp.rows(),values,vectors);
+    vectors = s_h_i * vectors;
+
+    return;
+}
+void eigensolverG(const vector<double>& inputM, const vector<double>& s_h_i, vector<double>& values, vector<double>& vectors, const int& N)
+{
+    vector<double> tmp1,tmp;
+    dgemm_itrf('n','n',N,N,N,1.0,s_h_i,inputM,0.0,tmp1);
+    dgemm_itrf('n','n',N,N,N,1.0,tmp1,s_h_i,0.0,tmp);
+    eigh_d(tmp,N,values,tmp1);
+    dgemm_itrf('n','n',N,N,N,1.0,s_h_i,tmp1,0.0,vectors);
 
     return;
 }
@@ -265,6 +335,23 @@ vector<string> stringSplit(const string& flags, const char delimiter)
 }
 
 
+vector<double> eigen2vector(const MatrixXd& inputM, const int& N)
+{
+    vector<double> tmp(N*N);
+    for(int ii = 0; ii < N; ii++)
+    for(int jj = 0; jj < N; jj++)
+        tmp[ii*N+jj] = inputM(ii,jj);
+    return tmp;
+}
+MatrixXd vector2eigen(const vector<double>& inputM, const int& N)
+{
+    MatrixXd tmp(N,N);
+    for(int ii = 0; ii < N; ii++)
+    for(int jj = 0; jj < N; jj++)
+        tmp(ii,jj) = inputM[ii*N+jj];
+    return tmp;
+}
+
 /*
     Functions used in X2C
 */
@@ -314,6 +401,19 @@ MatrixXd X2C::get_X(const MatrixXd& coeff)
 
     return coeff_small * coeff_large.inverse();
 }
+MatrixXd X2C::get_X(const vector<double>& coeff, const int& N)
+{
+    int size = N/2;
+    MatrixXd coeff_large(size,size), coeff_small(size,size);
+    for(int ii = 0; ii < size; ii++)
+    for(int jj = 0; jj < size; jj++)
+    {
+        coeff_large(ii,jj) = coeff[ii*N+size+jj];
+        coeff_small(ii,jj) = coeff[(ii+size)*N+jj+size];
+    }
+
+    return coeff_small * coeff_large.inverse();
+}
 
 
 
@@ -338,6 +438,11 @@ MatrixXd X2C::get_R(const MatrixXd& S_4c, const MatrixXd& X_)
     MatrixXd tmp = matrix_half_inverse(S_h_i * S_tilde * S_h_i);
     return S_h_i * tmp * S_h;
 }
+MatrixXd X2C::get_R(const vector<double>& S_4c, const MatrixXd& X_, const int& N)
+{
+    MatrixXd SS = vector2eigen(S_4c, N);
+    return get_R(SS, X_);
+}
 
 MatrixXd X2C::evaluate_h1e_x2c(const MatrixXd& S_, const MatrixXd& T_, const MatrixXd& W_, const MatrixXd& V_)
 {
@@ -353,9 +458,10 @@ MatrixXd X2C::evaluate_h1e_x2c(const MatrixXd& S_, const MatrixXd& T_, const Mat
     return R_.transpose() *  h_eff * R_;
 }
 
-MatrixXd X2C::transform_4c_2c(const MatrixXd& M_4c, const MatrixXd XXX, const MatrixXd& RRR)
+MatrixXd X2C::transform_4c_2c(const vector<double>& M_4c_, const MatrixXd XXX, const MatrixXd& RRR)
 {
-    int size = M_4c.rows()/2;
+    int size = XXX.rows();
+    MatrixXd M_4c = vector2eigen(M_4c_, size*2);
     if(size*2 != M_4c.rows())
     {
         cout << "Incorrect input M_4c in transform_4c_2c with an odd size" << endl;

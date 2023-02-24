@@ -43,9 +43,9 @@ int main()
     {
         if(irrep_list(ir).l == l && irrep_list(ir).two_j == twoj)
         {
-            int n_tmp = n - 1 - l, n2c = mo_ene_sfx2c(ir).rows();
-            dc_sfx2c = mo_ene_dc(ir)(n2c + n_tmp) - mo_ene_sfx2c(ir)(n_tmp);
-            dcb_dc = mo_ene_dcb(ir)(n2c + n_tmp) - mo_ene_dc(ir)(n2c + n_tmp);
+            int n_tmp = n - 1 - l, n2c = mo_ene_sfx2c[ir].size();
+            dc_sfx2c = mo_ene_dc[ir][n2c + n_tmp] - mo_ene_sfx2c[ir][n_tmp];
+            dcb_dc = mo_ene_dcb[ir][n2c + n_tmp] - mo_ene_dc[ir][n2c + n_tmp];
             break;
         }
     }

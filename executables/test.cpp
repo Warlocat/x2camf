@@ -16,7 +16,6 @@ using namespace std;
 /* Global information */
 int charge, spin;
 string atomName, basisSet, flags, jobs;
-VectorXd occ;
 bool unc;
 
 /* Read input file and set global variables */

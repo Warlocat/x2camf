@@ -232,7 +232,7 @@ int2eJK INT_SPH::get_h2e_JK_gauge(const string& intType, const int& occMaxL) con
         LmaxJ[1] = min(l_p+l_p+2, l_q+l_q); LmaxK[1] = l_p+l_q  ; LminJ[1] = 1; LminK[1] = 1;
         LmaxJ[2] = min(l_p+l_p, l_q+l_q+2); LmaxK[2] = l_p+l_q  ; LminJ[2] = 1; LminK[2] = 1;
         LmaxJ[3] = min(l_p+l_p, l_q+l_q)  ; LmaxK[3] = l_p+l_q  ; LminJ[3] = 0; LminK[3] = 0;
-        int size_gtos_p = shell_list(pshell).coeff.rows(), size_gtos_q = shell_list(qshell).coeff.rows();
+        int size_gtos_p = shell_list(pshell).nunc, size_gtos_q = shell_list(qshell).nunc;
         int size_tmp_p = (l_p == 0) ? 1 : 2, size_tmp_q = (l_q == 0) ? 1 : 2;
         MatrixXd array_angular_Jmm[LmaxJ[0]-LminJ[0]+1][size_tmp_p][size_tmp_q], array_angular_Kmm[LmaxK[0]-LminK[0]+1][size_tmp_p][size_tmp_q];
         MatrixXd array_angular_Jmp[LmaxJ[1]-LminJ[1]+1][size_tmp_p][size_tmp_q], array_angular_Kmp[LmaxK[1]-LminK[1]+1][size_tmp_p][size_tmp_q];
@@ -413,8 +413,8 @@ int2eJK INT_SPH::get_h2e_JK_gauge(const string& intType, const int& occMaxL) con
             int ii = e1J/size_gtos_p, jj = e1J - ii*size_gtos_p;
             int kk = e2J/size_gtos_q, ll = e2J - kk*size_gtos_q;
             int e1K = ii*size_gtos_q+ll, e2K = kk*size_gtos_p+jj;
-            double a_i_J = shell_list(pshell).exp_a(ii), a_j_J = shell_list(pshell).exp_a(jj), a_k_J = shell_list(qshell).exp_a(kk), a_l_J = shell_list(qshell).exp_a(ll);
-            double a_i_K = shell_list(pshell).exp_a(ii), a_j_K = shell_list(qshell).exp_a(ll), a_k_K = shell_list(qshell).exp_a(kk), a_l_K = shell_list(pshell).exp_a(jj);
+            double a_i_J = shell_list(pshell).exp_a[ii], a_j_J = shell_list(pshell).exp_a[jj], a_k_J = shell_list(qshell).exp_a[kk], a_l_J = shell_list(qshell).exp_a[ll];
+            double a_i_K = shell_list(pshell).exp_a[ii], a_j_K = shell_list(qshell).exp_a[ll], a_k_K = shell_list(qshell).exp_a[kk], a_l_K = shell_list(pshell).exp_a[jj];
         
             if(intType.substr(0,4) == "LSLS")
             {
@@ -595,8 +595,8 @@ int2eJK INT_SPH::get_h2e_JK_gauge(const string& intType, const int& occMaxL) con
                 int index_tmp_q = (l_q > 0) ? 1 - (2*l_q+1 - twojj_q)/2 : 0;
                 int sym_ap = twojj_p - 2*l_p, sym_aq = twojj_q - 2*l_q;
                 double k_p = -(twojj_p+1.0)*sym_ap/2.0, k_q = -(twojj_q+1.0)*sym_aq/2.0;
-                double norm_J = shell_list(pshell).norm(ii) * shell_list(pshell).norm(jj) * shell_list(qshell).norm(kk) * shell_list(qshell).norm(ll), norm_K = shell_list(pshell).norm(ii) * shell_list(qshell).norm(ll) * shell_list(qshell).norm(kk) * shell_list(pshell).norm(jj);
-                double lk1 = 1+l_p+k_p, lk2 = 1+l_p+k_p, lk3 = 1+l_q+k_q, lk4 = 1+l_q+k_q, a1 = shell_list(pshell).exp_a(ii), a2 = shell_list(pshell).exp_a(jj), a3 = shell_list(qshell).exp_a(kk), a4 = shell_list(qshell).exp_a(ll);
+                double norm_J = shell_list(pshell).norm[ii] * shell_list(pshell).norm[jj] * shell_list(qshell).norm[kk] * shell_list(qshell).norm[ll], norm_K = shell_list(pshell).norm[ii] * shell_list(qshell).norm[ll] * shell_list(qshell).norm[kk] * shell_list(pshell).norm[jj];
+                double lk1 = 1+l_p+k_p, lk2 = 1+l_p+k_p, lk3 = 1+l_q+k_q, lk4 = 1+l_q+k_q, a1 = shell_list(pshell).exp_a[ii], a2 = shell_list(pshell).exp_a[jj], a3 = shell_list(qshell).exp_a[kk], a4 = shell_list(qshell).exp_a[ll];
 
                 for(int LL = LmaxJ[0]-LminJ[0]; LL >= 0; LL-=2)
                 {
@@ -651,7 +651,7 @@ int2eJK INT_SPH::get_h2e_JK_gauge(const string& intType, const int& occMaxL) con
                     }
                 }
                 lk2 = 1+l_q+k_q; lk4 = 1+l_p+k_p; 
-                a2 = shell_list(qshell).exp_a(ll); a4 = shell_list(pshell).exp_a(jj);
+                a2 = shell_list(qshell).exp_a[ll]; a4 = shell_list(pshell).exp_a[jj];
                 for(int LL = LmaxK[0]-LminK[0]; LL >= 0; LL-=2)
                 {
                     if(intType == "LSLS")
@@ -811,7 +811,7 @@ int2eJK INT_SPH::get_h2e_JK_gauge_compact(const string& intType, const int& occM
         // LmaxJ[2] = 1;
         // LmaxJ[3] = 0;
         double radial;
-        int size_gtos_p = shell_list(pshell).coeff.rows(), size_gtos_q = shell_list(qshell).coeff.rows();
+        int size_gtos_p = shell_list(pshell).nunc, size_gtos_q = shell_list(qshell).nunc;
         int size_tmp_p = (l_p == 0) ? 1 : 2, size_tmp_q = (l_q == 0) ? 1 : 2;
         double array_angular_Jmm[LmaxJ[0]-LminJ[0]+1][size_tmp_p][size_tmp_q], array_angular_Kmm[LmaxK[0]-LminK[0]+1][size_tmp_p][size_tmp_q];
         double array_angular_Jmp[LmaxJ[1]-LminJ[1]+1][size_tmp_p][size_tmp_q], array_angular_Kmp[LmaxK[1]-LminK[1]+1][size_tmp_p][size_tmp_q];
@@ -834,8 +834,8 @@ int2eJK INT_SPH::get_h2e_JK_gauge_compact(const string& intType, const int& occM
             int ii = e1J/size_gtos_p, jj = e1J - ii*size_gtos_p;
             int kk = e2J/size_gtos_q, ll = e2J - kk*size_gtos_q;
             int e1K = ii*size_gtos_q+ll, e2K = kk*size_gtos_p+jj;
-            double a_i_J = shell_list(pshell).exp_a(ii), a_j_J = shell_list(pshell).exp_a(jj), a_k_J = shell_list(qshell).exp_a(kk), a_l_J = shell_list(qshell).exp_a(ll);
-            double a_i_K = shell_list(pshell).exp_a(ii), a_j_K = shell_list(qshell).exp_a(ll), a_k_K = shell_list(qshell).exp_a(kk), a_l_K = shell_list(pshell).exp_a(jj);
+            double a_i_J = shell_list(pshell).exp_a[ii], a_j_J = shell_list(pshell).exp_a[jj], a_k_J = shell_list(qshell).exp_a[kk], a_l_J = shell_list(qshell).exp_a[ll];
+            double a_i_K = shell_list(pshell).exp_a[ii], a_j_K = shell_list(qshell).exp_a[ll], a_k_K = shell_list(qshell).exp_a[kk], a_l_K = shell_list(pshell).exp_a[jj];
         
             if(intType.substr(0,4) == "LSLS")
             {
@@ -1170,8 +1170,8 @@ int2eJK INT_SPH::get_h2e_JK_gauge_compact(const string& intType, const int& occM
                 int ii = e1J/size_gtos_p, jj = e1J - ii*size_gtos_p;
                 int kk = e2J/size_gtos_q, ll = e2J - kk*size_gtos_q;
                 int e1K = ii*size_gtos_q+ll, e2K = kk*size_gtos_p+jj;
-                double norm_J = shell_list(pshell).norm(ii) * shell_list(pshell).norm(jj) * shell_list(qshell).norm(kk) * shell_list(qshell).norm(ll), norm_K = shell_list(pshell).norm(ii) * shell_list(qshell).norm(ll) * shell_list(qshell).norm(kk) * shell_list(pshell).norm(jj);
-                double lk1 = 1+l_p+k_p, lk2 = 1+l_p+k_p, lk3 = 1+l_q+k_q, lk4 = 1+l_q+k_q, a1 = shell_list(pshell).exp_a(ii), a2 = shell_list(pshell).exp_a(jj), a3 = shell_list(qshell).exp_a(kk), a4 = shell_list(qshell).exp_a(ll);
+                double norm_J = shell_list(pshell).norm[ii] * shell_list(pshell).norm[jj] * shell_list(qshell).norm[kk] * shell_list(qshell).norm[ll], norm_K = shell_list(pshell).norm[ii] * shell_list(qshell).norm[ll] * shell_list(qshell).norm[kk] * shell_list(pshell).norm[jj];
+                double lk1 = 1+l_p+k_p, lk2 = 1+l_p+k_p, lk3 = 1+l_q+k_q, lk4 = 1+l_q+k_q, a1 = shell_list(pshell).exp_a[ii], a2 = shell_list(pshell).exp_a[jj], a3 = shell_list(qshell).exp_a[kk], a4 = shell_list(qshell).exp_a[ll];
 
                 int_2e_JK.J[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q][e1J][e2J] = 0.0;
                 int_2e_JK.K[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q][e1K][e2K] = 0.0;
@@ -1233,7 +1233,7 @@ int2eJK INT_SPH::get_h2e_JK_gauge_compact(const string& intType, const int& occM
                     int_2e_JK.J[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q][e1J][e2J] += radial * array_angular_Jpp[LL][int_tmp2_p][int_tmp2_q];
                 }
                 lk2 = 1+l_q+k_q; lk4 = 1+l_p+k_p; 
-                a2 = shell_list(qshell).exp_a(ll); a4 = shell_list(pshell).exp_a(jj);
+                a2 = shell_list(qshell).exp_a[ll]; a4 = shell_list(pshell).exp_a[jj];
                 for(int LL = LmaxK[0]-LminK[0]; LL >= 0; LL-=2)
                 {
                     if(intType == "LSLS")

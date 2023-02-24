@@ -17,8 +17,9 @@ private:
     Matrix<vMatrixXd,-1,1> densityShells;
     
     MatrixXd evaluateDensity_aoc(const MatrixXd& coeff_, const VectorXd& occNumber_, const bool& twoC);
+    MatrixXd evaluateDensity_aoc(const MatrixXd& coeff_, const vector<double>& occNumber_, const bool& twoC);
     /* evaluate fock matrix */
-    void evaluateFock(MatrixXd& fock, const bool& twoC, const Matrix<vMatrixXd,-1,1>& densities, const int& size, const int& Iirrep);
+    void evaluateFock(vector<double>& fock, const bool& twoC, const Matrix<vMatrixXd,-1,1>& densities, const int& size, const int& Iirrep);
     double evaluateEnergy(const bool& twoC);
 
 public:

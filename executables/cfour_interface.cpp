@@ -191,6 +191,8 @@ int main()
         F_INTERFACE::wfile_("X2CATMXM",(double*)XAll,&sizeAllReal);
         F_INTERFACE::wfile_("X2CATMDR",(double*)drAll,&sizeAll2);
         F_INTERFACE::wfile_("X2CATMDI",(double*)diAll,&sizeAll2);
+        F_INTERFACE::prvecr_((double*)amfiAll,&sizeAllReal);
+        F_INTERFACE::prvecr_((double*)XAll,&sizeAllReal);
     }
     else
     {

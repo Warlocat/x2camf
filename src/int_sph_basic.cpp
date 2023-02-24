@@ -89,19 +89,24 @@ atomNumber(atom_number), size_gtoc(nbas), size_gtou(nbas), size_shell(nshell)
 
     size_gtoc = 0;
     size_gtou = 0;
-    for (int ishell = 0; ishell < size_shell; ishell++) {
+    for (int ishell = 0; ishell < size_shell; ishell++) 
+    {
+        int nunc = orbitalInfo(2,ishell), ncon = orbitalInfo(1,ishell);
         size_gtou += (2 * orbitalInfo(0,ishell) + 1) * orbitalInfo(2,ishell);
         size_gtoc += (2 * orbitalInfo(0,ishell) + 1) * orbitalInfo(1,ishell);
         shell_list(ishell).l = orbitalInfo(0,ishell);
-        shell_list(ishell).coeff.resize(orbitalInfo(2,ishell),orbitalInfo(1,ishell));
+        shell_list(ishell).ncon = ncon;
+        shell_list(ishell).nunc = nunc;
+        
+        shell_list(ishell).coeff.resize(orbitalInfo(2,ishell)*orbitalInfo(1,ishell));
         shell_list(ishell).exp_a.resize(orbitalInfo(2,ishell));
         shell_list(ishell).norm.resize(orbitalInfo(2,ishell));
         int offset = accumu[ishell];
         for (int ii = 0; ii < orbitalInfo(2, ishell); ii++)
         {
-            shell_list(ishell).exp_a(ii) = exp_a(ii + offset);
-            shell_list(ishell).coeff(ii, ii) = 1.0; // assumes only uncontracted basis given.
-            shell_list(ishell).norm(ii) = sqrt(auxiliary_1e(2*shell_list(ishell).l + 2, 2 * shell_list(ishell).exp_a(ii)));
+            shell_list(ishell).exp_a[ii] = exp_a(ii + offset);
+            shell_list(ishell).coeff[ii*ncon+ii] = 1.0; // assumes only uncontracted basis given.
+            shell_list(ishell).norm[ii] = sqrt(auxiliary_1e(2*shell_list(ishell).l + 2, 2 * shell_list(ishell).exp_a[ii]));
         }
     }
 }
@@ -203,22 +208,25 @@ void INT_SPH::readBasis()
             size_gtou = 0;
             for(int ishell = 0; ishell < size_shell; ishell++)
             {
+                int nunc = orbitalInfo(2,ishell), ncon = orbitalInfo(1,ishell);
                 size_gtou += (2 * orbitalInfo(0,ishell) + 1) * orbitalInfo(2,ishell);
                 size_gtoc += (2 * orbitalInfo(0,ishell) + 1) * orbitalInfo(1,ishell);
                 shell_list(ishell).l = orbitalInfo(0,ishell);
-                shell_list(ishell).coeff.resize(orbitalInfo(2,ishell),orbitalInfo(1,ishell));
+                shell_list(ishell).ncon = ncon;
+                shell_list(ishell).nunc = nunc;
+
+                shell_list(ishell).coeff.resize(orbitalInfo(2,ishell)*orbitalInfo(1,ishell));
                 shell_list(ishell).exp_a.resize(orbitalInfo(2,ishell));
                 shell_list(ishell).norm.resize(orbitalInfo(2,ishell));
                 for(int ii = 0; ii < orbitalInfo(2,ishell); ii++)   
                 {    
-                    ifs >> shell_list(ishell).exp_a(ii);
-                    shell_list(ishell).norm(ii) = sqrt(auxiliary_1e(2*shell_list(ishell).l + 2, 2 * shell_list(ishell).exp_a(ii)));
+                    ifs >> shell_list(ishell).exp_a[ii];
+                    shell_list(ishell).norm[ii] = sqrt(auxiliary_1e(2*shell_list(ishell).l + 2, 2 * shell_list(ishell).exp_a[ii]));
                 }
                 for(int ii = 0; ii < orbitalInfo(2,ishell); ii++)
                 for(int jj = 0; jj < orbitalInfo(1,ishell); jj++)
                 {
-                    ifs >> shell_list(ishell).coeff(ii,jj);
-                    // shell_list(ishell).coeff(ii,jj) = shell_list(ishell).coeff(ii,jj) / sqrt(auxiliary_1e(2*shell_list(ishell).l + 2, 2 * shell_list(ishell).exp_a(ii)));
+                    ifs >> shell_list(ishell).coeff[ncon*ii+jj];
                 }
             }
         }       
@@ -233,23 +241,23 @@ void INT_SPH::normalization()
 {
     for(int ishell = 0; ishell < size_shell; ishell++)
     {
-        int size_gtos = shell_list(ishell).coeff.rows();
+        int size_gtos = shell_list(ishell).nunc;
         MatrixXd norm_single_shell(size_gtos, size_gtos);
         for(int ii = 0; ii < size_gtos; ii++)
         for(int jj = 0; jj < size_gtos; jj++)
         {
-            norm_single_shell(ii,jj) = auxiliary_1e(2+2*shell_list(ishell).l, shell_list(ishell).exp_a(ii)+shell_list(ishell).exp_a(jj)) / shell_list(ishell).norm(ii) / shell_list(ishell).norm(jj);
+            norm_single_shell(ii,jj) = auxiliary_1e(2+2*shell_list(ishell).l, shell_list(ishell).exp_a[ii]+shell_list(ishell).exp_a[jj]) / shell_list(ishell).norm[ii] / shell_list(ishell).norm[jj];
         }
-        for(int subshell = 0; subshell < shell_list(ishell).coeff.cols(); subshell++)
+        for(int subshell = 0; subshell < shell_list(ishell).ncon; subshell++)
         {
             double tmp = 0.0;
             for(int ii = 0; ii < size_gtos; ii++)
             for(int jj = 0; jj < size_gtos; jj++)
             {
-                tmp += shell_list(ishell).coeff(ii,subshell) * shell_list(ishell).coeff(jj,subshell) * norm_single_shell(ii,jj);
+                tmp += shell_list(ishell).coeff[ii*shell_list(ishell).ncon+subshell] * shell_list(ishell).coeff[jj*shell_list(ishell).ncon+subshell] * norm_single_shell(ii,jj);
             }
             for(int ii = 0; ii < size_gtos; ii++)
-                shell_list(ishell).coeff(ii,subshell) = shell_list(ishell).coeff(ii,subshell) / sqrt(tmp);
+                shell_list(ishell).coeff[ii*shell_list(ishell).ncon+subshell] = shell_list(ishell).coeff[ii*shell_list(ishell).ncon+subshell] / sqrt(tmp);
         }
     }
     return;
@@ -587,7 +595,7 @@ MatrixXd INT_SPH::get_coeff_contraction_spinor()
     for(int ishell = 0; ishell < size_shell; ishell++)
     {
         int ll = shell_list(ishell).l;
-        int size_con = shell_list(ishell).coeff.cols(), size_unc = shell_list(ishell).coeff.rows();
+        int size_con = shell_list(ishell).ncon, size_unc = shell_list(ishell).nunc;
         int_tmp3 = 0;
         for(int twojj = abs(2*ll-1); twojj <= 2*ll+1; twojj = twojj + 2)
         {
@@ -597,7 +605,7 @@ MatrixXd INT_SPH::get_coeff_contraction_spinor()
                 {
                     for(int jj = 0; jj < size_unc; jj++)
                     {    
-                        coeff(int_tmp2 + int_tmp3 + jj*(twojj+1) + mm, int_tmp1) = shell_list(ishell).coeff(jj,ii);
+                        coeff(int_tmp2 + int_tmp3 + jj*(twojj+1) + mm, int_tmp1) = shell_list(ishell).coeff[jj*size_con+ii];
                     }
                     int_tmp1 += 1;
                 }
@@ -658,7 +666,7 @@ int2eJK INT_SPH::compact_h2e(const int2eJK& h2eFull, const Matrix<irrep_jm, Dyna
     {
         int l_q = shell_list(qshell).l;
         int l_p_cycle = (l_p == 0) ? 1 : 2, l_q_cycle = (l_q == 0) ? 1 : 2;
-        int size_gtos_p = shell_list(pshell).coeff.rows(), size_gtos_q = shell_list(qshell).coeff.rows();
+        int size_gtos_p = shell_list(pshell).nunc, size_gtos_q = shell_list(qshell).nunc;
         int size_tmp_p = (l_p == 0) ? 1 : 2, size_tmp_q = (l_q == 0) ? 1 : 2;
         
         for(int twojj_p = abs(2*l_p-1); twojj_p <= 2*l_p+1; twojj_p = twojj_p + 2)
