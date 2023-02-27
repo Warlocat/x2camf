@@ -112,8 +112,8 @@ int main()
         XUnique.push_back(real2complex(Rotate::unite_irrep(scfer->get_X(), intor.irrep_list)));
         denUnique.push_back(real2complex(Rotate::unite_irrep(scfer->get_density(), intor.irrep_list)));
         
-        vectorcd tmp = Rotate::jspinor2cfour_interface_old(intor.irrep_list);
-        // vectorcd tmp = Rotate::jspinor2cfour_interface_new(intor.irrep_list);
+        // vectorcd tmp = Rotate::jspinor2cfour_interface_old(intor.irrep_list);
+        vectorcd tmp = Rotate::jspinor2cfour_interface_new(intor.irrep_list);
         vectorcd tmp1;
 
         int NN = round(sqrt(tmp.size()));
