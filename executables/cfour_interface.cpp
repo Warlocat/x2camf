@@ -1,7 +1,6 @@
 #include<iostream>
 #include<fstream>
 #include<string>
-#include<Eigen/Dense>
 #include<iomanip>
 #include<cmath>
 #include<ctime>
@@ -11,7 +10,7 @@
 #include"dhf_sph.h"
 #include"dhf_sph_ca.h"
 #include"finterface.h"
-using namespace Eigen;
+#include"mkl_itrf.h"
 using namespace std;
 
 void readZMAT(const string& filename, vector<string>& atoms, vector<string>& basis, vector<bool>& amfiMethod, double& SCFconv);
@@ -75,7 +74,7 @@ int main()
         cout << endl << endl;
     }
 
-    vector<MatrixXcd> amfiUnique, XUnique, denUnique;
+    vector<vectorcd> amfiUnique, XUnique, denUnique;
     for(int ii = 0; ii < atomListUnique.size(); ii++)
     {
         INT_SPH intor(atomListUnique[ii],basisListUnique[ii]);
@@ -106,20 +105,26 @@ int main()
         }
         
         if(amfiMethod[3])
-            amfiUnique.push_back(Rotate::unite_irrep(scfer->x2c2ePCC(),intor.irrep_list)); // for 2e-pcc test
+            amfiUnique.push_back(real2complex(Rotate::unite_irrep(scfer->x2c2ePCC(),intor.irrep_list))); // for 2e-pcc test
         else
-            amfiUnique.push_back(Rotate::unite_irrep(scfer->get_amfi_unc(intor,twoC), intor.irrep_list));
+            amfiUnique.push_back(real2complex(Rotate::unite_irrep(scfer->get_amfi_unc(intor,twoC), intor.irrep_list)));
 
-        XUnique.push_back(Rotate::unite_irrep(scfer->get_X(), intor.irrep_list));
-        denUnique.push_back(Rotate::unite_irrep(scfer->get_density(), intor.irrep_list));
+        XUnique.push_back(real2complex(Rotate::unite_irrep(scfer->get_X(), intor.irrep_list)));
+        denUnique.push_back(real2complex(Rotate::unite_irrep(scfer->get_density(), intor.irrep_list)));
         
-        MatrixXcd tmp = Rotate::jspinor2cfour_interface_old(intor.irrep_list);
-        // MatrixXcd tmp = Rotate::jspinor2cfour_interface_new(intor.irrep_list);
-        amfiUnique[ii] = tmp.adjoint() * amfiUnique[ii] * tmp;
+        vectorcd tmp = Rotate::jspinor2cfour_interface_old(intor.irrep_list);
+        // vectorcd tmp = Rotate::jspinor2cfour_interface_new(intor.irrep_list);
+        vectorcd tmp1;
+
+        int NN = round(sqrt(tmp.size()));
+        zgemm_itrf('c','n',NN,NN,NN,one_cp,tmp,amfiUnique[ii],zero_cp,tmp1);
+        zgemm_itrf('n','n',NN,NN,NN,one_cp,tmp1,tmp,zero_cp,amfiUnique[ii]);
         amfiUnique[ii] = Rotate::separate2mCompact(amfiUnique[ii],intor.irrep_list);
-        XUnique[ii] = tmp.adjoint() * XUnique[ii] * tmp;
+        zgemm_itrf('c','n',NN,NN,NN,one_cp,tmp,XUnique[ii],zero_cp,tmp1);
+        zgemm_itrf('n','n',NN,NN,NN,one_cp,tmp1,tmp,zero_cp,XUnique[ii]);
         XUnique[ii] = Rotate::separate2mCompact(XUnique[ii],intor.irrep_list);
-        denUnique[ii] = tmp.adjoint() * denUnique[ii] * tmp;
+        zgemm_itrf('c','n',NN,NN,NN,one_cp,tmp,denUnique[ii],zero_cp,tmp1);
+        zgemm_itrf('n','n',NN,NN,NN,one_cp,tmp1,tmp,zero_cp,denUnique[ii]);
         denUnique[ii] = Rotate::separate2mCompact(denUnique[ii],intor.irrep_list);
 
         delete scfer;
@@ -127,9 +132,11 @@ int main()
 
     cout << "Constructing amfso integrals...." << endl;
     int sizeAll = 0, int_tmp = 0;
+    vector<int> sizeList(atomList.size());
     for(int ii = 0; ii < atomList.size(); ii++)
     {
-        sizeAll += amfiUnique[indexList[ii]].rows();
+        sizeList[ii] = round(sqrt(amfiUnique[indexList[ii]].size()));
+        sizeAll += sizeList[ii];
     }
     int sizeAll2 = sizeAll*sizeAll, sizeHalf = sizeAll/2;
     F_INTERFACE::f_dcomplex amfiAll[sizeAll*sizeAll], XAll[sizeAll*sizeAll];
@@ -145,41 +152,40 @@ int main()
     }
     for(int ii = 0; ii < atomList.size(); ii++)
     {
-        int size_tmp_half = amfiUnique[indexList[ii]].rows()/2;
+        int size_tmp_half = sizeList[ii]/2;
         for(int mm = 0; mm < size_tmp_half; mm++)
         for(int nn = 0; nn < size_tmp_half; nn++)
         {
             // transpose for Fortran interface
             // separate alpha and beta
-            amfiAll[(int_tmp+mm)*sizeAll + int_tmp+nn].dr = amfiUnique[indexList[ii]](nn,mm).real();
-            amfiAll[(int_tmp+mm)*sizeAll + int_tmp+nn].di = amfiUnique[indexList[ii]](nn,mm).imag();
-            amfiAll[(int_tmp+mm+sizeHalf)*sizeAll + int_tmp+nn].dr = amfiUnique[indexList[ii]](nn,size_tmp_half+mm).real();
-            amfiAll[(int_tmp+mm+sizeHalf)*sizeAll + int_tmp+nn].di = amfiUnique[indexList[ii]](nn,size_tmp_half+mm).imag();
-            amfiAll[(int_tmp+mm)*sizeAll + int_tmp+nn+sizeHalf].dr = amfiUnique[indexList[ii]](size_tmp_half+nn,mm).real();
-            amfiAll[(int_tmp+mm)*sizeAll + int_tmp+nn+sizeHalf].di = amfiUnique[indexList[ii]](size_tmp_half+nn,mm).imag();
-            amfiAll[(int_tmp+mm+sizeHalf)*sizeAll + int_tmp+nn+sizeHalf].dr = amfiUnique[indexList[ii]](size_tmp_half+nn,size_tmp_half+mm).real();
-            amfiAll[(int_tmp+mm+sizeHalf)*sizeAll + int_tmp+nn+sizeHalf].di = amfiUnique[indexList[ii]](size_tmp_half+nn,size_tmp_half+mm).imag();
+            amfiAll[(int_tmp+mm)*sizeAll + int_tmp+nn].dr = amfiUnique[indexList[ii]][nn*sizeList[ii]+mm].real();
+            amfiAll[(int_tmp+mm)*sizeAll + int_tmp+nn].di = amfiUnique[indexList[ii]][nn*sizeList[ii]+mm].imag();
+            amfiAll[(int_tmp+mm+sizeHalf)*sizeAll + int_tmp+nn].dr = amfiUnique[indexList[ii]][nn*sizeList[ii]+size_tmp_half+mm].real();
+            amfiAll[(int_tmp+mm+sizeHalf)*sizeAll + int_tmp+nn].di = amfiUnique[indexList[ii]][nn*sizeList[ii]+size_tmp_half+mm].imag();
+            amfiAll[(int_tmp+mm)*sizeAll + int_tmp+nn+sizeHalf].dr = amfiUnique[indexList[ii]][(size_tmp_half+nn)*sizeList[ii]+mm].real();
+            amfiAll[(int_tmp+mm)*sizeAll + int_tmp+nn+sizeHalf].di = amfiUnique[indexList[ii]][(size_tmp_half+nn)*sizeList[ii]+mm].imag();
+            amfiAll[(int_tmp+mm+sizeHalf)*sizeAll + int_tmp+nn+sizeHalf].dr = amfiUnique[indexList[ii]][(size_tmp_half+nn)*sizeList[ii]+size_tmp_half+mm].real();
+            amfiAll[(int_tmp+mm+sizeHalf)*sizeAll + int_tmp+nn+sizeHalf].di = amfiUnique[indexList[ii]][(size_tmp_half+nn)*sizeList[ii]+size_tmp_half+mm].imag();
 
-            XAll[(int_tmp+mm)*sizeAll + int_tmp+nn].dr = XUnique[indexList[ii]](nn,mm).real();
-            XAll[(int_tmp+mm)*sizeAll + int_tmp+nn].di = XUnique[indexList[ii]](nn,mm).imag();
-            XAll[(int_tmp+mm+sizeHalf)*sizeAll + int_tmp+nn].dr = XUnique[indexList[ii]](nn,size_tmp_half+mm).real();
-            XAll[(int_tmp+mm+sizeHalf)*sizeAll + int_tmp+nn].di = XUnique[indexList[ii]](nn,size_tmp_half+mm).imag();
-            XAll[(int_tmp+mm)*sizeAll + int_tmp+nn+sizeHalf].dr = XUnique[indexList[ii]](size_tmp_half+nn,mm).real();
-            XAll[(int_tmp+mm)*sizeAll + int_tmp+nn+sizeHalf].di = XUnique[indexList[ii]](size_tmp_half+nn,mm).imag();
-            XAll[(int_tmp+mm+sizeHalf)*sizeAll + int_tmp+nn+sizeHalf].dr = XUnique[indexList[ii]](size_tmp_half+nn,size_tmp_half+mm).real();
-            XAll[(int_tmp+mm+sizeHalf)*sizeAll + int_tmp+nn+sizeHalf].di = XUnique[indexList[ii]](size_tmp_half+nn,size_tmp_half+mm).imag();
+            XAll[(int_tmp+mm)*sizeAll + int_tmp+nn].dr = XUnique[indexList[ii]][nn*sizeList[ii]+mm].real();
+            XAll[(int_tmp+mm)*sizeAll + int_tmp+nn].di = XUnique[indexList[ii]][nn*sizeList[ii]+mm].imag();
+            XAll[(int_tmp+mm+sizeHalf)*sizeAll + int_tmp+nn].dr = XUnique[indexList[ii]][nn*sizeList[ii]+size_tmp_half+mm].real();
+            XAll[(int_tmp+mm+sizeHalf)*sizeAll + int_tmp+nn].di = XUnique[indexList[ii]][nn*sizeList[ii]+size_tmp_half+mm].imag();
+            XAll[(int_tmp+mm)*sizeAll + int_tmp+nn+sizeHalf].dr = XUnique[indexList[ii]][(size_tmp_half+nn)*sizeList[ii]+mm].real();
+            XAll[(int_tmp+mm)*sizeAll + int_tmp+nn+sizeHalf].di = XUnique[indexList[ii]][(size_tmp_half+nn)*sizeList[ii]+mm].imag();
+            XAll[(int_tmp+mm+sizeHalf)*sizeAll + int_tmp+nn+sizeHalf].dr = XUnique[indexList[ii]][(size_tmp_half+nn)*sizeList[ii]+size_tmp_half+mm].real();
+            XAll[(int_tmp+mm+sizeHalf)*sizeAll + int_tmp+nn+sizeHalf].di = XUnique[indexList[ii]][(size_tmp_half+nn)*sizeList[ii]+size_tmp_half+mm].imag();
 
-            drAll[(int_tmp+mm)*sizeAll + int_tmp+nn] = denUnique[indexList[ii]](nn,mm).real();
-            drAll[(int_tmp+mm+sizeHalf)*sizeAll + int_tmp+nn] = denUnique[indexList[ii]](nn,size_tmp_half+mm).real();
-            drAll[(int_tmp+mm)*sizeAll + int_tmp+nn+sizeHalf] = denUnique[indexList[ii]](size_tmp_half+nn,mm).real();
-            drAll[(int_tmp+mm+sizeHalf)*sizeAll + int_tmp+nn+sizeHalf] = denUnique[indexList[ii]](size_tmp_half+nn,size_tmp_half+mm).real();
-
-            diAll[(int_tmp+mm)*sizeAll + int_tmp+nn] = denUnique[indexList[ii]](nn,mm).imag();
-            diAll[(int_tmp+mm+sizeHalf)*sizeAll + int_tmp+nn] = denUnique[indexList[ii]](nn,size_tmp_half+mm).imag();
-            diAll[(int_tmp+mm)*sizeAll + int_tmp+nn+sizeHalf] = denUnique[indexList[ii]](size_tmp_half+nn,mm).imag();
-            diAll[(int_tmp+mm+sizeHalf)*sizeAll + int_tmp+nn+sizeHalf] = denUnique[indexList[ii]](size_tmp_half+nn,size_tmp_half+mm).imag();
+            drAll[(int_tmp+mm)*sizeAll + int_tmp+nn] = denUnique[indexList[ii]][nn*sizeList[ii]+mm].real();
+            diAll[(int_tmp+mm)*sizeAll + int_tmp+nn] = denUnique[indexList[ii]][nn*sizeList[ii]+mm].imag();
+            drAll[(int_tmp+mm+sizeHalf)*sizeAll + int_tmp+nn] = denUnique[indexList[ii]][nn*sizeList[ii]+size_tmp_half+mm].real();
+            diAll[(int_tmp+mm+sizeHalf)*sizeAll + int_tmp+nn] = denUnique[indexList[ii]][nn*sizeList[ii]+size_tmp_half+mm].imag();
+            drAll[(int_tmp+mm)*sizeAll + int_tmp+nn+sizeHalf] = denUnique[indexList[ii]][(size_tmp_half+nn)*sizeList[ii]+mm].real();
+            diAll[(int_tmp+mm)*sizeAll + int_tmp+nn+sizeHalf] = denUnique[indexList[ii]][(size_tmp_half+nn)*sizeList[ii]+mm].imag();
+            drAll[(int_tmp+mm+sizeHalf)*sizeAll + int_tmp+nn+sizeHalf] = denUnique[indexList[ii]][(size_tmp_half+nn)*sizeList[ii]+size_tmp_half+mm].real();
+            diAll[(int_tmp+mm+sizeHalf)*sizeAll + int_tmp+nn+sizeHalf] = denUnique[indexList[ii]][(size_tmp_half+nn)*sizeList[ii]+size_tmp_half+mm].imag();
         }
-        int_tmp += amfiUnique[indexList[ii]].rows()/2;
+        int_tmp += sizeList[ii]/2;
     }
 
     int sizeAllReal = 2*sizeAll2;
@@ -207,16 +213,16 @@ int main()
         int_tmp = 0;
         for(int ii = 0; ii < atomList.size(); ii++)
         {
-            int size_tmp_half = amfiUnique[indexList[ii]].rows()/2;
+            int size_tmp_half = sizeList[ii]/2;
             for(int mm = 0; mm < size_tmp_half; mm++)
             for(int nn = 0; nn < size_tmp_half; nn++)
             {
                 // separate X, Y, Z components
-                amfiZ[(int_tmp+mm)*sizeAll/2 + int_tmp+nn] = amfiUnique[indexList[ii]](nn,mm).imag();
-                amfiY[(int_tmp+mm)*sizeAll/2 + int_tmp+nn] = amfiUnique[indexList[ii]](nn,size_tmp_half+mm).real();
-                amfiX[(int_tmp+mm)*sizeAll/2 + int_tmp+nn] = amfiUnique[indexList[ii]](nn,size_tmp_half+mm).imag();
+                amfiZ[(int_tmp+mm)*sizeAll/2 + int_tmp+nn] = amfiUnique[indexList[ii]][nn*sizeList[ii]+mm].imag();
+                amfiY[(int_tmp+mm)*sizeAll/2 + int_tmp+nn] = amfiUnique[indexList[ii]][nn*sizeList[ii]+size_tmp_half+mm].real();
+                amfiX[(int_tmp+mm)*sizeAll/2 + int_tmp+nn] = amfiUnique[indexList[ii]][nn*sizeList[ii]+size_tmp_half+mm].imag();
             }
-            int_tmp += amfiUnique[indexList[ii]].rows()/2;
+            int_tmp += sizeList[ii]/2;
         }
         F_INTERFACE::wfile_("XX2CSOCM",(double*)amfiX,&sizePT);
         F_INTERFACE::wfile_("YX2CSOCM",(double*)amfiY,&sizePT);

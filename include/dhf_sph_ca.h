@@ -1,11 +1,9 @@
 #ifndef DHF_SPH_CA_H_
 #define DHF_SPH_CA_H_
-#include<Eigen/Dense>
 #include<complex>
 #include<string>
 #include"dhf_sph.h"
 using namespace std;
-using namespace Eigen;
 
 class DHF_SPH_CA: public DHF_SPH
 {
@@ -14,12 +12,11 @@ private:
     vector<double> NN_list, MM_list, f_list;
     vector<vVectorXd> occNumberShells;
     /* in CAHF, density is density_c */
-    Matrix<vMatrixXd,-1,1> densityShells;
+    vector<vVectorXd> densityShells;
     
-    MatrixXd evaluateDensity_aoc(const MatrixXd& coeff_, const VectorXd& occNumber_, const bool& twoC);
-    MatrixXd evaluateDensity_aoc(const MatrixXd& coeff_, const vector<double>& occNumber_, const bool& twoC);
+    vector<double> evaluateDensity_aoc(const vector<double>& coeff_, const vector<double>& occNumber_, const int& size, const bool& twoC);
     /* evaluate fock matrix */
-    void evaluateFock(vector<double>& fock, const bool& twoC, const Matrix<vMatrixXd,-1,1>& densities, const int& size, const int& Iirrep);
+    void evaluateFock(vector<double>& fock, const bool& twoC, const vector<vVectorXd>& densities, const int& size, const int& Iirrep);
     double evaluateEnergy(const bool& twoC);
 
 public:

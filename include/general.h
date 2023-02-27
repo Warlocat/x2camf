@@ -1,7 +1,6 @@
 #ifndef GENERAL_H_
 #define GENERAL_H_
 
-#include<Eigen/Dense>
 #include<complex>
 #include<string>
 #include<vector>
@@ -9,8 +8,9 @@
 #include<iostream>
 #include<fstream>
 #include<chrono>
+#include<cassert>
+#include<algorithm>
 using namespace std;
-using namespace Eigen;
 
 extern clock_t StartTimeCPU, EndTimeCPU;
 extern std::chrono::_V2::system_clock::time_point StartTimeWall, EndTimeWall; 
@@ -22,9 +22,10 @@ const double au2cm_1 = 219474.63;
 const double au2ev = 27.21138386;
 
 const string orbL[8] = {"S","P","D","F","G","H","I","K"};
+const complex<double> zero_cp(0.0, 0.0), one_cp(1.0, 0.0);
 
-typedef Matrix<MatrixXd,-1,1> vMatrixXd;
 typedef vector<vector<double>> vVectorXd;
+typedef vector<complex<double>> vectorcd;
 
 
 /*
@@ -92,89 +93,133 @@ double double_factorial(const int& n);
 complex<double> U_SH_trans(const int& mu, const int& mm);
 
 /* evaluate "difference" between two MatrixXd */
-double evaluateChange(const MatrixXd& M1, const MatrixXd& M2);
+double evaluateChange(const vector<double>& M1, const vector<double>& M2);
 /* evaluate M^{-1/2} */
-MatrixXd matrix_half_inverse(const MatrixXd& inputM);
 vector<double> matrix_half_inverse(const vector<double>& inputM, const int& N);
 /* evaluate M^{1/2} */
-MatrixXd matrix_half(const MatrixXd& inputM);
 vector<double> matrix_half(const vector<double>& inputM, const int& N);
-/* solver for generalized eigen equation MC=SCE, s_h_i = S^{1/2} */
-void eigensolverG(const MatrixXd& inputM, const MatrixXd& s_h_i, VectorXd& values, MatrixXd& vectors);
+/* solver for generalized eigen equation MC=SCE, s_h_i = S^{-1/2} */
 void eigensolverG(const vector<double>& inputM, const vector<double>& s_h_i, vector<double>& values, vector<double>& vectors, const int& N);
 /* remove all spaces in a string) */
 string removeSpaces(const string& flags);
 /* Split function in python */
 vector<string> stringSplit(const string& flags);
 vector<string> stringSplit(const string& flags, const char delimiter);
-/* Eigen */
-vector<double> eigen2vector(const MatrixXd& inputM, const int& N);
-MatrixXd vector2eigen(const vector<double>& inputM, const int& N);
+/* Get certain block of a martix */
+template <class T> vector <T> matBlock(const vector<T>& inputM, const int& size, const int& r0, const int& c0, const int& Nr, const int& Nc)
+{
+    vector<T> outputM(Nr*Nc);
+    for(int ii = 0; ii < Nr; ii++)
+    for(int jj = 0; jj < Nc; jj++)
+    {
+        outputM[ii*Nc+jj] = inputM[(r0+ii)*size+c0+jj];
+    }
+    return outputM;
+}
+/* Get the transpose of a vector */
+template <class T> vector <T> vectorTrans(const vector <T>& A, const int& size)
+{
+    vector<T> B(size*size);
+    for(int ii = 0; ii < size; ii++)
+    for(int jj = 0; jj < size; jj++)
+        B[ii*size+jj] = A[jj*size+ii];
+    return B;
+}
+/* vector multiplied by a scalar */
+template <class T> vector <T> operator* (const T c, const vector <T>& A)
+{
+    vector<T> B(A.size());
+    std::transform (A.begin (), A.end (), B.begin (),
+                 std::bind1st (std::multiplies <T> () , c)) ;
+    return B;
+}
+/* vector plus vector */
+template <class T> vector <T> operator+ (std::vector <T> A, std::vector <T> B)
+{
+    assert(A.size() == B.size());
+    vector<T> C(A.size());
+    std::transform (A.begin (), A.end (), B.begin (), C.begin(),
+                 std::plus<T>()) ;
+    return C;
+}
+/* vector minus vector */
+template <class T> vector <T> operator- (std::vector <T> A, std::vector <T> B)
+{
+    assert(A.size() == B.size());
+    vector<T> C(A.size());
+    std::transform (A.begin (), A.end (), B.begin (), C.begin(),
+                 std::minus<T>()) ;
+    return C;
+}
+template <class T> vector <complex<T>> real2complex (std::vector <T> A)
+{
+    vector <complex<T>> vcd(A.size());
+    for(int ii = 0; ii < A.size(); ii++)
+        vcd[ii] = complex<T>(A[ii], 0.0);
+    return vcd;
+}
 
 /* Static functions used in X2C */
 namespace X2C
 {
-    MatrixXd get_X(const MatrixXd& S_, const MatrixXd& T_, const MatrixXd& W_, const MatrixXd& V_);
-    MatrixXd get_X(const MatrixXd& coeff);
-    MatrixXd get_X(const vector<double>& coeff, const int& N);
-    MatrixXd get_R(const MatrixXd& S_, const MatrixXd& T_, const MatrixXd& X_);
-    MatrixXd get_R(const MatrixXd& S_4c, const MatrixXd& X_);
-    MatrixXd get_R(const vector<double>& S_4c, const MatrixXd& X_, const int& N);
-    MatrixXd evaluate_h1e_x2c(const MatrixXd& S_, const MatrixXd& T_, const MatrixXd& W_, const MatrixXd& V_);
-    MatrixXd evaluate_h1e_x2c(const MatrixXd& S_, const MatrixXd& T_, const MatrixXd& W_, const MatrixXd& V_, const MatrixXd& X_, const MatrixXd& R_);
-    MatrixXd transform_4c_2c(const vector<double>& M_4c, const MatrixXd XXX, const MatrixXd& RRR);
+    vector<double> get_X(const vector<double>& S_, const vector<double>& T_, const vector<double>& W_, const vector<double>& V_, const int& size);
+    vector<double> get_X(const vector<double>& coeff, const int& size);
+    vector<double> get_R(const vector<double>& S_, const vector<double>& T_, const vector<double>& X_, const int& size);
+    vector<double> get_R(const vector<double>& S_4c, const vector<double>& X_, const int& size);
+    vector<double> evaluate_h1e_x2c(const vector<double>& S_, const vector<double>& T_, const vector<double>& W_, const vector<double>& V_, const int& size);
+    vector<double> evaluate_h1e_x2c(const vector<double>& S_, const vector<double>& T_, const vector<double>& W_, const vector<double>& V_, const vector<double>& X_, const vector<double>& R_, const int& size);
+    vector<double> transform_4c_2c(const vector<double>& M_4c, const vector<double> X_, const vector<double>& R_, const int& size);
 }
 
 
 /* Reoder and basis transformation */
 namespace Rotate
 {
-    
     /* Generate basis transformation matrix */
-    MatrixXd jspinor2sph(const Matrix<irrep_jm, Dynamic, 1>& irrep_list);
-    MatrixXcd sph2solid(const Matrix<irrep_jm, Dynamic, 1>& irrep_list);
+    vector<double> jspinor2sph(const vector<irrep_jm>& irrep_list);
+    vectorcd sph2solid(const vector<irrep_jm>& irrep_list);
     /* For CFOUR interface */
-    MatrixXcd jspinor2cfour_interface(const Matrix<irrep_jm, Dynamic, 1>& irrep_list,
-                                      MatrixXd (*reorder_m)(const int&));
-    MatrixXd reorder_m_cfour(const int& LL);
-    MatrixXcd jspinor2cfour_interface_old(const Matrix<irrep_jm, Dynamic, 1>& irrep_list);
-    MatrixXd reorder_m_cfour_new(const int& LL);
-    MatrixXcd jspinor2cfour_interface_new(const Matrix<irrep_jm, Dynamic, 1>& irrep_list);
+    vectorcd jspinor2cfour_interface(const vector<irrep_jm>& irrep_list,
+                                      vector<double> (*reorder_m)(const int&));
+    vector<double> reorder_m_cfour(const int& LL);
+    vectorcd jspinor2cfour_interface_old(const vector<irrep_jm>& irrep_list);
+    vector<double> reorder_m_cfour_new(const int& LL);
+    vectorcd jspinor2cfour_interface_new(const vector<irrep_jm>& irrep_list);
     /*
         Put one-electron integrals in a single matrix and reorder them.
         The new ordering is to put the single uncontracted spinors together (separate)
     */
-    template<typename T> Matrix<T,-1,-1> unite_irrep(const Matrix<Matrix<T,-1,-1>,-1,1>& inputM, const Matrix<irrep_jm, Dynamic, 1>& irrep_list)
+    template<typename T> vector<T> unite_irrep(const vector<vector<T>>& inputM, const vector<irrep_jm>& irrep_list)
     {
-        int size_spinor = 0, size_irrep = irrep_list.rows();
-        if(inputM.rows() != size_irrep)
+        int size_spinor = 0, size_irrep = irrep_list.size();
+        if(inputM.size() != size_irrep)
         {
             cout << "ERROR: the size of inputM is not equal to Nirrep." << endl;
             exit(99);
         }
         for(int ir = 0; ir < size_irrep; ir++)
         {
-            size_spinor += irrep_list(ir).size;
+            size_spinor += irrep_list[ir].size;
         }
-        Matrix<T,-1,-1> outputM = Matrix<T,-1,-1>::Zero(size_spinor,size_spinor);
+        vector<T> outputM(size_spinor*size_spinor, 0.0);
         int i_output = 0;
-        for(int ir = 0; ir < size_irrep; ir += 4*irrep_list(ir).l+2)
+        for(int ir = 0; ir < size_irrep; ir += 4*irrep_list[ir].l+2)
         {
-            for(int ii = 0; ii < irrep_list(ir).size; ii++)
-            for(int jj = 0; jj < irrep_list(ir).size; jj++)
-            for(int mi = 0; mi < 4*irrep_list(ir).l+2; mi++)
+            for(int ii = 0; ii < irrep_list[ir].size; ii++)
+            for(int jj = 0; jj < irrep_list[ir].size; jj++)
+            for(int mi = 0; mi < 4*irrep_list[ir].l+2; mi++)
             {
-                outputM(i_output + ii*(4*irrep_list(ir).l+2) + mi, i_output + jj*(4*irrep_list(ir).l+2) + mi) = inputM(ir+mi)(ii,jj);
+                outputM[(i_output + ii*(4*irrep_list[ir].l+2) + mi) * size_spinor + i_output + jj*(4*irrep_list[ir].l+2) + mi] = inputM[ir+mi][ii*irrep_list[ir].size+jj];
             }
-            i_output += (4*irrep_list(ir).l+2) * irrep_list(ir).size;
+            i_output += (4*irrep_list[ir].l+2) * irrep_list[ir].size;
         }
 
         return outputM;
     }
-    template<typename T> Matrix<T,-1,-1> unite_irrep_4c(const Matrix<Matrix<T,-1,-1>,-1,1>& inputM, const Matrix<irrep_jm, Dynamic, 1>& irrep_list)
+    template<typename T> vector<T> unite_irrep_4c(const vector<vector<T>>& inputM, const vector<irrep_jm>& irrep_list)
     {
-        int size_spinor = 0, size_irrep = irrep_list.rows();
-        Matrix<Matrix<T,-1,-1>,-1,1> inputLL(size_irrep), inputLS(size_irrep), inputSL(size_irrep), inputSS(size_irrep);
+        int size_spinor = 0, size_irrep = irrep_list.size();
+        vector<vector<T>> inputLL(size_irrep), inputLS(size_irrep), inputSL(size_irrep), inputSS(size_irrep);
         if(inputM.rows() != size_irrep)
         {
             cout << "ERROR: the size of inputM is not equal to Nirrep." << endl;
@@ -182,26 +227,28 @@ namespace Rotate
         }
         for(int ir = 0; ir < size_irrep; ir++)
         {
-            size_spinor += irrep_list(ir).size;
-            inputLL(ir) = inputM(ir).block(0,0,irrep_list(ir).size,irrep_list(ir).size);
-            inputLS(ir) = inputM(ir).block(0,irrep_list(ir).size,irrep_list(ir).size,irrep_list(ir).size);
-            inputSL(ir) = inputM(ir).block(irrep_list(ir).size,0,irrep_list(ir).size,irrep_list(ir).size);
-            inputSS(ir) = inputM(ir).block(irrep_list(ir).size,irrep_list(ir).size,irrep_list(ir).size,irrep_list(ir).size);
+            int size2 = irrep_list[ir].size*2;
+            size_spinor += irrep_list[ir].size;
+            inputLL[ir] = matBlock(inputM[ir], size2, 0,0,irrep_list[ir].size,irrep_list[ir].size);
+            inputLS[ir] = matBlock(inputM[ir], size2, 0,irrep_list[ir].size,irrep_list[ir].size,irrep_list[ir].size);
+            inputSL[ir] = matBlock(inputM[ir], size2, irrep_list[ir].size,0,irrep_list[ir].size,irrep_list[ir].size);
+            inputSS[ir] = matBlock(inputM[ir], size2, irrep_list[ir].size,irrep_list[ir].size,irrep_list[ir].size,irrep_list[ir].size);
         }
-        Matrix<T,-1,-1> outputM = Matrix<T,-1,-1>::Zero(size_spinor*2,size_spinor*2);
+        vector<T> outputM(size_spinor*2*size_spinor*2, ((T)(0.0)));
         int i_output = 0;
-        for(int ir = 0; ir < size_irrep; ir += 4*irrep_list(ir).l+2)
+        for(int ir = 0; ir < size_irrep; ir += 4*irrep_list[ir].l+2)
         {
-            for(int ii = 0; ii < irrep_list(ir).size; ii++)
-            for(int jj = 0; jj < irrep_list(ir).size; jj++)
-            for(int mi = 0; mi < 4*irrep_list(ir).l+2; mi++)
+            int size = irrep_list[ir].size, size2 = size_spinor*2;
+            for(int ii = 0; ii < size; ii++)
+            for(int jj = 0; jj < size; jj++)
+            for(int mi = 0; mi < 4*irrep_list[ir].l+2; mi++)
             {
-                outputM(i_output + ii*(4*irrep_list(ir).l+2) + mi, i_output + jj*(4*irrep_list(ir).l+2) + mi) = inputLL(ir+mi)(ii,jj);
-                outputM(size_spinor + i_output + ii*(4*irrep_list(ir).l+2) + mi, i_output + jj*(4*irrep_list(ir).l+2) + mi) = inputSL(ir+mi)(ii,jj);
-                outputM(i_output + ii*(4*irrep_list(ir).l+2) + mi, size_spinor + i_output + jj*(4*irrep_list(ir).l+2) + mi) = inputLS(ir+mi)(ii,jj);
-                outputM(size_spinor + i_output + ii*(4*irrep_list(ir).l+2) + mi, size_spinor + i_output + jj*(4*irrep_list(ir).l+2) + mi) = inputSS(ir+mi)(ii,jj);
+                outputM[(i_output + ii*(4*irrep_list[ir].l+2) + mi) *size2+ i_output + jj*(4*irrep_list[ir].l+2) + mi] = inputLL[ir+mi][ii*size+jj];
+                outputM[(size_spinor + i_output + ii*(4*irrep_list[ir].l+2) + mi) *size2+ i_output + jj*(4*irrep_list[ir].l+2) + mi] = inputSL[ir+mi][ii*size+jj];
+                outputM[(i_output + ii*(4*irrep_list[ir].l+2) + mi) *size2+ size_spinor + i_output + jj*(4*irrep_list[ir].l+2) + mi] = inputLS[ir+mi][ii*size+jj];
+                outputM[(size_spinor + i_output + ii*(4*irrep_list[ir].l+2) + mi) *size2+ size_spinor + i_output + jj*(4*irrep_list[ir].l+2) + mi] = inputSS[ir+mi][ii*size+jj];
             }
-            i_output += (4*irrep_list(ir).l+2) * irrep_list(ir).size;
+            i_output += (4*irrep_list[ir].l+2) * irrep_list[ir].size;
         }
 
         return outputM;
@@ -210,15 +257,15 @@ namespace Rotate
         Transfer separate basis to m-compact basis 
         px,py,pz,px,py,pz to px,px,py,py,pz,pz
     */
-    template<typename T> Matrix<T,-1,-1> separate2mCompact(const Matrix<T,-1,-1>& inputM, const Matrix<irrep_jm, Dynamic, 1>& irrep_list)
+    template<typename T> vector<T> separate2mCompact(const vector<T>& inputM, const vector<irrep_jm>& irrep_list)
     {
-        int size = inputM.rows(), size_nr = size/2, size_irrep = irrep_list.rows(), Lmax = irrep_list(size_irrep - 1).l;
+        int size = round(sqrt(inputM.size())), size_nr = size/2, size_irrep = irrep_list.size(), Lmax = irrep_list[size_irrep - 1].l;
         int Lsize[Lmax+1];
         for(int ir = 0; ir < size_irrep; ir++)
         {
-            Lsize[irrep_list(ir).l] = irrep_list(ir).size;
+            Lsize[irrep_list[ir].l] = irrep_list[ir].size;
         }
-        Matrix<T,-1,-1> outputM = Matrix<T,-1,-1>::Zero(size,size);
+        vector<T> outputM(size*size, ((T)(0.0)));
         int int_tmp = 0;
         for(int ll = 0; ll <= Lmax; ll++)
         {
@@ -227,10 +274,10 @@ namespace Rotate
             for(int ii = 0; ii < Lsize[ll]; ii++)
             for(int jj = 0; jj < Lsize[ll]; jj++)
             {
-                outputM(int_tmp+mm*Lsize[ll]+ii,int_tmp+nn*Lsize[ll]+jj) = inputM(int_tmp+ii*(2*ll+1)+mm,int_tmp+jj*(2*ll+1)+nn);
-                outputM(size_nr+int_tmp+mm*Lsize[ll]+ii,int_tmp+nn*Lsize[ll]+jj) = inputM(size_nr+int_tmp+ii*(2*ll+1)+mm,int_tmp+jj*(2*ll+1)+nn);
-                outputM(int_tmp+mm*Lsize[ll]+ii,size_nr+int_tmp+nn*Lsize[ll]+jj) = inputM(int_tmp+ii*(2*ll+1)+mm,size_nr+int_tmp+jj*(2*ll+1)+nn);
-                outputM(size_nr+int_tmp+mm*Lsize[ll]+ii,size_nr+int_tmp+nn*Lsize[ll]+jj) = inputM(size_nr+int_tmp+ii*(2*ll+1)+mm,size_nr+int_tmp+jj*(2*ll+1)+nn);
+                outputM[(int_tmp+mm*Lsize[ll]+ii) *size+ int_tmp+nn*Lsize[ll]+jj] = inputM[(int_tmp+ii*(2*ll+1)+mm) *size+ int_tmp+jj*(2*ll+1)+nn];
+                outputM[(size_nr+int_tmp+mm*Lsize[ll]+ii) *size+ int_tmp+nn*Lsize[ll]+jj] = inputM[(size_nr+int_tmp+ii*(2*ll+1)+mm) *size+ int_tmp+jj*(2*ll+1)+nn];
+                outputM[(int_tmp+mm*Lsize[ll]+ii) *size+ size_nr+int_tmp+nn*Lsize[ll]+jj] = inputM[(int_tmp+ii*(2*ll+1)+mm) *size+ size_nr+int_tmp+jj*(2*ll+1)+nn];
+                outputM[(size_nr+int_tmp+mm*Lsize[ll]+ii) *size+ size_nr+int_tmp+nn*Lsize[ll]+jj] = inputM[(size_nr+int_tmp+ii*(2*ll+1)+mm) *size+ size_nr+int_tmp+jj*(2*ll+1)+nn];
             }
             int_tmp += (2*ll+1)*Lsize[ll];
         }
@@ -444,5 +491,6 @@ namespace CG
     double wigner_6j(const int& tj1, const int& tj2, const int& tj3, const int& tj4, const int& tj5, const int& tj6);
     double wigner_9j(const int& tj1, const int& tj2, const int& tj3, const int& tj4, const int& tj5, const int& tj6, const int& tj7, const int& tj8, const int& tj9);
 }
+
 
 #endif

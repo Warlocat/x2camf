@@ -1,12 +1,10 @@
 #ifndef INT_SPH_H_
 #define INT_SPH_H_
 
-#include<Eigen/Dense>
 #include<complex>
 #include<string>
 #include"general.h"
 using namespace std;
-using namespace Eigen;
 
 /*
     Class for spherical atom integrals in 2-spinor basis.
@@ -69,19 +67,19 @@ protected:
     
 
 public:
-    Matrix<intShell, Dynamic, 1> shell_list;
-    Matrix<irrep_jm, Dynamic, 1> irrep_list;
+    vector<intShell> shell_list;
+    vector<irrep_jm> irrep_list;
     int atomNumber, Nirrep = 0;
     int size_gtoc, size_gtou, size_shell;
     string atomName, basisSet;
     int size_gtoc_spinor, size_gtou_spinor;
 
     INT_SPH(const string& atomName_, const string& basisSet_);
-    INT_SPH(const int atom_number, const int nshell, const int nbas, const Eigen::VectorXi & shell, const Eigen::VectorXd & exp_a);
+    INT_SPH(const int atom_number, const int nshell, const int nbas, const vector<int> & shell, const vector<double> & exp_a);
     ~INT_SPH();
 
     /* Evaluate one-electron integral */
-    vMatrixXd get_h1e(const string& intType) const;
+    vVectorXd get_h1e(const string& intType) const;
     /* Evaluate two-electron integral in J-K form */
     int2eJK get_h2e_JK(const string& intType, const int& occMaxL = -1) const;
     int2eJK get_h2e_JK_compact(const string& intType, const int& occMaxL = -1) const;
@@ -95,10 +93,10 @@ public:
     int2eJK get_h2e_JK_gauge(const string& intType, const int& occMaxL = -1) const;
     int2eJK get_h2e_JK_gauge_compact(const string& intType, const int& occMaxL = -1) const;
     void get_h2e_JK_gauge_direct(int2eJK& LSLS, int2eJK& LSSL, const int& occMaxL = -1, const bool& spinFree = false);
-    int2eJK compact_h2e(const int2eJK& h2e, const Matrix<irrep_jm, Dynamic, 1>& irrepList, const int& occMaxL = -1) const;
+    int2eJK compact_h2e(const int2eJK& h2e, const int& occMaxL = -1) const;
     
     /* get contraction coefficients for uncontracted calculations */
-    MatrixXd get_coeff_contraction_spinor();
+    vector<double> get_coeff_contraction_spinor();
 };
 
 #endif

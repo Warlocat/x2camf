@@ -1,4 +1,3 @@
-#include<Eigen/Dense>
 #include<string>
 #include<iostream>
 #include<iomanip>
@@ -10,7 +9,6 @@
 #include "element.h"
 #include"int_sph.h"
 using namespace std;
-using namespace Eigen;
 
 INT_SPH::INT_SPH(const string& atomName_, const string& basisSet_):
 atomName(atomName_), basisSet(basisSet_)
@@ -34,21 +32,21 @@ atomName(atomName_), basisSet(basisSet_)
     cout << "Total number of irreducible representation: " << Nirrep << endl << endl;
 }
 
-INT_SPH::INT_SPH(const int atom_number, const int nshell, const int nbas, const Eigen::VectorXi & shell, const Eigen::VectorXd & exp_a):
+INT_SPH::INT_SPH(const int atom_number, const int nshell, const int nbas, const vector<int> & shell, const vector<double> & exp_a):
 atomNumber(atom_number), size_gtoc(nbas), size_gtou(nbas), size_shell(nshell)
 {
     atomName = elem_list[atomNumber];
-    MatrixXi orbitalInfo(3, size_shell);
+    int orbitalInfo[3][size_shell];
     shell_list.resize(size_shell);
     vector<int> shell_info(10, 0);
     vector<int> accumu(10, 0);
     for (int ibas = 0; ibas < nbas; ibas++) {
-        shell_info[shell(ibas)] += 1;
+        shell_info[shell[ibas]] += 1;
     }
     for (int ii = 0; ii < size_shell; ii++) {
-        orbitalInfo(0, ii) = ii;
-        orbitalInfo(1, ii) = shell_info[ii];
-        orbitalInfo(2, ii) = shell_info[ii];
+        orbitalInfo[0][ii] = ii;
+        orbitalInfo[1][ii] = shell_info[ii];
+        orbitalInfo[2][ii] = shell_info[ii];
         if (ii == 0) continue;
         else {
             accumu[ii] = accumu[ii - 1] + shell_info[ii - 1];
@@ -58,31 +56,31 @@ atomNumber(atom_number), size_gtoc(nbas), size_gtou(nbas), size_shell(nshell)
     Nirrep = 0;
     for(int ii = 0; ii < size_shell; ii++)
     {
-        Nirrep += 2*(2*orbitalInfo(0,ii)+1);
+        Nirrep += 2*(2*orbitalInfo[0][ii]+1);
     }
     irrep_list.resize(Nirrep);
     int tmp_i = 0;
     for(int ii = 0; ii < size_shell; ii++)
     {
-        int two_jj = 2*orbitalInfo(0,ii)+1;
-        if(orbitalInfo(0,ii) != 0)
+        int two_jj = 2*orbitalInfo[0][ii]+1;
+        if(orbitalInfo[0][ii] != 0)
         {
-            int two_jj = 2*orbitalInfo(0,ii)-1;
+            int two_jj = 2*orbitalInfo[0][ii]-1;
             for(int two_mj = -two_jj; two_mj <= two_jj; two_mj += 2)
             {
-                irrep_list(tmp_i).l = orbitalInfo(0,ii);
-                irrep_list(tmp_i).size = orbitalInfo(2,ii);
-                irrep_list(tmp_i).two_j = two_jj;
-                irrep_list(tmp_i).two_mj = two_mj;
+                irrep_list[tmp_i].l = orbitalInfo[0][ii];
+                irrep_list[tmp_i].size = orbitalInfo[2][ii];
+                irrep_list[tmp_i].two_j = two_jj;
+                irrep_list[tmp_i].two_mj = two_mj;
                 tmp_i++;
             }
         }
         for(int two_mj = -two_jj; two_mj <= two_jj; two_mj += 2)
         {
-            irrep_list(tmp_i).l = orbitalInfo(0,ii);
-            irrep_list(tmp_i).size = orbitalInfo(2,ii);
-            irrep_list(tmp_i).two_j = two_jj;
-            irrep_list(tmp_i).two_mj = two_mj;
+            irrep_list[tmp_i].l = orbitalInfo[0][ii];
+            irrep_list[tmp_i].size = orbitalInfo[2][ii];
+            irrep_list[tmp_i].two_j = two_jj;
+            irrep_list[tmp_i].two_mj = two_mj;
             tmp_i++;
         }             
     }
@@ -91,22 +89,22 @@ atomNumber(atom_number), size_gtoc(nbas), size_gtou(nbas), size_shell(nshell)
     size_gtou = 0;
     for (int ishell = 0; ishell < size_shell; ishell++) 
     {
-        int nunc = orbitalInfo(2,ishell), ncon = orbitalInfo(1,ishell);
-        size_gtou += (2 * orbitalInfo(0,ishell) + 1) * orbitalInfo(2,ishell);
-        size_gtoc += (2 * orbitalInfo(0,ishell) + 1) * orbitalInfo(1,ishell);
-        shell_list(ishell).l = orbitalInfo(0,ishell);
-        shell_list(ishell).ncon = ncon;
-        shell_list(ishell).nunc = nunc;
+        int nunc = orbitalInfo[2][ishell], ncon = orbitalInfo[1][ishell];
+        size_gtou += (2 * orbitalInfo[0][ishell] + 1) * orbitalInfo[2][ishell];
+        size_gtoc += (2 * orbitalInfo[0][ishell] + 1) * orbitalInfo[1][ishell];
+        shell_list[ishell].l = orbitalInfo[0][ishell];
+        shell_list[ishell].ncon = ncon;
+        shell_list[ishell].nunc = nunc;
         
-        shell_list(ishell).coeff.resize(orbitalInfo(2,ishell)*orbitalInfo(1,ishell));
-        shell_list(ishell).exp_a.resize(orbitalInfo(2,ishell));
-        shell_list(ishell).norm.resize(orbitalInfo(2,ishell));
+        shell_list[ishell].coeff.resize(orbitalInfo[2][ishell]*orbitalInfo[1][ishell]);
+        shell_list[ishell].exp_a.resize(orbitalInfo[2][ishell]);
+        shell_list[ishell].norm.resize(orbitalInfo[2][ishell]);
         int offset = accumu[ishell];
-        for (int ii = 0; ii < orbitalInfo(2, ishell); ii++)
+        for (int ii = 0; ii < orbitalInfo[2][ishell]; ii++)
         {
-            shell_list(ishell).exp_a[ii] = exp_a(ii + offset);
-            shell_list(ishell).coeff[ii*ncon+ii] = 1.0; // assumes only uncontracted basis given.
-            shell_list(ishell).norm[ii] = sqrt(auxiliary_1e(2*shell_list(ishell).l + 2, 2 * shell_list(ishell).exp_a[ii]));
+            shell_list[ishell].exp_a[ii] = exp_a[ii + offset];
+            shell_list[ishell].coeff[ii*ncon+ii] = 1.0; // assumes only uncontracted basis given.
+            shell_list[ishell].norm[ii] = sqrt(auxiliary_1e(2*shell_list[ishell].l + 2, 2 * shell_list[ishell].exp_a[ii]));
         }
     }
 }
@@ -158,7 +156,7 @@ void INT_SPH::readBasis()
         else
         {
             ifs >> size_shell;
-            MatrixXi orbitalInfo(3,size_shell);
+            int orbitalInfo[3][size_shell];
             shell_list.resize(size_shell);
             getline(ifs,flags);
 
@@ -168,38 +166,38 @@ void INT_SPH::readBasis()
                 vector<string> tmp_s = stringSplit(flags);
                 for(int jj = 0; jj < size_shell; jj++)
                 {
-                    orbitalInfo(ii,jj) = stoi(tmp_s[jj]);
+                    orbitalInfo[ii][jj] = stoi(tmp_s[jj]);
                 }
             }
             
             Nirrep = 0;
             for(int ii = 0; ii < size_shell; ii++)
             {
-                Nirrep += 2*(2*orbitalInfo(0,ii)+1);
+                Nirrep += 2*(2*orbitalInfo[0][ii]+1);
             }
             irrep_list.resize(Nirrep);
             int tmp_i = 0;
             for(int ii = 0; ii < size_shell; ii++)
             {
-                int two_jj = 2*orbitalInfo(0,ii)+1;
-                if(orbitalInfo(0,ii) != 0)
+                int two_jj = 2*orbitalInfo[0][ii]+1;
+                if(orbitalInfo[0][ii] != 0)
                 {
-                    int two_jj = 2*orbitalInfo(0,ii)-1;
+                    int two_jj = 2*orbitalInfo[0][ii]-1;
                     for(int two_mj = -two_jj; two_mj <= two_jj; two_mj += 2)
                     {
-                        irrep_list(tmp_i).l = orbitalInfo(0,ii);
-                        irrep_list(tmp_i).size = orbitalInfo(2,ii);
-                        irrep_list(tmp_i).two_j = two_jj;
-                        irrep_list(tmp_i).two_mj = two_mj;
+                        irrep_list[tmp_i].l = orbitalInfo[0][ii];
+                        irrep_list[tmp_i].size = orbitalInfo[2][ii];
+                        irrep_list[tmp_i].two_j = two_jj;
+                        irrep_list[tmp_i].two_mj = two_mj;
                         tmp_i++;
                     }
                 }
                 for(int two_mj = -two_jj; two_mj <= two_jj; two_mj += 2)
                 {
-                    irrep_list(tmp_i).l = orbitalInfo(0,ii);
-                    irrep_list(tmp_i).size = orbitalInfo(2,ii);
-                    irrep_list(tmp_i).two_j = two_jj;
-                    irrep_list(tmp_i).two_mj = two_mj;
+                    irrep_list[tmp_i].l = orbitalInfo[0][ii];
+                    irrep_list[tmp_i].size = orbitalInfo[2][ii];
+                    irrep_list[tmp_i].two_j = two_jj;
+                    irrep_list[tmp_i].two_mj = two_mj;
                     tmp_i++;
                 }             
             }
@@ -208,25 +206,25 @@ void INT_SPH::readBasis()
             size_gtou = 0;
             for(int ishell = 0; ishell < size_shell; ishell++)
             {
-                int nunc = orbitalInfo(2,ishell), ncon = orbitalInfo(1,ishell);
-                size_gtou += (2 * orbitalInfo(0,ishell) + 1) * orbitalInfo(2,ishell);
-                size_gtoc += (2 * orbitalInfo(0,ishell) + 1) * orbitalInfo(1,ishell);
-                shell_list(ishell).l = orbitalInfo(0,ishell);
-                shell_list(ishell).ncon = ncon;
-                shell_list(ishell).nunc = nunc;
+                int nunc = orbitalInfo[2][ishell], ncon = orbitalInfo[1][ishell];
+                size_gtou += (2 * orbitalInfo[0][ishell] + 1) * orbitalInfo[2][ishell];
+                size_gtoc += (2 * orbitalInfo[0][ishell] + 1) * orbitalInfo[1][ishell];
+                shell_list[ishell].l = orbitalInfo[0][ishell];
+                shell_list[ishell].ncon = ncon;
+                shell_list[ishell].nunc = nunc;
 
-                shell_list(ishell).coeff.resize(orbitalInfo(2,ishell)*orbitalInfo(1,ishell));
-                shell_list(ishell).exp_a.resize(orbitalInfo(2,ishell));
-                shell_list(ishell).norm.resize(orbitalInfo(2,ishell));
-                for(int ii = 0; ii < orbitalInfo(2,ishell); ii++)   
+                shell_list[ishell].coeff.resize(orbitalInfo[2][ishell]*orbitalInfo[1][ishell]);
+                shell_list[ishell].exp_a.resize(orbitalInfo[2][ishell]);
+                shell_list[ishell].norm.resize(orbitalInfo[2][ishell]);
+                for(int ii = 0; ii < orbitalInfo[2][ishell]; ii++)   
                 {    
-                    ifs >> shell_list(ishell).exp_a[ii];
-                    shell_list(ishell).norm[ii] = sqrt(auxiliary_1e(2*shell_list(ishell).l + 2, 2 * shell_list(ishell).exp_a[ii]));
+                    ifs >> shell_list[ishell].exp_a[ii];
+                    shell_list[ishell].norm[ii] = sqrt(auxiliary_1e(2*shell_list[ishell].l + 2, 2 * shell_list[ishell].exp_a[ii]));
                 }
-                for(int ii = 0; ii < orbitalInfo(2,ishell); ii++)
-                for(int jj = 0; jj < orbitalInfo(1,ishell); jj++)
+                for(int ii = 0; ii < orbitalInfo[2][ishell]; ii++)
+                for(int jj = 0; jj < orbitalInfo[1][ishell]; jj++)
                 {
-                    ifs >> shell_list(ishell).coeff[ncon*ii+jj];
+                    ifs >> shell_list[ishell].coeff[ncon*ii+jj];
                 }
             }
         }       
@@ -241,23 +239,23 @@ void INT_SPH::normalization()
 {
     for(int ishell = 0; ishell < size_shell; ishell++)
     {
-        int size_gtos = shell_list(ishell).nunc;
-        MatrixXd norm_single_shell(size_gtos, size_gtos);
+        int size_gtos = shell_list[ishell].nunc;
+        vector<double> norm_single_shell(size_gtos*size_gtos);
         for(int ii = 0; ii < size_gtos; ii++)
         for(int jj = 0; jj < size_gtos; jj++)
         {
-            norm_single_shell(ii,jj) = auxiliary_1e(2+2*shell_list(ishell).l, shell_list(ishell).exp_a[ii]+shell_list(ishell).exp_a[jj]) / shell_list(ishell).norm[ii] / shell_list(ishell).norm[jj];
+            norm_single_shell[ii*size_gtos+jj] = auxiliary_1e(2+2*shell_list[ishell].l, shell_list[ishell].exp_a[ii]+shell_list[ishell].exp_a[jj]) / shell_list[ishell].norm[ii] / shell_list[ishell].norm[jj];
         }
-        for(int subshell = 0; subshell < shell_list(ishell).ncon; subshell++)
+        for(int subshell = 0; subshell < shell_list[ishell].ncon; subshell++)
         {
             double tmp = 0.0;
             for(int ii = 0; ii < size_gtos; ii++)
             for(int jj = 0; jj < size_gtos; jj++)
             {
-                tmp += shell_list(ishell).coeff[ii*shell_list(ishell).ncon+subshell] * shell_list(ishell).coeff[jj*shell_list(ishell).ncon+subshell] * norm_single_shell(ii,jj);
+                tmp += shell_list[ishell].coeff[ii*shell_list[ishell].ncon+subshell] * shell_list[ishell].coeff[jj*shell_list[ishell].ncon+subshell] * norm_single_shell[ii*size_gtos+jj];
             }
             for(int ii = 0; ii < size_gtos; ii++)
-                shell_list(ishell).coeff[ii*shell_list(ishell).ncon+subshell] = shell_list(ishell).coeff[ii*shell_list(ishell).ncon+subshell] / sqrt(tmp);
+                shell_list[ishell].coeff[ii*shell_list[ishell].ncon+subshell] = shell_list[ishell].coeff[ii*shell_list[ishell].ncon+subshell] / sqrt(tmp);
         }
     }
     return;
@@ -586,16 +584,14 @@ double INT_SPH::get_radial_LSSL_K(const int& lp, const int& lq, const int& LL, c
 /* 
     get contraction coefficients for uncontracted calculations 
 */
-MatrixXd INT_SPH::get_coeff_contraction_spinor()
+vector<double> INT_SPH::get_coeff_contraction_spinor()
 {
-    MatrixXd coeff(size_gtou_spinor, size_gtoc_spinor);
-    coeff = MatrixXd::Zero(size_gtou_spinor, size_gtoc_spinor);
-
+    vector<double> coeff(size_gtou_spinor*size_gtoc_spinor, 0.0);
     int int_tmp1 = 0, int_tmp2 = 0, int_tmp3 = 0;
     for(int ishell = 0; ishell < size_shell; ishell++)
     {
-        int ll = shell_list(ishell).l;
-        int size_con = shell_list(ishell).ncon, size_unc = shell_list(ishell).nunc;
+        int ll = shell_list[ishell].l;
+        int size_con = shell_list[ishell].ncon, size_unc = shell_list[ishell].nunc;
         int_tmp3 = 0;
         for(int twojj = abs(2*ll-1); twojj <= 2*ll+1; twojj = twojj + 2)
         {
@@ -605,7 +601,7 @@ MatrixXd INT_SPH::get_coeff_contraction_spinor()
                 {
                     for(int jj = 0; jj < size_unc; jj++)
                     {    
-                        coeff(int_tmp2 + int_tmp3 + jj*(twojj+1) + mm, int_tmp1) = shell_list(ishell).coeff[jj*size_con+ii];
+                        coeff[(int_tmp2 + int_tmp3 + jj*(twojj+1) + mm) * size_gtoc_spinor + int_tmp1] = shell_list[ishell].coeff[jj*size_con+ii];
                     }
                     int_tmp1 += 1;
                 }
@@ -630,7 +626,7 @@ double INT_SPH::int2e_get_angularX_RME(const int& two_j1, const int& l1, const i
            * CG::wigner_9j(2*l1,2*l2,2*vv,1,1,2,two_j1,two_j2,2*LL) * pow(-1,l1);
 }
 
-int2eJK INT_SPH::compact_h2e(const int2eJK& h2eFull, const Matrix<irrep_jm, Dynamic, 1>& irrepList, const int& occMaxL) const
+int2eJK INT_SPH::compact_h2e(const int2eJK& h2eFull, const int& occMaxL) const
 {
     int occMaxShell = 0, Nirrep_compact = 0;
     if(occMaxL == -1)    occMaxShell = size_shell;
@@ -638,7 +634,7 @@ int2eJK INT_SPH::compact_h2e(const int2eJK& h2eFull, const Matrix<irrep_jm, Dyna
     {
         for(int ii = 0; ii < size_shell; ii++)
         {
-            if(shell_list(ii).l <= occMaxL)
+            if(shell_list[ii].l <= occMaxL)
                 occMaxShell++;
             else
                 break;
@@ -646,7 +642,7 @@ int2eJK INT_SPH::compact_h2e(const int2eJK& h2eFull, const Matrix<irrep_jm, Dyna
     }
     for(int ii = 0; ii < occMaxShell; ii++)
     {
-        if(shell_list(ii).l == 0) Nirrep_compact += 1;
+        if(shell_list[ii].l == 0) Nirrep_compact += 1;
         else Nirrep_compact += 2;
     }
     
@@ -661,12 +657,12 @@ int2eJK INT_SPH::compact_h2e(const int2eJK& h2eFull, const Matrix<irrep_jm, Dyna
     int int_tmp1_p = 0, int_tmp1_pp = 0;
     for(int pshell = 0; pshell < occMaxShell; pshell++)
     {
-    int l_p = shell_list(pshell).l, int_tmp1_q = 0, int_tmp1_qq = 0;
+    int l_p = shell_list[pshell].l, int_tmp1_q = 0, int_tmp1_qq = 0;
     for(int qshell = 0; qshell < occMaxShell; qshell++)
     {
-        int l_q = shell_list(qshell).l;
+        int l_q = shell_list[qshell].l;
         int l_p_cycle = (l_p == 0) ? 1 : 2, l_q_cycle = (l_q == 0) ? 1 : 2;
-        int size_gtos_p = shell_list(pshell).nunc, size_gtos_q = shell_list(qshell).nunc;
+        int size_gtos_p = shell_list[pshell].nunc, size_gtos_q = shell_list[qshell].nunc;
         int size_tmp_p = (l_p == 0) ? 1 : 2, size_tmp_q = (l_q == 0) ? 1 : 2;
         
         for(int twojj_p = abs(2*l_p-1); twojj_p <= 2*l_p+1; twojj_p = twojj_p + 2)
@@ -693,15 +689,15 @@ int2eJK INT_SPH::compact_h2e(const int2eJK& h2eFull, const Matrix<irrep_jm, Dyna
 
                 int_2e_JK.J[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q][e1J][e2J] = 0.0;
                 int_2e_JK.K[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q][e1K][e2K] = 0.0;
-                int add_p = int_tmp2_p*(irrep_list(int_tmp1_pp).two_j+1), add_q = int_tmp2_q*(irrep_list(int_tmp1_qq).two_j+1);
-                for(int mp = 0; mp < irrep_list(int_tmp1_pp+add_p).two_j + 1; mp++)
-                for(int mq = 0; mq < irrep_list(int_tmp1_qq+add_q).two_j + 1; mq++)
+                int add_p = int_tmp2_p*(irrep_list[int_tmp1_pp].two_j+1), add_q = int_tmp2_q*(irrep_list[int_tmp1_qq].two_j+1);
+                for(int mp = 0; mp < irrep_list[int_tmp1_pp+add_p].two_j + 1; mp++)
+                for(int mq = 0; mq < irrep_list[int_tmp1_qq+add_q].two_j + 1; mq++)
                 {
                     int_2e_JK.J[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q][e1J][e2J] += h2eFull.J[int_tmp1_pp+add_p + mp][int_tmp1_qq+add_q + mq][e1J][e2J];
                     int_2e_JK.K[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q][e1K][e2K] += h2eFull.K[int_tmp1_pp+add_p + mp][int_tmp1_qq+add_q + mq][e1K][e2K];
                 }
-                int_2e_JK.J[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q][e1J][e2J] /= (irrep_list(int_tmp1_qq+add_q).two_j + 1.0)*(irrep_list(int_tmp1_pp+add_p).two_j + 1.0);
-                int_2e_JK.K[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q][e1K][e2K] /= (irrep_list(int_tmp1_qq+add_q).two_j + 1.0)*(irrep_list(int_tmp1_pp+add_p).two_j + 1.0);
+                int_2e_JK.J[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q][e1J][e2J] /= (irrep_list[int_tmp1_qq+add_q].two_j + 1.0)*(irrep_list[int_tmp1_pp+add_p].two_j + 1.0);
+                int_2e_JK.K[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q][e1K][e2K] /= (irrep_list[int_tmp1_qq+add_q].two_j + 1.0)*(irrep_list[int_tmp1_pp+add_p].two_j + 1.0);
             }
         }
         int_tmp1_q += (l_q == 0) ? 1 : 2;
