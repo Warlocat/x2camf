@@ -6,10 +6,10 @@
 #include<ctime>
 #include<memory>
 #include<vector>
+#include<complex>
 #include"int_sph.h"
 #include"dhf_sph.h"
 #include"dhf_sph_ca.h"
-#include"finterface.h"
 #include"mkl_itrf.h"
 using namespace std;
 
@@ -139,14 +139,12 @@ int main()
         sizeAll += sizeList[ii];
     }
     int sizeAll2 = sizeAll*sizeAll, sizeHalf = sizeAll/2;
-    F_INTERFACE::f_dcomplex amfiAll[sizeAll*sizeAll], XAll[sizeAll*sizeAll];
+    complex<double> amfiAll[sizeAll*sizeAll], XAll[sizeAll*sizeAll];
     double drAll[sizeAll*sizeAll], diAll[sizeAll*sizeAll];
     for(int ii = 0; ii < sizeAll2; ii++)
     {
-        amfiAll[ii].dr = 0.0;
-        amfiAll[ii].di = 0.0;
-        XAll[ii].dr = 0.0;
-        XAll[ii].di = 0.0;
+        amfiAll[ii] = zero_cp;
+        XAll[ii] = zero_cp;
         drAll[ii] = 0.0;
         diAll[ii] = 0.0;
     }
@@ -158,23 +156,15 @@ int main()
         {
             // transpose for Fortran interface
             // separate alpha and beta
-            amfiAll[(int_tmp+mm)*sizeAll + int_tmp+nn].dr = amfiUnique[indexList[ii]][nn*sizeList[ii]+mm].real();
-            amfiAll[(int_tmp+mm)*sizeAll + int_tmp+nn].di = amfiUnique[indexList[ii]][nn*sizeList[ii]+mm].imag();
-            amfiAll[(int_tmp+mm+sizeHalf)*sizeAll + int_tmp+nn].dr = amfiUnique[indexList[ii]][nn*sizeList[ii]+size_tmp_half+mm].real();
-            amfiAll[(int_tmp+mm+sizeHalf)*sizeAll + int_tmp+nn].di = amfiUnique[indexList[ii]][nn*sizeList[ii]+size_tmp_half+mm].imag();
-            amfiAll[(int_tmp+mm)*sizeAll + int_tmp+nn+sizeHalf].dr = amfiUnique[indexList[ii]][(size_tmp_half+nn)*sizeList[ii]+mm].real();
-            amfiAll[(int_tmp+mm)*sizeAll + int_tmp+nn+sizeHalf].di = amfiUnique[indexList[ii]][(size_tmp_half+nn)*sizeList[ii]+mm].imag();
-            amfiAll[(int_tmp+mm+sizeHalf)*sizeAll + int_tmp+nn+sizeHalf].dr = amfiUnique[indexList[ii]][(size_tmp_half+nn)*sizeList[ii]+size_tmp_half+mm].real();
-            amfiAll[(int_tmp+mm+sizeHalf)*sizeAll + int_tmp+nn+sizeHalf].di = amfiUnique[indexList[ii]][(size_tmp_half+nn)*sizeList[ii]+size_tmp_half+mm].imag();
+            amfiAll[(int_tmp+mm)*sizeAll + int_tmp+nn] = amfiUnique[indexList[ii]][nn*sizeList[ii]+mm];
+            amfiAll[(int_tmp+mm+sizeHalf)*sizeAll + int_tmp+nn] = amfiUnique[indexList[ii]][nn*sizeList[ii]+size_tmp_half+mm];
+            amfiAll[(int_tmp+mm)*sizeAll + int_tmp+nn+sizeHalf] = amfiUnique[indexList[ii]][(size_tmp_half+nn)*sizeList[ii]+mm];
+            amfiAll[(int_tmp+mm+sizeHalf)*sizeAll + int_tmp+nn+sizeHalf] = amfiUnique[indexList[ii]][(size_tmp_half+nn)*sizeList[ii]+size_tmp_half+mm];
 
-            XAll[(int_tmp+mm)*sizeAll + int_tmp+nn].dr = XUnique[indexList[ii]][nn*sizeList[ii]+mm].real();
-            XAll[(int_tmp+mm)*sizeAll + int_tmp+nn].di = XUnique[indexList[ii]][nn*sizeList[ii]+mm].imag();
-            XAll[(int_tmp+mm+sizeHalf)*sizeAll + int_tmp+nn].dr = XUnique[indexList[ii]][nn*sizeList[ii]+size_tmp_half+mm].real();
-            XAll[(int_tmp+mm+sizeHalf)*sizeAll + int_tmp+nn].di = XUnique[indexList[ii]][nn*sizeList[ii]+size_tmp_half+mm].imag();
-            XAll[(int_tmp+mm)*sizeAll + int_tmp+nn+sizeHalf].dr = XUnique[indexList[ii]][(size_tmp_half+nn)*sizeList[ii]+mm].real();
-            XAll[(int_tmp+mm)*sizeAll + int_tmp+nn+sizeHalf].di = XUnique[indexList[ii]][(size_tmp_half+nn)*sizeList[ii]+mm].imag();
-            XAll[(int_tmp+mm+sizeHalf)*sizeAll + int_tmp+nn+sizeHalf].dr = XUnique[indexList[ii]][(size_tmp_half+nn)*sizeList[ii]+size_tmp_half+mm].real();
-            XAll[(int_tmp+mm+sizeHalf)*sizeAll + int_tmp+nn+sizeHalf].di = XUnique[indexList[ii]][(size_tmp_half+nn)*sizeList[ii]+size_tmp_half+mm].imag();
+            XAll[(int_tmp+mm)*sizeAll + int_tmp+nn] = XUnique[indexList[ii]][nn*sizeList[ii]+mm];
+            XAll[(int_tmp+mm+sizeHalf)*sizeAll + int_tmp+nn] = XUnique[indexList[ii]][nn*sizeList[ii]+size_tmp_half+mm];
+            XAll[(int_tmp+mm)*sizeAll + int_tmp+nn+sizeHalf] = XUnique[indexList[ii]][(size_tmp_half+nn)*sizeList[ii]+mm];
+            XAll[(int_tmp+mm+sizeHalf)*sizeAll + int_tmp+nn+sizeHalf] = XUnique[indexList[ii]][(size_tmp_half+nn)*sizeList[ii]+size_tmp_half+mm];
 
             drAll[(int_tmp+mm)*sizeAll + int_tmp+nn] = denUnique[indexList[ii]][nn*sizeList[ii]+mm].real();
             diAll[(int_tmp+mm)*sizeAll + int_tmp+nn] = denUnique[indexList[ii]][nn*sizeList[ii]+mm].imag();
@@ -192,45 +182,18 @@ int main()
     cout << "Writing amfso integrals...." << endl;
     if(!PT)
     {
-        // F_INTERFACE::prvecr_((double*)amfiAll,&sizeAllReal);
-        F_INTERFACE::wfile_("X2CMFSOM",(double*)amfiAll,&sizeAllReal);
-        F_INTERFACE::wfile_("X2CATMXM",(double*)XAll,&sizeAllReal);
-        F_INTERFACE::wfile_("X2CATMDR",(double*)drAll,&sizeAll2);
-        F_INTERFACE::wfile_("X2CATMDI",(double*)diAll,&sizeAll2);
-        F_INTERFACE::prvecr_((double*)amfiAll,&sizeAllReal);
-        F_INTERFACE::prvecr_((double*)XAll,&sizeAllReal);
+        writeMatrixBinary((double*)amfiAll,sizeAllReal,"X2CMFSOM");
+        writeMatrixBinary((double*)XAll,sizeAllReal,"X2CATMXM");
+        writeMatrixBinary((double*)drAll,sizeAll2,"X2CATMDR");
+        writeMatrixBinary((double*)diAll,sizeAll2,"X2CATMDI");
     }
     else
     {
-        int sizePT = sizeAll/2*sizeAll/2;
-        double amfiX[sizePT],amfiY[sizePT],amfiZ[sizePT];
-        for(int ii = 0; ii < sizePT; ii++)
-        {
-            amfiX[ii] = 0.0;
-            amfiY[ii] = 0.0;
-            amfiZ[ii] = 0.0;
-        }
-        int_tmp = 0;
-        for(int ii = 0; ii < atomList.size(); ii++)
-        {
-            int size_tmp_half = sizeList[ii]/2;
-            for(int mm = 0; mm < size_tmp_half; mm++)
-            for(int nn = 0; nn < size_tmp_half; nn++)
-            {
-                // separate X, Y, Z components
-                amfiZ[(int_tmp+mm)*sizeAll/2 + int_tmp+nn] = amfiUnique[indexList[ii]][nn*sizeList[ii]+mm].imag();
-                amfiY[(int_tmp+mm)*sizeAll/2 + int_tmp+nn] = amfiUnique[indexList[ii]][nn*sizeList[ii]+size_tmp_half+mm].real();
-                amfiX[(int_tmp+mm)*sizeAll/2 + int_tmp+nn] = amfiUnique[indexList[ii]][nn*sizeList[ii]+size_tmp_half+mm].imag();
-            }
-            int_tmp += sizeList[ii]/2;
-        }
-        F_INTERFACE::wfile_("XX2CSOCM",(double*)amfiX,&sizePT);
-        F_INTERFACE::wfile_("YX2CSOCM",(double*)amfiY,&sizePT);
-        F_INTERFACE::wfile_("ZX2CSOCM",(double*)amfiZ,&sizePT);
+	cout << "ERROR: PT interface has not been implemented" << endl;
+	exit(99);
     }
     
-    
-
+    cout << "xx2camf FINISHED!" << endl;
     return 0;
 }
 

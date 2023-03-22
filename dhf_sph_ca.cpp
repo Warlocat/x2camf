@@ -423,6 +423,113 @@ void DHF_SPH_CA::evaluateFock(vector<double>& fock_c, const bool& twoC, const ve
     }
     fock_c = fock_c + LM + vectorTrans(LM, size2);
 }
+void DHF_SPH_CA::evaluateFock_2e(vector<double>& fock_c, const bool& twoC, const vector<vVectorXd>& densities, const int& size, const int& Iirrep)
+{
+    int ir = all2compact[Iirrep];
+    int size2 = twoC ? size : 2*size;
+    vVectorXd R(NOpenShells+2);
+    vVectorXd Q(NOpenShells+1);
+    for(int ii = 0; ii < NOpenShells+2; ii++)
+    {
+        if(ii < NOpenShells+1) Q[ii].resize(size2*size2, 0.0);
+        R[ii].resize(size2*size2);
+        for(int mm = 0; mm < size2; mm++)
+        for(int nn = 0; nn < size2; nn++)
+            R[ii][mm*size2+nn] = densities[ii][Iirrep][nn*size2+mm];   
+    }     
+    if(twoC)
+    {
+        #pragma omp parallel  for
+        for(int mm = 0; mm < size; mm++)
+        for(int nn = 0; nn <= mm; nn++)
+        {
+            for(int ii = 0; ii < NOpenShells+1; ii++)
+            for(int jr = 0; jr < occMax_irrep_compact; jr++)
+            {
+                int Jirrep = compact2all[jr];
+                vector<double> den_tmp = densities[ii][Jirrep];
+                double twojP1 = irrep_list[Jirrep].two_j+1;
+                int size_tmp2 = irrep_list[Jirrep].size;
+                for(int aa = 0; aa < size_tmp2; aa++)
+                for(int bb = 0; bb < size_tmp2; bb++)
+                {
+                    int emn = mm*size+nn, eab = aa*size_tmp2+bb, emb = mm*size_tmp2+bb, ean = aa*size+nn;
+                    Q[ii][mm*size+nn] += twojP1*den_tmp[aa*size_tmp2+bb] * h2eLLLL_JK.J[ir][jr][emn][eab];
+                }
+                Q[ii][nn*size+mm] = Q[ii][mm*size+nn];
+            }
+        }
+    }
+    else
+    {
+        #pragma omp parallel  for
+        for(int mm = 0; mm < size; mm++)
+        for(int nn = 0; nn <= mm; nn++)
+        {         
+            for(int ii = 0; ii < NOpenShells+1; ii++)
+            for(int jr = 0; jr < occMax_irrep_compact; jr++)
+            {
+                int Jirrep = compact2all[jr];
+                vector<double> den_tmp = densities[ii][Jirrep];
+                double twojP1 = irrep_list[Jirrep].two_j+1;
+                int size_tmp2 = irrep_list[Jirrep].size;
+                int size2j = size_tmp2 * 2;
+                for(int ss = 0; ss < size_tmp2; ss++)
+                for(int rr = 0; rr < size_tmp2; rr++)
+                {
+                    int emn = mm*size+nn, esr = ss*size_tmp2+rr, emr = mm*size_tmp2+rr, esn = ss*size+nn;
+                    Q[ii][mm*size2+nn] += twojP1*den_tmp[ss*size2j+rr] * h2eLLLL_JK.J[ir][jr][emn][esr] + twojP1*den_tmp[(size_tmp2+ss)*size2j+size_tmp2+rr] * h2eSSLL_JK.J[jr][ir][esr][emn];
+                    Q[ii][(mm+size)*size2+nn] -= twojP1*den_tmp[ss*size2j+size_tmp2+rr] * h2eSSLL_JK.K[ir][jr][emr][esn];
+                    Q[ii][(mm+size)*size2+nn+size] += twojP1*den_tmp[(size_tmp2+ss)*size2j+size_tmp2+rr] * h2eSSSS_JK.J[ir][jr][emn][esr] + twojP1*den_tmp[ss*size2j+rr] * h2eSSLL_JK.J[ir][jr][emn][esr];
+                    if(mm != nn) 
+                    {
+                        int enr = nn*size_tmp2+rr, esm = ss*size+mm;
+                        Q[ii][(nn+size)*size2+mm] -= twojP1*den_tmp[ss*size2j+size_tmp2+rr] * h2eSSLL_JK.K[ir][jr][enr][esm];
+                    }
+                    if(with_gaunt)
+                    {
+                        int enm = nn*size+mm, ers = rr*size_tmp2+ss, erm = rr*size+mm, ens = nn*size_tmp2+ss;
+                        Q[ii][mm*size2+nn] -= twojP1*den_tmp[(size_tmp2+ss)*size2j+size_tmp2+rr] * gauntLSSL_JK.K[ir][jr][emr][esn];
+                        Q[ii][(mm+size)*size2+nn] += twojP1*den_tmp[(ss+size_tmp2)*size2j+rr]*gauntLSLS_JK.J[ir][jr][enm][ers] + twojP1*den_tmp[ss*size2j+size_tmp2+rr] * gauntLSSL_JK.J[jr][ir][esr][emn];
+                        Q[ii][(mm+size)*size2+nn+size] -= twojP1*den_tmp[ss*size2j+rr] * gauntLSSL_JK.K[jr][ir][esn][emr];
+                        if(mm != nn)
+                        {
+                            int ern = rr*size+nn, ems = mm*size_tmp2+ss;
+                            Q[ii][(nn+size)*size2+mm] += twojP1*den_tmp[(size_tmp2+ss)*size2j+rr]*gauntLSLS_JK.J[ir][jr][emn][ers] + twojP1*den_tmp[ss*size2j+size_tmp2+rr] * gauntLSSL_JK.J[jr][ir][esr][enm];
+                        }
+                    }
+                }    
+                Q[ii][nn*size2+mm] = Q[ii][mm*size2+nn];
+                Q[ii][mm*size2+nn+size] = Q[ii][(nn+size)*size2+mm];
+                Q[ii][nn*size2+mm+size] = Q[ii][(mm+size)*size2+nn];
+                Q[ii][(size+nn)*size2+size+mm] = Q[ii][(mm+size)*size2+nn+size];
+            }
+        }
+    }
+
+    fock_c.resize(size2*size2, 0.0);
+    for(int ii = 0; ii < NOpenShells+1; ii++)
+    {
+        if(ii != 0)
+            Q[ii] = f_list[ii-1]*Q[ii];
+        fock_c = fock_c + Q[ii];
+    }
+    vector<double> LM(size2*size2, 0.0);
+    for(int ii = 1; ii < NOpenShells+1; ii++)
+    {
+        double f_u = f_list[ii-1];
+        double a_u = MM_list[ii-1]*(NN_list[ii-1]-1.0)/NN_list[ii-1]/(MM_list[ii-1]-1.0);
+        double alpha_u = (1-a_u)/(1-f_u);
+        vector<double> tmp1, tmp2, tmp3;
+        // LM += S*R(ii)*Q(ii)*(alpha_u*f_u*R(0)+(a_u-1.0)*(0.5*R(ii)+R(NOpenShells+1)))*S;
+        dgemm_itrf('n','n',size2,size2,size2,1.0,overlap_4c[Iirrep],R[ii],0.0,tmp1);
+        dgemm_itrf('n','n',size2,size2,size2,1.0,tmp1,Q[ii],0.0,tmp2);
+        tmp3 = alpha_u*f_u*R[0]+(a_u-1.0)*(0.5*R[ii]+R[NOpenShells+1]);
+        dgemm_itrf('n','n',size2,size2,size2,1.0,tmp2,tmp3,0.0,tmp1);
+        dgemm_itrf('n','n',size2,size2,size2,1.0,tmp1,overlap_4c[Iirrep],1.0,LM);
+    }
+    fock_c = fock_c + LM + vectorTrans(LM, size2);
+}
 
 double DHF_SPH_CA::evaluateEnergy(const bool& twoC)
 {

@@ -1,15 +1,18 @@
-CPP = icpc
-FF = ifort
-CPPFLAG = -O3 -std=c++11 -fopenmp -qmkl -I include
-LIBSFLAG = -l ifcore
-FILES = int_sph_basic.o int_sph.o int_sph_gaunt.o int_sph_gauge.o general.o dhf_sph.o dhf_sph_ca.o dhf_sph_pcc.o finterface.o mkl_itrf.o
+
+topdir:=..
+builddir:=..
+
+include $(builddir)/make.config
+CXXFLAGS+= -O3 -std=c++2a -fopenmp -I.  -DMKL_ILP64  -I"${MKLROOT}/include"
+INTEL =  -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_ilp64.a ${MKLROOT}/lib/intel64/libmkl_intel_thread.a ${MKLROOT}/lib/intel64/libmkl_core.a -Wl,--end-group
+LIBSFLAG = -static-intel ${INTEL}
+FILES = int_sph_basic.o int_sph.o int_sph_gaunt.o int_sph_gauge.o general.o dhf_sph.o dhf_sph_ca.o dhf_sph_pcc.o mkl_itrf.o
 CFOUR = cfour_interface.o ${FILES}
 
-xx2camf: ${CFOUR}
-	${CPP} ${CPPFLAG} ${LIBSFLAG} ${CFOUR} -o xx2camf
+$(bindir)/xx2camf: ${CFOUR}
+	${CXX} ${CFOUR} ${CXXFLAGS} ${LIBSFLAG} -o $@
 %.o: %.cpp
-	$(CPP) $(CPPFLAG) -c $< -o $@ 
-%.o: %.f90
-	${FF} -c $< -o $@
+	$(CXX) -c $< -o $@ $(CXXFLAGS)  
 clean:
-	rm *.o xx2camf
+	rm -f *.o $(bindir)/xx2camf
+

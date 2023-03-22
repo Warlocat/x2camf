@@ -35,10 +35,7 @@ template<typename T> void writeMatrixBinary(T* inputM, const int& size, const st
 {
     ofstream ofs;
     ofs.open(filename, ios::binary);
-        for(int ii = 0; ii < size; ii++)
-        {
-            ofs.write((char*) &(inputM[ii]), sizeof(T));
-        }
+    ofs.write((char*) inputM, size*sizeof(T));
     ofs.close();
     return;
 }
@@ -52,10 +49,7 @@ template<typename T> void readMatrixBinary(T* inputM, const int& size, const str
         cout << "ERROR opening file " << filename << endl;
         exit(99);
     }
-        for(int ii = 0; ii < size; ii++)
-        {
-            ifs.read((char*) &(inputM[ii]), sizeof(T));
-        }
+        ifs.read((char*) inputM, size*sizeof(T));
     ifs.close();
     return;
 }

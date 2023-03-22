@@ -85,7 +85,7 @@ public:
     vVectorXd get_amfi_unc_4c(INT_SPH& int_sph_, const bool& twoC = false, const string& Xmethod = "partialFock", bool amfi_with_gaunt = false, bool amfi_with_gauge = false);
 
     /* x2c2e picture change */
-    vVectorXd x2c2ePCC(vVectorXd* coeff2c = NULL);
+    virtual vVectorXd x2c2ePCC(vVectorXd* coeff2c = NULL);
     vVectorXd h_x2c2e(vVectorXd* coeff2c = NULL);
     
     /* Evaluate atomic radial density \rho(r) */

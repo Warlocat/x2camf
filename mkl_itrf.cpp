@@ -143,7 +143,8 @@ void zgemm_itrf(const char transa_, const char transb_, const int m, const int n
 */
 vector<double> matInv_d(const vector<double>& inputM, const int& N)
 {
-    int info, ipiv[N];
+    int info;
+    MKL_INT ipiv[N];
     vector<double> tmpM = inputM;
     /* Solve the equations M^-1 */
     info = LAPACKE_dgetrf( LAPACK_ROW_MAJOR, N, N, tmpM.data(), N, ipiv);
@@ -171,7 +172,8 @@ vector<double> matInv_d(const vector<double>& inputM, const int& N)
 */
 void liearEqn_d(const vector<double>& inputA, const vector<double>& inputB, const int& N, vector<double>& solution)
 {
-    int info, ipiv[N];
+    int info;
+    MKL_INT ipiv[N];
     vector<double> tmpA(N*N), tmpB(N);
     for(int ii = 0; ii < N; ii++)
     {
