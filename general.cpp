@@ -373,6 +373,21 @@ vector<double> X2C::transform_4c_2c(const vector<double>& M_4c_, const vector<do
     return tmp2;
 }
 
+vVectorXd X2C::pauliDecompose(const vectorcd& M, const int& size)
+{
+    vVectorXd M_pauli(4);
+    for(int ii = 0; ii < 4; ii++)
+        M_pauli[ii].resize(size/2*size/2);
+    for(int ii = 0; ii < size/2; ii++)
+    for(int jj = 0; jj < size/2; jj++)
+    {
+        M_pauli[0][ii*size/2 + jj] = M[ii*size+jj].real(); // scalar
+        M_pauli[1][ii*size/2 + jj] = M[ii*size+jj+size/2].imag(); // x
+        M_pauli[2][ii*size/2 + jj] = M[ii*size+jj+size/2].real(); // y
+        M_pauli[3][ii*size/2 + jj] = M[ii*size+jj].imag(); // z
+    }
+    return M_pauli;
+}
 
 /*
     Generate basis transformation matrix

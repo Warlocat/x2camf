@@ -359,7 +359,7 @@ void DHF_SPH::runSCF(const bool& twoC, const bool& renormSmall, vVectorXd* initi
     vVectorXd error4DIIS[occMax_irrep], fock4DIIS[occMax_irrep];
     countTime(StartTimeCPU,StartTimeWall);
     cout << endl;
-    if(twoC) cout << "Start X2C-1e Hartree-Fock iterations..." << endl;
+    if(twoC) cout << "Start two-component Hartree-Fock iterations..." << endl;
     else cout << "Start Dirac Hartree-Fock iterations..." << endl;
     cout << "with SCF convergence = " << convControl << endl;
     cout << endl;
@@ -454,7 +454,7 @@ void DHF_SPH::runSCF(const bool& twoC, const bool& renormSmall, vVectorXd* initi
                                      fock_4c[ir][jj*nbas[ir]+ii]) * (irrep_list[ir].two_j+1.0);
                 }
             }
-            if(twoC) cout << "Final X2C-1e HF energy is " << setprecision(15) << ene_scf << " hartree." << endl;
+            if(twoC) cout << "Final (SF)X2C-1e HF energy is " << setprecision(15) << ene_scf << " hartree." << endl;
             else cout << "Final DHF energy is " << setprecision(15) << ene_scf << " hartree." << endl;
             break;            
         }
@@ -1018,7 +1018,7 @@ vVectorXd DHF_SPH::get_amfi_unc(INT_SPH& int_sph_, const bool& twoC, const strin
         if(with_gauge && !amfi_with_gauge)
             amfi_with_gauge = true;
     }
-    if((!with_gaunt && amfi_with_gaunt) || twoC)
+    if((!with_gaunt && amfi_with_gaunt) || (twoC && amfi_with_gaunt))
     {
         countTime(StartTimeCPU,StartTimeWall);
         int_sph_.get_h2e_JK_gaunt_direct(gauntLSLS_JK,gauntLSSL_JK);

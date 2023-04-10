@@ -163,6 +163,7 @@ namespace X2C
     vector<double> evaluate_h1e_x2c(const vector<double>& S_, const vector<double>& T_, const vector<double>& W_, const vector<double>& V_, const int& size);
     vector<double> evaluate_h1e_x2c(const vector<double>& S_, const vector<double>& T_, const vector<double>& W_, const vector<double>& V_, const vector<double>& X_, const vector<double>& R_, const int& size);
     vector<double> transform_4c_2c(const vector<double>& M_4c, const vector<double> X_, const vector<double>& R_, const int& size);
+    vVectorXd pauliDecompose(const vectorcd& M, const int& size);
 }
 
 
@@ -214,7 +215,7 @@ namespace Rotate
     {
         int size_spinor = 0, size_irrep = irrep_list.size();
         vector<vector<T>> inputLL(size_irrep), inputLS(size_irrep), inputSL(size_irrep), inputSS(size_irrep);
-        if(inputM.rows() != size_irrep)
+        if(inputM.size() != size_irrep)
         {
             cout << "ERROR: the size of inputM is not equal to Nirrep." << endl;
             exit(99);
