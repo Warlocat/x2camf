@@ -637,29 +637,29 @@ double CG::wigner_3j_int(const int& l1, const int& l2, const int& l3, const int&
     }
     else
     {
-        Vector3i L(l1,l2,l3), M(m1,m2,m3);
-        int tmp, Lmax = L.maxCoeff();
+        vector<int> L={l1,l2,l3}, M={m1,m2,m3};
+        int tmp, Lmax = max(l1,max(l2,l3));
         for(int ii = 0; ii <= 1; ii++)
         {
-            if(L(ii) == Lmax)
+            if(L[ii] == Lmax)
             {
-                tmp = L(ii);
-                L(ii) = L(2);
-                L(2) = tmp;
-                tmp = M(ii);
-                M(ii) = M(2);
-                M(2) = tmp;
+                tmp = L[ii];
+                L[ii] = L[2];
+                L[2] = tmp;
+                tmp = M[ii];
+                M[ii] = M[2];
+                M[2] = tmp;
                 break;
             }
         }
 
-        if(L(2) == L(0) + L(1))
+        if(L[2] == L[0] + L[1])
         {
-            return pow(-1, L(0) - L(1) - M(2)) * sqrt(factorial(2*L(0)) * factorial(2*L(1)) / factorial(2*L(2) + 1) * factorial(L(2) - M(2)) * factorial(L(2) + M(2)) / factorial(L(0)+M(0)) / factorial(L(0)-M(0)) / factorial(L(1)+M(1)) / factorial(L(1)-M(1)));
+            return pow(-1, L[0] - L[1] - M[2]) * sqrt_fact[2*L[0]] * sqrt_fact[2*L[1]] / sqrt_fact[2*L[2] + 1] * sqrt_fact[L[2] - M[2]] * sqrt_fact[L[2] + M[2]] / sqrt_fact[L[0]+M[0]] / sqrt_fact[L[0]-M[0]] / sqrt_fact[L[1]+M[1]] / sqrt_fact[L[1]-M[1]];
         }
         else
         {
-            return CG::wigner_3j(2*L(0),2*L(1),2*L(2),2*M(0),2*M(1),2*M(2));
+            return CG::wigner_3j(2*L[0],2*L[1],2*L[2],2*M[0],2*M[1],2*M[2]);
         }
         
     }
@@ -676,7 +676,7 @@ double CG::wigner_3j_zeroM(const int& l1, const int& l2, const int& l3)
     }
     else
     {
-        return pow(-1,g) * sqrt(factorial(J - 2*l1) * factorial(J - 2*l2) * factorial(J - 2*l3) / factorial(J + 1)) 
+        return pow(-1,g) * sqrt_fact[J - 2*l1] * sqrt_fact[J - 2*l2] * sqrt_fact[J - 2*l3] / sqrt_fact[J + 1] 
                 * factorial(g) / factorial(g-l1) / factorial(g-l2) / factorial(g-l3);
     }
 }

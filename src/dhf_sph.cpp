@@ -11,8 +11,8 @@ using namespace std;
 using namespace Eigen;
 
 
-DHF_SPH::DHF_SPH(INT_SPH& int_sph_, const string& filename, const bool& spinFree, const bool& twoC, const bool& with_gaunt_, const bool& with_gauge_, const bool& allInt, const bool& gaussian_nuc):
-irrep_list(int_sph_.irrep_list), with_gaunt(with_gaunt_), with_gauge(with_gauge_), shell_list(int_sph_.shell_list)
+DHF_SPH::DHF_SPH(INT_SPH& int_sph_, const string& filename, const int& printLevel_, const bool& spinFree, const bool& twoC, const bool& with_gaunt_, const bool& with_gauge_, const bool& allInt, const bool& gaussian_nuc):
+irrep_list(int_sph_.irrep_list), with_gaunt(with_gaunt_), with_gauge(with_gauge_), shell_list(int_sph_.shell_list), printLevel(printLevel_)
 {
     string method = "HF";
     if(twoC) method = "2c-" + method;
@@ -50,17 +50,22 @@ irrep_list(int_sph_.irrep_list), with_gaunt(with_gaunt_), with_gauge(with_gauge_
     }
 
     nelec = 0.0;
-    cout << "Occupation number vector:" << endl;
-    cout << "l\t2j\t2mj\tOcc" << endl;
     for(int ii = 0; ii < Nirrep; ii++)
+    for(int jj = 0; jj < occNumber(ii).rows(); jj++)
+        nelec += occNumber(ii)(jj);
+    
+    if(printLevel >= 4)
     {
-        cout << irrep_list(ii).l << "\t" << irrep_list(ii).two_j << "\t" << irrep_list(ii).two_mj << "\t" << occNumber(ii).transpose() << endl;
-        for(int jj = 0; jj < occNumber(ii).rows(); jj++)
-            nelec += occNumber(ii)(jj);
+        cout << "Occupation number vector:" << endl;
+        cout << "l\t2j\t2mj\tOcc" << endl;
+        for(int ii = 0; ii < Nirrep; ii++)
+        {
+            cout << irrep_list(ii).l << "\t" << irrep_list(ii).two_j << "\t" << irrep_list(ii).two_mj << "\t" << occNumber(ii).transpose() << endl;
+        }
+        cout << "Highest occupied irrep: " << occMax_irrep << endl;
+        cout << "Total number of electrons: " << nelec << endl << endl;
     }
-    cout << "Highest occupied irrep: " << occMax_irrep << endl;
-    cout << "Total number of electrons: " << nelec << endl << endl;
-
+    
     // Calculate the approximate maximum memory cost for SCF-amfi integrals
     double numberOfDouble = 0;
     for(int ir = 0; ir < irrep_list.size(); ir+=irrep_list(ir).two_j+1)
@@ -71,7 +76,7 @@ irrep_list(int_sph_.irrep_list), with_gaunt(with_gaunt_), with_gauge(with_gauge_
     numberOfDouble *= 5.0;
     if(with_gaunt)  numberOfDouble = numberOfDouble/5.0*9.0;
     if(with_gauge)  numberOfDouble = numberOfDouble/9.0*12.0;
-    cout << "Maximum memory cost (2e part) in SCF and amfi calculation: " << numberOfDouble*sizeof(double)/pow(1024.0,3) << " GB." << endl;
+    if(printLevel >= 1) cout << "Maximum memory cost (2e part) in SCF and amfi calculation: " << numberOfDouble*sizeof(double)/pow(1024.0,3) << " GB." << endl;
 
     countTime(StartTimeCPU,StartTimeWall);
     overlap = int_sph_.get_h1e("overlap");
@@ -95,7 +100,7 @@ irrep_list(int_sph_.irrep_list), with_gaunt(with_gaunt_), with_gauge(with_gauge_
     }
         
     countTime(EndTimeCPU,EndTimeWall);
-    printTime("1e-integrals");
+    if(printLevel >= 1) printTime("1e-integrals");
 
     countTime(StartTimeCPU,StartTimeWall);
     if(twoC)
@@ -103,7 +108,7 @@ irrep_list(int_sph_.irrep_list), with_gaunt(with_gaunt_), with_gauge(with_gauge_
     else
         int_sph_.get_h2e_JK_direct(h2eLLLL_JK,h2eSSLL_JK,h2eSSSS_JK,irrep_list(occMax_irrep-1).l, spinFree);
     countTime(EndTimeCPU,EndTimeWall);
-    printTime("2e-Coulomb-integrals");
+    if(printLevel >= 1) printTime("2e-Coulomb-integrals");
 
     if(with_gaunt && !twoC)
     {
@@ -118,7 +123,7 @@ irrep_list(int_sph_.irrep_list), with_gaunt(with_gaunt_), with_gauge(with_gauge_
         else
             int_sph_.get_h2e_JK_gaunt_direct(gauntLSLS_JK,gauntLSSL_JK);
         countTime(EndTimeCPU,EndTimeWall);
-        printTime("2e-Gaunt-integrals");
+        if(printLevel >= 1) printTime("2e-Gaunt-integrals");
     }
     if(with_gauge && !twoC)
     {
@@ -150,7 +155,7 @@ irrep_list(int_sph_.irrep_list), with_gaunt(with_gaunt_), with_gauge(with_gauge_
             }
         }
         countTime(EndTimeCPU,EndTimeWall);
-        printTime("2e-gauge-integrals");
+        if(printLevel >= 1) printTime("2e-gauge-integrals");
     }
     symmetrize_h2e(twoC);
 
@@ -349,11 +354,15 @@ void DHF_SPH::runSCF(const bool& twoC, const bool& renormSmall, vMatrixXd* initi
     }
     vector<MatrixXd> error4DIIS[occMax_irrep], fock4DIIS[occMax_irrep];
     countTime(StartTimeCPU,StartTimeWall);
-    cout << endl;
-    if(twoC) cout << "Start X2C-1e Hartree-Fock iterations..." << endl;
-    else cout << "Start Dirac Hartree-Fock iterations..." << endl;
-    cout << "with SCF convergence = " << convControl << endl;
-    cout << endl;
+    if(printLevel >= 1)
+    {
+        cout << endl;
+        if(twoC) cout << "Start X2C-1e Hartree-Fock iterations..." << endl;
+        else cout << "Start Dirac Hartree-Fock iterations..." << endl;
+        cout << "with SCF convergence = " << convControl << endl;
+        cout << endl;
+    }
+    
     vMatrixXd newDen;
     if(initialGuess == NULL)
     {
@@ -410,7 +419,7 @@ void DHF_SPH::runSCF(const bool& twoC, const bool& renormSmall, vMatrixXd* initi
         newDen = evaluateDensity_spinor_irrep(twoC);
         d_density = evaluateChange_irrep(density, newDen);
         
-        cout << "Iter #" << iter << " maximum density difference: " << d_density << endl;
+        if(printLevel >= 4) cout << "Iter #" << iter << " maximum density difference: " << d_density << endl;
         
         density = newDen;
         if(d_density < convControl || abs(nelec -1) < 1e-5) 
@@ -423,15 +432,18 @@ void DHF_SPH::runSCF(const bool& twoC, const bool& renormSmall, vMatrixXd* initi
                 density = evaluateDensity_spinor_irrep(twoC);
             }
             converged = true;
-            cout << endl << "SCF converges after " << iter << " iterations." << endl << endl;
+            if(printLevel >= 1) cout << endl << "SCF converges after " << iter << " iterations." << endl << endl;
 
-            cout << "\tOrbital\t\tEnergy(in hartree)\n";
-            cout << "\t*******\t\t******************\n";
-            for(int ir = 0; ir < occMax_irrep; ir += irrep_list(ir).two_j+1)
-            for(int ii = 1; ii <= irrep_list(ir).size; ii++)
+            if(printLevel >= 4)
             {
-                if(twoC) cout << "\t" << ii << "\t\t" << setprecision(15) << ene_orb(ir)(ii - 1) << endl;
-                else cout << "\t" << ii << "\t\t" << setprecision(15) << ene_orb(ir)(irrep_list(ir).size + ii - 1) << endl;
+                cout << "\tOrbital\t\tEnergy(in hartree)\n";
+                cout << "\t*******\t\t******************\n";
+                for(int ir = 0; ir < occMax_irrep; ir += irrep_list(ir).two_j+1)
+                for(int ii = 1; ii <= irrep_list(ir).size; ii++)
+                {
+                    if(twoC) cout << "\t" << ii << "\t\t" << setprecision(15) << ene_orb(ir)(ii - 1) << endl;
+                    else cout << "\t" << ii << "\t\t" << setprecision(15) << ene_orb(ir)(irrep_list(ir).size + ii - 1) << endl;
+                }
             }
 
             ene_scf = 0.0;
@@ -490,7 +502,7 @@ void DHF_SPH::runSCF(const bool& twoC, const bool& renormSmall, vMatrixXd* initi
     }
 
     countTime(EndTimeCPU,EndTimeWall);
-    printTime("DHF iterations");
+    if(printLevel >= 1) printTime("DHF iterations");
 }
 
 /*
@@ -507,9 +519,13 @@ void DHF_SPH::renormalize_small()
             norm_s(ii)(jj) = sqrt(kinetic(ii)(jj,jj) / 2.0 / speedOfLight / speedOfLight);
         }
     }
-    cout << "Renormalizing small component...." << endl;
-    cout << "overlap_4c, h1e_4c, overlap_half_i_4c," << endl
-            << "and all h2e will be renormalized." << endl << endl; 
+    if(printLevel >= 4)
+    {
+        cout << "Renormalizing small component...." << endl
+             << "overlap_4c, h1e_4c, overlap_half_i_4c," << endl
+             << "and all h2e will be renormalized." << endl << endl; 
+    } 
+    
     for(int ii = 0; ii < occMax_irrep; ii++)
     {
         int size_tmp = irrep_list(ii).size;
@@ -772,7 +788,7 @@ void DHF_SPH::setOCC(const string& filename, const string& atomName)
             ifs >> flags;
             if(flags == "%occAMFI_" + atomName)
             {
-                cout << "Found input occupation number for " << atomName <<     endl;
+                if(printLevel >= 4) cout << "Found input occupation number for " << atomName <<     endl;
                 ifs >> int_tmp;
                 for(int ii = 0; ii < int_tmp; ii++)
                 {
@@ -785,8 +801,11 @@ void DHF_SPH::setOCC(const string& filename, const string& atomName)
     
     if(ifs.eof() or ifs.fail())
     {
-        cout << "Did NOT find %occAMFI in " << filename << endl;
-        cout << "Using default occupation number for " << atomName << endl;
+        if(printLevel >= 4) 
+        {
+            cout << "Did NOT find %occAMFI in " << filename << endl;
+            cout << "Using default occupation number for " << atomName << endl;
+        }
         if(atomName == "H") {int_tmp = 1; vecd_tmp(0) = 1.0;}
         else if(atomName == "HE") {int_tmp = 1; vecd_tmp(0) = 2.0;}
         else if(atomName == "LI") {int_tmp = 1; vecd_tmp(0) = 3.0;}
@@ -938,21 +957,21 @@ void DHF_SPH::setOCC(const string& filename, const string& atomName)
     When necessary, the program will recalculate two-electron integrals.
 */
 vMatrixXd DHF_SPH::get_amfi_unc(INT_SPH& int_sph_, const bool& twoC, const string& Xmethod, bool amfi_with_gaunt, bool amfi_with_gauge, bool amfi4c)
-{
-    cout << "Running DHF_SPH::get_amfi_unc" << endl;
+{    
+    if(printLevel >= 4) cout << "Running DHF_SPH::get_amfi_unc" << endl;
     if(with_gaunt && !amfi_with_gaunt)
     {
-        cout << endl << "ATTENTION! Since gaunt terms are included in SCF, they are automatically calculated in amfi integrals." << endl << endl;
+        if(printLevel >= 4) cout << endl << "ATTENTION! Since gaunt terms are included in SCF, they are automatically calculated in amfi integrals." << endl << endl;
         amfi_with_gaunt = true;
         if(with_gauge && !amfi_with_gauge)
             amfi_with_gauge = true;
     }
-    if((!with_gaunt && amfi_with_gaunt) || twoC)
+    if((!with_gaunt && amfi_with_gaunt) || (twoC && amfi_with_gaunt))
     {
         countTime(StartTimeCPU,StartTimeWall);
         int_sph_.get_h2e_JK_gaunt_direct(gauntLSLS_JK,gauntLSSL_JK);
         countTime(EndTimeCPU,EndTimeWall);
-        printTime("2e-Gaunt-integrals");
+        if(printLevel >= 1) printTime("2e-Gaunt-integrals");
         if(amfi_with_gauge)
         {
             int2eJK tmp1, tmp2, tmp3, tmp4;
@@ -974,7 +993,7 @@ vMatrixXd DHF_SPH::get_amfi_unc(INT_SPH& int_sph_, const bool& twoC, const strin
                 }
             }
             countTime(EndTimeCPU,EndTimeWall);
-            printTime("2e-gauge-integrals");
+            if(printLevel >= 1) printTime("2e-gauge-integrals");
         }
         symmetrize_JK_gaunt(gauntLSLS_JK,Nirrep_compact);
         if(renormalizedSmall)
@@ -1018,6 +1037,7 @@ vMatrixXd DHF_SPH::get_amfi_unc(INT_SPH& int_sph_, const bool& twoC, const strin
         gauntLSSL_SD = gauntLSSL_JK;
     }
     int2eJK SSLL_SD, SSSS_SD;
+    countTime(StartTimeCPU,StartTimeWall);
     int_sph_.get_h2eSD_JK_direct(SSLL_SD, SSSS_SD);
     symmetrize_JK(SSSS_SD,Nirrep_compact);
     if(renormalizedSmall)
@@ -1025,6 +1045,8 @@ vMatrixXd DHF_SPH::get_amfi_unc(INT_SPH& int_sph_, const bool& twoC, const strin
         renormalize_h2e(SSLL_SD,"SSLL");
         renormalize_h2e(SSSS_SD,"SSSS");
     }
+    countTime(EndTimeCPU,EndTimeWall);
+    if(printLevel >= 1) printTime("2e-SO Coulomb integrals");
     if(twoC)
     {
         return get_amfi_unc_2c(SSLL_SD, SSSS_SD, amfi_with_gaunt, amfi4c);
@@ -1033,8 +1055,8 @@ vMatrixXd DHF_SPH::get_amfi_unc(INT_SPH& int_sph_, const bool& twoC, const strin
     {
         if(occMax_irrep < Nirrep && Xmethod == "fullFock")
         {
-            cout << "fullFock is used in amfi function with incomplete h2e." << endl;
-            cout << "Recalculate h2e and gaunt2e..." << endl;
+            if(printLevel >= 4) cout << "fullFock is used in amfi function with incomplete h2e." << endl;
+            if(printLevel >= 4) cout << "Recalculate h2e and gaunt2e..." << endl;
             countTime(StartTimeCPU,StartTimeWall);
             int_sph_.get_h2e_JK_direct(h2eLLLL_JK,h2eSSLL_JK,h2eSSSS_JK);
             symmetrize_JK(h2eLLLL_JK,Nirrep_compact);
@@ -1045,7 +1067,7 @@ vMatrixXd DHF_SPH::get_amfi_unc(INT_SPH& int_sph_, const bool& twoC, const strin
                 renormalize_h2e(h2eSSSS_JK,"SSSS");
             }
             countTime(EndTimeCPU,EndTimeWall);
-            printTime("Extra 2e-integrals");
+            if(printLevel >= 1) printTime("Extra 2e-integrals");
         }
         return get_amfi_unc(SSLL_SD, SSSS_SD, gauntLSLS_SD, gauntLSSL_SD, density, Xmethod, amfi_with_gaunt, amfi4c);
     }
@@ -1268,7 +1290,6 @@ vMatrixXd DHF_SPH::get_amfi_unc_2c(const int2eJK& h2eSSLL_SD, const int2eJK& h2e
         int size_tmp = irrep_list(ir).size;
         coeff_L_tmp(ir) = x2cRRR(ir) * coeff(ir);
         coeff_S_tmp(ir) = x2cXXX(ir) * coeff_L_tmp(ir);
-        coeff_tmp(ir).resize(2*size_tmp,2*size_tmp);
         coeff_tmp(ir) = MatrixXd::Zero(2*size_tmp,2*size_tmp);
         for(int ii = 0; ii < size_tmp; ii++)
         for(int jj = 0; jj < size_tmp; jj++)
@@ -1283,7 +1304,7 @@ vMatrixXd DHF_SPH::get_amfi_unc_2c(const int2eJK& h2eSSLL_SD, const int2eJK& h2e
     {
         int ir_c = all2compact(ir);
         int size_tmp = irrep_list(ir).size;
-        SO_4c(ir).resize(2*size_tmp,2*size_tmp);
+        SO_4c(ir) = MatrixXd::Zero(2*size_tmp,2*size_tmp);
         /* 
             Evaluate SO integrals in 4c basis
             The structure is the same as 2e Coulomb integrals in fock matrix 
@@ -1291,10 +1312,6 @@ vMatrixXd DHF_SPH::get_amfi_unc_2c(const int2eJK& h2eSSLL_SD, const int2eJK& h2e
         for(int mm = 0; mm < size_tmp; mm++)
         for(int nn = 0; nn <= mm; nn++)
         {
-            SO_4c(ir)(mm,nn) = 0.0;
-            SO_4c(ir)(mm+size_tmp,nn) = 0.0;
-            if(mm != nn) SO_4c(ir)(nn+size_tmp,mm) = 0.0;
-            SO_4c(ir)(mm+size_tmp,nn+size_tmp) = 0.0;
             for(int jr = 0; jr < occMax_irrep; jr++)
             {
                 int jr_c = all2compact(jr);

@@ -1,4 +1,3 @@
-#include<Eigen/Dense>
 #include<string>
 #include<iostream>
 #include<iomanip>
@@ -8,7 +7,6 @@
 #include<omp.h>
 #include"int_sph.h"
 using namespace std;
-using namespace Eigen;
 
 double get_N_coeff(const int& vv, const int& aa, const int& ll, const int& mm)
 {
@@ -204,7 +202,7 @@ int2eJK INT_SPH::get_h2e_JK_gauge(const string& intType, const int& occMaxL) con
     {
         for(int ii = 0; ii < size_shell; ii++)
         {
-            if(shell_list(ii).l <= occMaxL)
+            if(shell_list[ii].l <= occMaxL)
                 occMaxShell++;
             else
                 break;
@@ -223,21 +221,25 @@ int2eJK INT_SPH::get_h2e_JK_gauge(const string& intType, const int& occMaxL) con
     int int_tmp1_p = 0;
     for(int pshell = 0; pshell < occMaxShell; pshell++)
     {
-    int l_p = shell_list(pshell).l, int_tmp1_q = 0;
+    int l_p = shell_list[pshell].l, int_tmp1_q = 0;
     for(int qshell = 0; qshell < occMaxShell; qshell++)
     {
-        int l_q = shell_list(qshell).l;
+        int l_q = shell_list[qshell].l;
         int LmaxJ[4], LminJ[4], LmaxK[4], LminK[4];
-        LmaxJ[0] = min(l_p+l_p, l_q+l_q)+2; LmaxK[0] = l_p+l_q+2; LminJ[0] = 1; LminK[0] = 1;
-        LmaxJ[1] = min(l_p+l_p+2, l_q+l_q); LmaxK[1] = l_p+l_q  ; LminJ[1] = 1; LminK[1] = 1;
-        LmaxJ[2] = min(l_p+l_p, l_q+l_q+2); LmaxK[2] = l_p+l_q  ; LminJ[2] = 1; LminK[2] = 1;
-        LmaxJ[3] = min(l_p+l_p, l_q+l_q)  ; LmaxK[3] = l_p+l_q  ; LminJ[3] = 0; LminK[3] = 0;
+        LmaxK[0] = l_p+l_q+2; LminJ[0] = 1; LminK[0] = 1;
+        LmaxK[1] = l_p+l_q  ; LminJ[1] = 1; LminK[1] = 1;
+        LmaxK[2] = l_p+l_q  ; LminJ[2] = 1; LminK[2] = 1;
+        LmaxK[3] = l_p+l_q  ; LminJ[3] = 0; LminK[3] = 0;
+        LmaxJ[0] = 1;
+        LmaxJ[1] = 1;
+        LmaxJ[2] = 1;
+        LmaxJ[3] = 0;
         int size_gtos_p = shell_list(pshell).coeff.rows(), size_gtos_q = shell_list(qshell).coeff.rows();
         int size_tmp_p = (l_p == 0) ? 1 : 2, size_tmp_q = (l_q == 0) ? 1 : 2;
-        MatrixXd array_angular_Jmm[LmaxJ[0]-LminJ[0]+1][size_tmp_p][size_tmp_q], array_angular_Kmm[LmaxK[0]-LminK[0]+1][size_tmp_p][size_tmp_q];
-        MatrixXd array_angular_Jmp[LmaxJ[1]-LminJ[1]+1][size_tmp_p][size_tmp_q], array_angular_Kmp[LmaxK[1]-LminK[1]+1][size_tmp_p][size_tmp_q];
-        MatrixXd array_angular_Jpm[LmaxJ[2]-LminJ[2]+1][size_tmp_p][size_tmp_q], array_angular_Kpm[LmaxK[2]-LminK[2]+1][size_tmp_p][size_tmp_q];
-        MatrixXd array_angular_Jpp[LmaxJ[3]-LminJ[3]+1][size_tmp_p][size_tmp_q], array_angular_Kpp[LmaxK[3]-LminK[3]+1][size_tmp_p][size_tmp_q];
+        vector<double> array_angular_Jmm[LmaxJ[0]-LminJ[0]+1][size_tmp_p][size_tmp_q], array_angular_Kmm[LmaxK[0]-LminK[0]+1][size_tmp_p][size_tmp_q];
+        vector<double> array_angular_Jmp[LmaxJ[1]-LminJ[1]+1][size_tmp_p][size_tmp_q], array_angular_Kmp[LmaxK[1]-LminK[1]+1][size_tmp_p][size_tmp_q];
+        vector<double> array_angular_Jpm[LmaxJ[2]-LminJ[2]+1][size_tmp_p][size_tmp_q], array_angular_Kpm[LmaxK[2]-LminK[2]+1][size_tmp_p][size_tmp_q];
+        vector<double> array_angular_Jpp[LmaxJ[3]-LminJ[3]+1][size_tmp_p][size_tmp_q], array_angular_Kpp[LmaxK[3]-LminK[3]+1][size_tmp_p][size_tmp_q];
         double radial_2e_list_Jmm[LmaxJ[0]-LminJ[0]+1][size_gtos_p*size_gtos_p*size_gtos_q*size_gtos_q][4];
         double radial_2e_list_Kmm[LmaxK[0]-LminK[0]+1][size_gtos_p*size_gtos_p*size_gtos_q*size_gtos_q][4];
         double radial_2e_list_Jmp[LmaxJ[1]-LminJ[1]+1][size_gtos_p*size_gtos_p*size_gtos_q*size_gtos_q][4];
@@ -266,14 +268,14 @@ int2eJK INT_SPH::get_h2e_JK_gauge(const string& intType, const int& occMaxL) con
             // Angular
             for(int LL = LmaxJ[0]-LminJ[0]; LL >= 0; LL-=2)
             {
-                array_angular_Jmm[LL][int_tmp2_p][int_tmp2_q].resize(twojj_p+1,twojj_q+1);
+                array_angular_Jmm[LL][int_tmp2_p][int_tmp2_q].resize((twojj_p+1)*(twojj_q+1));
                 for(int mp = 0; mp < twojj_p + 1; mp++)
                 for(int mq = 0; mq < twojj_q + 1; mq++)
                 {
                     if(intType.substr(0,4) == "LSLS")
-                        array_angular_Jmm[LL][int_tmp2_p][int_tmp2_q](mp,mq) = int2e_get_angular_gauge_LSLS(l_p, 2*mp-twojj_p, sym_ap, l_p, 2*mp-twojj_p, sym_ap, l_q, 2*mq-twojj_q, sym_aq, l_q, 2*mq-twojj_q, sym_aq, LL+LminJ[0], -1, -1);
+                        array_angular_Jmm[LL][int_tmp2_p][int_tmp2_q][mp*(twojj_q + 1)+mq] = int2e_get_angular_gauge_LSLS(l_p, 2*mp-twojj_p, sym_ap, l_p, 2*mp-twojj_p, sym_ap, l_q, 2*mq-twojj_q, sym_aq, l_q, 2*mq-twojj_q, sym_aq, LL+LminJ[0], -1, -1);
                     else if(intType.substr(0,4) == "LSSL")
-                        array_angular_Jmm[LL][int_tmp2_p][int_tmp2_q](mp,mq) = int2e_get_angular_gauge_LSSL(l_p, 2*mp-twojj_p, sym_ap, l_p, 2*mp-twojj_p, sym_ap, l_q, 2*mq-twojj_q, sym_aq, l_q, 2*mq-twojj_q, sym_aq, LL+LminJ[0], -1, -1);
+                        array_angular_Jmm[LL][int_tmp2_p][int_tmp2_q][mp*(twojj_q + 1)+mq] = int2e_get_angular_gauge_LSSL(l_p, 2*mp-twojj_p, sym_ap, l_p, 2*mp-twojj_p, sym_ap, l_q, 2*mq-twojj_q, sym_aq, l_q, 2*mq-twojj_q, sym_aq, LL+LminJ[0], -1, -1);
                     else
                     {
                         cout << "ERROR: Unkonwn intType in get_h2e_JK_gauge." << endl;
@@ -283,14 +285,14 @@ int2eJK INT_SPH::get_h2e_JK_gauge(const string& intType, const int& occMaxL) con
             }
             for(int LL = LmaxK[0]-LminK[0]; LL >= 0; LL-=2)
             {
-                array_angular_Kmm[LL][int_tmp2_p][int_tmp2_q].resize(twojj_p+1,twojj_q+1);
+                array_angular_Kmm[LL][int_tmp2_p][int_tmp2_q].resize((twojj_p+1)*(twojj_q+1));
                 for(int mp = 0; mp < twojj_p + 1; mp++)
                 for(int mq = 0; mq < twojj_q + 1; mq++)
                 {
                     if(intType.substr(0,4) == "LSLS")
-                        array_angular_Kmm[LL][int_tmp2_p][int_tmp2_q](mp,mq) = int2e_get_angular_gauge_LSLS(l_p, 2*mp-twojj_p, sym_ap, l_q, 2*mq-twojj_q, sym_aq, l_q, 2*mq-twojj_q, sym_aq, l_p, 2*mp-twojj_p, sym_ap, LL+LminK[0], -1, -1);
+                        array_angular_Kmm[LL][int_tmp2_p][int_tmp2_q][mp*(twojj_q + 1)+mq] = int2e_get_angular_gauge_LSLS(l_p, 2*mp-twojj_p, sym_ap, l_q, 2*mq-twojj_q, sym_aq, l_q, 2*mq-twojj_q, sym_aq, l_p, 2*mp-twojj_p, sym_ap, LL+LminK[0], -1, -1);
                     else if(intType.substr(0,4) == "LSSL")
-                        array_angular_Kmm[LL][int_tmp2_p][int_tmp2_q](mp,mq) = int2e_get_angular_gauge_LSSL(l_p, 2*mp-twojj_p, sym_ap, l_q, 2*mq-twojj_q, sym_aq, l_q, 2*mq-twojj_q, sym_aq, l_p, 2*mp-twojj_p, sym_ap, LL+LminK[0], -1, -1);
+                        array_angular_Kmm[LL][int_tmp2_p][int_tmp2_q][mp*(twojj_q + 1)+mq] = int2e_get_angular_gauge_LSSL(l_p, 2*mp-twojj_p, sym_ap, l_q, 2*mq-twojj_q, sym_aq, l_q, 2*mq-twojj_q, sym_aq, l_p, 2*mp-twojj_p, sym_ap, LL+LminK[0], -1, -1);
                     else
                     {
                         cout << "ERROR: Unkonwn intType in get_h2e_JK_gauge." << endl;
@@ -300,14 +302,14 @@ int2eJK INT_SPH::get_h2e_JK_gauge(const string& intType, const int& occMaxL) con
             }
             for(int LL = LmaxJ[1]-LminJ[1]; LL >= 0; LL-=2)
             {
-                array_angular_Jmp[LL][int_tmp2_p][int_tmp2_q].resize(twojj_p+1,twojj_q+1);
+                array_angular_Jmp[LL][int_tmp2_p][int_tmp2_q].resize((twojj_p+1)*(twojj_q+1));
                 for(int mp = 0; mp < twojj_p + 1; mp++)
                 for(int mq = 0; mq < twojj_q + 1; mq++)
                 {
                     if(intType.substr(0,4) == "LSLS")
-                        array_angular_Jmp[LL][int_tmp2_p][int_tmp2_q](mp,mq) = int2e_get_angular_gauge_LSLS(l_p, 2*mp-twojj_p, sym_ap, l_p, 2*mp-twojj_p, sym_ap, l_q, 2*mq-twojj_q, sym_aq, l_q, 2*mq-twojj_q, sym_aq, LL+LminJ[1], -1, 1);
+                        array_angular_Jmp[LL][int_tmp2_p][int_tmp2_q][mp*(twojj_q + 1)+mq] = int2e_get_angular_gauge_LSLS(l_p, 2*mp-twojj_p, sym_ap, l_p, 2*mp-twojj_p, sym_ap, l_q, 2*mq-twojj_q, sym_aq, l_q, 2*mq-twojj_q, sym_aq, LL+LminJ[1], -1, 1);
                     else if(intType.substr(0,4) == "LSSL")
-                        array_angular_Jmp[LL][int_tmp2_p][int_tmp2_q](mp,mq) = int2e_get_angular_gauge_LSSL(l_p, 2*mp-twojj_p, sym_ap, l_p, 2*mp-twojj_p, sym_ap, l_q, 2*mq-twojj_q, sym_aq, l_q, 2*mq-twojj_q, sym_aq, LL+LminJ[1], -1, 1);
+                        array_angular_Jmp[LL][int_tmp2_p][int_tmp2_q][mp*(twojj_q + 1)+mq] = int2e_get_angular_gauge_LSSL(l_p, 2*mp-twojj_p, sym_ap, l_p, 2*mp-twojj_p, sym_ap, l_q, 2*mq-twojj_q, sym_aq, l_q, 2*mq-twojj_q, sym_aq, LL+LminJ[1], -1, 1);
                     else
                     {
                         cout << "ERROR: Unkonwn intType in get_h2e_JK_gauge." << endl;
@@ -317,14 +319,14 @@ int2eJK INT_SPH::get_h2e_JK_gauge(const string& intType, const int& occMaxL) con
             }
             for(int LL = LmaxK[1]-LminK[1]; LL >= 0; LL-=2)
             {
-                array_angular_Kmp[LL][int_tmp2_p][int_tmp2_q].resize(twojj_p+1,twojj_q+1);
+                array_angular_Kmp[LL][int_tmp2_p][int_tmp2_q].resize((twojj_p+1)*(twojj_q+1));
                 for(int mp = 0; mp < twojj_p + 1; mp++)
                 for(int mq = 0; mq < twojj_q + 1; mq++)
                 {
                     if(intType.substr(0,4) == "LSLS")
-                        array_angular_Kmp[LL][int_tmp2_p][int_tmp2_q](mp,mq) = int2e_get_angular_gauge_LSLS(l_p, 2*mp-twojj_p, sym_ap, l_q, 2*mq-twojj_q, sym_aq, l_q, 2*mq-twojj_q, sym_aq, l_p, 2*mp-twojj_p, sym_ap, LL+LminK[1], -1, 1);
+                        array_angular_Kmp[LL][int_tmp2_p][int_tmp2_q][mp*(twojj_q + 1)+mq] = int2e_get_angular_gauge_LSLS(l_p, 2*mp-twojj_p, sym_ap, l_q, 2*mq-twojj_q, sym_aq, l_q, 2*mq-twojj_q, sym_aq, l_p, 2*mp-twojj_p, sym_ap, LL+LminK[1], -1, 1);
                     else if(intType.substr(0,4) == "LSSL")
-                        array_angular_Kmp[LL][int_tmp2_p][int_tmp2_q](mp,mq) = int2e_get_angular_gauge_LSSL(l_p, 2*mp-twojj_p, sym_ap, l_q, 2*mq-twojj_q, sym_aq, l_q, 2*mq-twojj_q, sym_aq, l_p, 2*mp-twojj_p, sym_ap, LL+LminK[1], -1, 1);
+                        array_angular_Kmp[LL][int_tmp2_p][int_tmp2_q][mp*(twojj_q + 1)+mq] = int2e_get_angular_gauge_LSSL(l_p, 2*mp-twojj_p, sym_ap, l_q, 2*mq-twojj_q, sym_aq, l_q, 2*mq-twojj_q, sym_aq, l_p, 2*mp-twojj_p, sym_ap, LL+LminK[1], -1, 1);
                     else
                     {
                         cout << "ERROR: Unkonwn intType in get_h2e_JK_gauge." << endl;
@@ -334,14 +336,14 @@ int2eJK INT_SPH::get_h2e_JK_gauge(const string& intType, const int& occMaxL) con
             }
             for(int LL = LmaxJ[2]-LminJ[2]; LL >= 0; LL-=2)
             {
-                array_angular_Jpm[LL][int_tmp2_p][int_tmp2_q].resize(twojj_p+1,twojj_q+1);
+                array_angular_Jpm[LL][int_tmp2_p][int_tmp2_q].resize((twojj_p+1)*(twojj_q+1));
                 for(int mp = 0; mp < twojj_p + 1; mp++)
                 for(int mq = 0; mq < twojj_q + 1; mq++)
                 {
                     if(intType.substr(0,4) == "LSLS")
-                        array_angular_Jpm[LL][int_tmp2_p][int_tmp2_q](mp,mq) = int2e_get_angular_gauge_LSLS(l_p, 2*mp-twojj_p, sym_ap, l_p, 2*mp-twojj_p, sym_ap, l_q, 2*mq-twojj_q, sym_aq, l_q, 2*mq-twojj_q, sym_aq, LL+LminJ[2], 1, -1);
+                        array_angular_Jpm[LL][int_tmp2_p][int_tmp2_q][mp*(twojj_q + 1)+mq] = int2e_get_angular_gauge_LSLS(l_p, 2*mp-twojj_p, sym_ap, l_p, 2*mp-twojj_p, sym_ap, l_q, 2*mq-twojj_q, sym_aq, l_q, 2*mq-twojj_q, sym_aq, LL+LminJ[2], 1, -1);
                     else if(intType.substr(0,4) == "LSSL")
-                        array_angular_Jpm[LL][int_tmp2_p][int_tmp2_q](mp,mq) = int2e_get_angular_gauge_LSSL(l_p, 2*mp-twojj_p, sym_ap, l_p, 2*mp-twojj_p, sym_ap, l_q, 2*mq-twojj_q, sym_aq, l_q, 2*mq-twojj_q, sym_aq, LL+LminJ[2], 1, -1);
+                        array_angular_Jpm[LL][int_tmp2_p][int_tmp2_q][mp*(twojj_q + 1)+mq] = int2e_get_angular_gauge_LSSL(l_p, 2*mp-twojj_p, sym_ap, l_p, 2*mp-twojj_p, sym_ap, l_q, 2*mq-twojj_q, sym_aq, l_q, 2*mq-twojj_q, sym_aq, LL+LminJ[2], 1, -1);
                     else
                     {
                         cout << "ERROR: Unkonwn intType in get_h2e_JK_gauge." << endl;
@@ -351,14 +353,14 @@ int2eJK INT_SPH::get_h2e_JK_gauge(const string& intType, const int& occMaxL) con
             }
             for(int LL = LmaxK[2]-LminK[2]; LL >= 0; LL-=2)
             {
-                array_angular_Kpm[LL][int_tmp2_p][int_tmp2_q].resize(twojj_p+1,twojj_q+1);
+                array_angular_Kpm[LL][int_tmp2_p][int_tmp2_q].resize((twojj_p+1)*(twojj_q+1));
                 for(int mp = 0; mp < twojj_p + 1; mp++)
                 for(int mq = 0; mq < twojj_q + 1; mq++)
                 {
                     if(intType.substr(0,4) == "LSLS")
-                        array_angular_Kpm[LL][int_tmp2_p][int_tmp2_q](mp,mq) = int2e_get_angular_gauge_LSLS(l_p, 2*mp-twojj_p, sym_ap, l_q, 2*mq-twojj_q, sym_aq, l_q, 2*mq-twojj_q, sym_aq, l_p, 2*mp-twojj_p, sym_ap, LL+LminK[2], 1, -1);
+                        array_angular_Kpm[LL][int_tmp2_p][int_tmp2_q][mp*(twojj_q + 1)+mq] = int2e_get_angular_gauge_LSLS(l_p, 2*mp-twojj_p, sym_ap, l_q, 2*mq-twojj_q, sym_aq, l_q, 2*mq-twojj_q, sym_aq, l_p, 2*mp-twojj_p, sym_ap, LL+LminK[2], 1, -1);
                     else if(intType.substr(0,4) == "LSSL")
-                        array_angular_Kpm[LL][int_tmp2_p][int_tmp2_q](mp,mq) = int2e_get_angular_gauge_LSSL(l_p, 2*mp-twojj_p, sym_ap, l_q, 2*mq-twojj_q, sym_aq, l_q, 2*mq-twojj_q, sym_aq, l_p, 2*mp-twojj_p, sym_ap, LL+LminK[2], 1, -1);
+                        array_angular_Kpm[LL][int_tmp2_p][int_tmp2_q][mp*(twojj_q + 1)+mq] = int2e_get_angular_gauge_LSSL(l_p, 2*mp-twojj_p, sym_ap, l_q, 2*mq-twojj_q, sym_aq, l_q, 2*mq-twojj_q, sym_aq, l_p, 2*mp-twojj_p, sym_ap, LL+LminK[2], 1, -1);
                     else
                     {
                         cout << "ERROR: Unkonwn intType in get_h2e_JK_gauge." << endl;
@@ -368,14 +370,14 @@ int2eJK INT_SPH::get_h2e_JK_gauge(const string& intType, const int& occMaxL) con
             }
             for(int LL = LmaxJ[3]-LminJ[3]; LL >= 0; LL-=2)
             {
-                array_angular_Jpp[LL][int_tmp2_p][int_tmp2_q].resize(twojj_p+1,twojj_q+1);
+                array_angular_Jpp[LL][int_tmp2_p][int_tmp2_q].resize((twojj_p+1)*(twojj_q+1));
                 for(int mp = 0; mp < twojj_p + 1; mp++)
                 for(int mq = 0; mq < twojj_q + 1; mq++)
                 {
                     if(intType.substr(0,4) == "LSLS")
-                        array_angular_Jpp[LL][int_tmp2_p][int_tmp2_q](mp,mq) = int2e_get_angular_gauge_LSLS(l_p, 2*mp-twojj_p, sym_ap, l_p, 2*mp-twojj_p, sym_ap, l_q, 2*mq-twojj_q, sym_aq, l_q, 2*mq-twojj_q, sym_aq, LL+LminJ[3], 1, 1);
+                        array_angular_Jpp[LL][int_tmp2_p][int_tmp2_q][mp*(twojj_q + 1)+mq] = int2e_get_angular_gauge_LSLS(l_p, 2*mp-twojj_p, sym_ap, l_p, 2*mp-twojj_p, sym_ap, l_q, 2*mq-twojj_q, sym_aq, l_q, 2*mq-twojj_q, sym_aq, LL+LminJ[3], 1, 1);
                     else if(intType.substr(0,4) == "LSSL")
-                        array_angular_Jpp[LL][int_tmp2_p][int_tmp2_q](mp,mq) = int2e_get_angular_gauge_LSSL(l_p, 2*mp-twojj_p, sym_ap, l_p, 2*mp-twojj_p, sym_ap, l_q, 2*mq-twojj_q, sym_aq, l_q, 2*mq-twojj_q, sym_aq, LL+LminJ[3], 1, 1);
+                        array_angular_Jpp[LL][int_tmp2_p][int_tmp2_q][mp*(twojj_q + 1)+mq] = int2e_get_angular_gauge_LSSL(l_p, 2*mp-twojj_p, sym_ap, l_p, 2*mp-twojj_p, sym_ap, l_q, 2*mq-twojj_q, sym_aq, l_q, 2*mq-twojj_q, sym_aq, LL+LminJ[3], 1, 1);
                     else
                     {
                         cout << "ERROR: Unkonwn intType in get_h2e_JK_gauge." << endl;
@@ -385,14 +387,14 @@ int2eJK INT_SPH::get_h2e_JK_gauge(const string& intType, const int& occMaxL) con
             }
             for(int LL = LmaxK[3]-LminK[3]; LL >= 0; LL-=2)
             {
-                array_angular_Kpp[LL][int_tmp2_p][int_tmp2_q].resize(twojj_p+1,twojj_q+1);
+                array_angular_Kpp[LL][int_tmp2_p][int_tmp2_q].resize((twojj_p+1)*(twojj_q+1));
                 for(int mp = 0; mp < twojj_p + 1; mp++)
                 for(int mq = 0; mq < twojj_q + 1; mq++)
                 {
                     if(intType.substr(0,4) == "LSLS")
-                        array_angular_Kpp[LL][int_tmp2_p][int_tmp2_q](mp,mq) = int2e_get_angular_gauge_LSLS(l_p, 2*mp-twojj_p, sym_ap, l_q, 2*mq-twojj_q, sym_aq, l_q, 2*mq-twojj_q, sym_aq, l_p, 2*mp-twojj_p, sym_ap, LL+LminK[3], 1, 1);
+                        array_angular_Kpp[LL][int_tmp2_p][int_tmp2_q][mp*(twojj_q + 1)+mq] = int2e_get_angular_gauge_LSLS(l_p, 2*mp-twojj_p, sym_ap, l_q, 2*mq-twojj_q, sym_aq, l_q, 2*mq-twojj_q, sym_aq, l_p, 2*mp-twojj_p, sym_ap, LL+LminK[3], 1, 1);
                     else if(intType.substr(0,4) == "LSSL")
-                        array_angular_Kpp[LL][int_tmp2_p][int_tmp2_q](mp,mq) = int2e_get_angular_gauge_LSSL(l_p, 2*mp-twojj_p, sym_ap, l_q, 2*mq-twojj_q, sym_aq, l_q, 2*mq-twojj_q, sym_aq, l_p, 2*mp-twojj_p, sym_ap, LL+LminK[3], 1, 1);
+                        array_angular_Kpp[LL][int_tmp2_p][int_tmp2_q][mp*(twojj_q + 1)+mq] = int2e_get_angular_gauge_LSSL(l_p, 2*mp-twojj_p, sym_ap, l_q, 2*mq-twojj_q, sym_aq, l_q, 2*mq-twojj_q, sym_aq, l_p, 2*mp-twojj_p, sym_ap, LL+LminK[3], 1, 1);
                     else
                     {
                         cout << "ERROR: Unkonwn intType in get_h2e_JK_gauge." << endl;
@@ -413,8 +415,8 @@ int2eJK INT_SPH::get_h2e_JK_gauge(const string& intType, const int& occMaxL) con
             int ii = e1J/size_gtos_p, jj = e1J - ii*size_gtos_p;
             int kk = e2J/size_gtos_q, ll = e2J - kk*size_gtos_q;
             int e1K = ii*size_gtos_q+ll, e2K = kk*size_gtos_p+jj;
-            double a_i_J = shell_list(pshell).exp_a(ii), a_j_J = shell_list(pshell).exp_a(jj), a_k_J = shell_list(qshell).exp_a(kk), a_l_J = shell_list(qshell).exp_a(ll);
-            double a_i_K = shell_list(pshell).exp_a(ii), a_j_K = shell_list(qshell).exp_a(ll), a_k_K = shell_list(qshell).exp_a(kk), a_l_K = shell_list(pshell).exp_a(jj);
+            double a_i_J = shell_list[pshell].exp_a[ii], a_j_J = shell_list[pshell].exp_a[jj], a_k_J = shell_list[qshell].exp_a[kk], a_l_J = shell_list[qshell].exp_a[ll];
+            double a_i_K = shell_list[pshell].exp_a[ii], a_j_K = shell_list[qshell].exp_a[ll], a_k_K = shell_list[qshell].exp_a[kk], a_l_K = shell_list[pshell].exp_a[jj];
         
             if(intType.substr(0,4) == "LSLS")
             {
@@ -595,8 +597,8 @@ int2eJK INT_SPH::get_h2e_JK_gauge(const string& intType, const int& occMaxL) con
                 int index_tmp_q = (l_q > 0) ? 1 - (2*l_q+1 - twojj_q)/2 : 0;
                 int sym_ap = twojj_p - 2*l_p, sym_aq = twojj_q - 2*l_q;
                 double k_p = -(twojj_p+1.0)*sym_ap/2.0, k_q = -(twojj_q+1.0)*sym_aq/2.0;
-                double norm_J = shell_list(pshell).norm(ii) * shell_list(pshell).norm(jj) * shell_list(qshell).norm(kk) * shell_list(qshell).norm(ll), norm_K = shell_list(pshell).norm(ii) * shell_list(qshell).norm(ll) * shell_list(qshell).norm(kk) * shell_list(pshell).norm(jj);
-                double lk1 = 1+l_p+k_p, lk2 = 1+l_p+k_p, lk3 = 1+l_q+k_q, lk4 = 1+l_q+k_q, a1 = shell_list(pshell).exp_a(ii), a2 = shell_list(pshell).exp_a(jj), a3 = shell_list(qshell).exp_a(kk), a4 = shell_list(qshell).exp_a(ll);
+                double norm_J = shell_list[pshell].norm[ii] * shell_list[pshell].norm[jj] * shell_list[qshell].norm[kk] * shell_list[qshell].norm[ll], norm_K = shell_list[pshell].norm[ii] * shell_list[qshell].norm[ll] * shell_list[qshell].norm[kk] * shell_list[pshell].norm[jj];
+                double lk1 = 1+l_p+k_p, lk2 = 1+l_p+k_p, lk3 = 1+l_q+k_q, lk4 = 1+l_q+k_q, a1 = shell_list[pshell].exp_a[ii], a2 = shell_list[pshell].exp_a[jj], a3 = shell_list[qshell].exp_a[kk], a4 = shell_list[qshell].exp_a[ll];
 
                 for(int LL = LmaxJ[0]-LminJ[0]; LL >= 0; LL-=2)
                 {
@@ -651,7 +653,7 @@ int2eJK INT_SPH::get_h2e_JK_gauge(const string& intType, const int& occMaxL) con
                     }
                 }
                 lk2 = 1+l_q+k_q; lk4 = 1+l_p+k_p; 
-                a2 = shell_list(qshell).exp_a(ll); a4 = shell_list(pshell).exp_a(jj);
+                a2 = shell_list[qshell].exp_a[ll]; a4 = shell_list[pshell].exp_a[jj];
                 for(int LL = LmaxK[0]-LminK[0]; LL >= 0; LL-=2)
                 {
                     if(intType == "LSLS")
@@ -714,9 +716,9 @@ int2eJK INT_SPH::get_h2e_JK_gauge(const string& intType, const int& occMaxL) con
         for(int int_tmp2_p = 0; int_tmp2_p < l_p_cycle; int_tmp2_p++)
         for(int int_tmp2_q = 0; int_tmp2_q < l_q_cycle; int_tmp2_q++)
         {
-            int add_p = int_tmp2_p*(irrep_list(int_tmp1_p).two_j+1), add_q = int_tmp2_q*(irrep_list(int_tmp1_q).two_j+1);
-            for(int mp = 0; mp < irrep_list(int_tmp1_p+add_p).two_j + 1; mp++)
-            for(int mq = 0; mq < irrep_list(int_tmp1_q+add_q).two_j + 1; mq++)
+            int add_p = int_tmp2_p*(irrep_list[int_tmp1_p].two_j+1), add_q = int_tmp2_q*(irrep_list[int_tmp1_q].two_j+1);
+            for(int mp = 0; mp < irrep_list[int_tmp1_p+add_p].two_j + 1; mp++)
+            for(int mq = 0; mq < irrep_list[int_tmp1_q+add_q].two_j + 1; mq++)
             {
                 int_2e_JK.J[int_tmp1_p+add_p + mp][int_tmp1_q + add_q + mq] = new double*[size_gtos_p*size_gtos_p];
                 for(int iii = 0; iii < size_gtos_p*size_gtos_p; iii++)
@@ -734,22 +736,22 @@ int2eJK INT_SPH::get_h2e_JK_gauge(const string& intType, const int& occMaxL) con
                     int_2e_JK.J[int_tmp1_p+add_p + mp][int_tmp1_q+add_q + mq][e1J][e2J] = 0.0;
                     int_2e_JK.K[int_tmp1_p+add_p + mp][int_tmp1_q+add_q + mq][e1K][e2K] = 0.0;
                     for(int tmp = LmaxJ[0]-LminJ[0]; tmp >= 0; tmp = tmp - 2)
-                        int_2e_JK.J[int_tmp1_p+add_p + mp][int_tmp1_q+add_q + mq][e1J][e2J] += array_radial_Jmm[tmp][e1J][e2J][int_tmp2_p][int_tmp2_q] * array_angular_Jmm[tmp][int_tmp2_p][int_tmp2_q](mp,mq);
+                        int_2e_JK.J[int_tmp1_p+add_p + mp][int_tmp1_q+add_q + mq][e1J][e2J] += array_radial_Jmm[tmp][e1J][e2J][int_tmp2_p][int_tmp2_q] * array_angular_Jmm[tmp][int_tmp2_p][int_tmp2_q][mp*(irrep_list[int_tmp1_q+add_q].two_j + 1)+mq];
                     for(int tmp = LmaxJ[1]-LminJ[1]; tmp >= 0; tmp = tmp - 2)
-                        int_2e_JK.J[int_tmp1_p+add_p + mp][int_tmp1_q+add_q + mq][e1J][e2J] += array_radial_Jmp[tmp][e1J][e2J][int_tmp2_p][int_tmp2_q] * array_angular_Jmp[tmp][int_tmp2_p][int_tmp2_q](mp,mq);
+                        int_2e_JK.J[int_tmp1_p+add_p + mp][int_tmp1_q+add_q + mq][e1J][e2J] += array_radial_Jmp[tmp][e1J][e2J][int_tmp2_p][int_tmp2_q] * array_angular_Jmp[tmp][int_tmp2_p][int_tmp2_q][mp*(irrep_list[int_tmp1_q+add_q].two_j + 1)+mq];
                     for(int tmp = LmaxJ[2]-LminJ[2]; tmp >= 0; tmp = tmp - 2)
-                        int_2e_JK.J[int_tmp1_p+add_p + mp][int_tmp1_q+add_q + mq][e1J][e2J] += array_radial_Jpm[tmp][e1J][e2J][int_tmp2_p][int_tmp2_q] * array_angular_Jpm[tmp][int_tmp2_p][int_tmp2_q](mp,mq);
+                        int_2e_JK.J[int_tmp1_p+add_p + mp][int_tmp1_q+add_q + mq][e1J][e2J] += array_radial_Jpm[tmp][e1J][e2J][int_tmp2_p][int_tmp2_q] * array_angular_Jpm[tmp][int_tmp2_p][int_tmp2_q][mp*(irrep_list[int_tmp1_q+add_q].two_j + 1)+mq];
                     for(int tmp = LmaxJ[3]-LminJ[3]; tmp >= 0; tmp = tmp - 2)
-                        int_2e_JK.J[int_tmp1_p+add_p + mp][int_tmp1_q+add_q + mq][e1J][e2J] += array_radial_Jpp[tmp][e1J][e2J][int_tmp2_p][int_tmp2_q] * array_angular_Jpp[tmp][int_tmp2_p][int_tmp2_q](mp,mq);
+                        int_2e_JK.J[int_tmp1_p+add_p + mp][int_tmp1_q+add_q + mq][e1J][e2J] += array_radial_Jpp[tmp][e1J][e2J][int_tmp2_p][int_tmp2_q] * array_angular_Jpp[tmp][int_tmp2_p][int_tmp2_q][mp*(irrep_list[int_tmp1_q+add_q].two_j + 1)+mq];
                     
                     for(int tmp = LmaxK[0]-LminK[0]; tmp >= 0; tmp = tmp - 2)
-                        int_2e_JK.K[int_tmp1_p+add_p + mp][int_tmp1_q+add_q + mq][e1K][e2K] += array_radial_Kmm[tmp][e1K][e2K][int_tmp2_p][int_tmp2_q] * array_angular_Kmm[tmp][int_tmp2_p][int_tmp2_q](mp,mq);
+                        int_2e_JK.K[int_tmp1_p+add_p + mp][int_tmp1_q+add_q + mq][e1K][e2K] += array_radial_Kmm[tmp][e1K][e2K][int_tmp2_p][int_tmp2_q] * array_angular_Kmm[tmp][int_tmp2_p][int_tmp2_q][mp*(irrep_list[int_tmp1_q+add_q].two_j + 1)+mq];
                     for(int tmp = LmaxK[1]-LminK[1]; tmp >= 0; tmp = tmp - 2)
-                        int_2e_JK.K[int_tmp1_p+add_p + mp][int_tmp1_q+add_q + mq][e1K][e2K] += array_radial_Kmp[tmp][e1K][e2K][int_tmp2_p][int_tmp2_q] * array_angular_Kmp[tmp][int_tmp2_p][int_tmp2_q](mp,mq);
+                        int_2e_JK.K[int_tmp1_p+add_p + mp][int_tmp1_q+add_q + mq][e1K][e2K] += array_radial_Kmp[tmp][e1K][e2K][int_tmp2_p][int_tmp2_q] * array_angular_Kmp[tmp][int_tmp2_p][int_tmp2_q][mp*(irrep_list[int_tmp1_q+add_q].two_j + 1)+mq];
                     for(int tmp = LmaxK[2]-LminK[2]; tmp >= 0; tmp = tmp - 2)
-                        int_2e_JK.K[int_tmp1_p+add_p + mp][int_tmp1_q+add_q + mq][e1K][e2K] += array_radial_Kpm[tmp][e1K][e2K][int_tmp2_p][int_tmp2_q] * array_angular_Kpm[tmp][int_tmp2_p][int_tmp2_q](mp,mq);
+                        int_2e_JK.K[int_tmp1_p+add_p + mp][int_tmp1_q+add_q + mq][e1K][e2K] += array_radial_Kpm[tmp][e1K][e2K][int_tmp2_p][int_tmp2_q] * array_angular_Kpm[tmp][int_tmp2_p][int_tmp2_q][mp*(irrep_list[int_tmp1_q+add_q].two_j + 1)+mq];
                     for(int tmp = LmaxK[3]-LminK[3]; tmp >= 0; tmp = tmp - 2)
-                        int_2e_JK.K[int_tmp1_p+add_p + mp][int_tmp1_q+add_q + mq][e1K][e2K] += array_radial_Kpp[tmp][e1K][e2K][int_tmp2_p][int_tmp2_q] * array_angular_Kpp[tmp][int_tmp2_p][int_tmp2_q](mp,mq);
+                        int_2e_JK.K[int_tmp1_p+add_p + mp][int_tmp1_q+add_q + mq][e1K][e2K] += array_radial_Kpp[tmp][e1K][e2K][int_tmp2_p][int_tmp2_q] * array_angular_Kpp[tmp][int_tmp2_p][int_tmp2_q][mp*(irrep_list[int_tmp1_q+add_q].two_j + 1)+mq];
                 }
             }
         }
@@ -772,7 +774,7 @@ int2eJK INT_SPH::get_h2e_JK_gauge_compact(const string& intType, const int& occM
     {
         for(int ii = 0; ii < size_shell; ii++)
         {
-            if(shell_list(ii).l <= occMaxL)
+            if(shell_list[ii].l <= occMaxL)
                 occMaxShell++;
             else
                 break;
@@ -780,7 +782,7 @@ int2eJK INT_SPH::get_h2e_JK_gauge_compact(const string& intType, const int& occM
     }
     for(int ii = 0; ii < occMaxShell; ii++)
     {
-        if(shell_list(ii).l == 0) Nirrep_compact += 1;
+        if(shell_list[ii].l == 0) Nirrep_compact += 1;
         else Nirrep_compact += 2;
     }
     
@@ -796,20 +798,19 @@ int2eJK INT_SPH::get_h2e_JK_gauge_compact(const string& intType, const int& occM
     int int_tmp1_p = 0;
     for(int pshell = 0; pshell < occMaxShell; pshell++)
     {
-    int l_p = shell_list(pshell).l, int_tmp1_q = 0;
+    int l_p = shell_list[pshell].l, int_tmp1_q = 0;
     for(int qshell = 0; qshell < occMaxShell; qshell++)
     {
-        int l_q = shell_list(qshell).l;
+        int l_q = shell_list[qshell].l;
         int LmaxJ[4], LminJ[4], LmaxK[4], LminK[4];
-        LmaxJ[0] = min(l_p+l_p, l_q+l_q)+2; LmaxK[0] = l_p+l_q+2; LminJ[0] = 1; LminK[0] = 1;
-        LmaxJ[1] = min(l_p+l_p+2, l_q+l_q); LmaxK[1] = l_p+l_q  ; LminJ[1] = 1; LminK[1] = 1;
-        LmaxJ[2] = min(l_p+l_p, l_q+l_q+2); LmaxK[2] = l_p+l_q  ; LminJ[2] = 1; LminK[2] = 1;
-        LmaxJ[3] = min(l_p+l_p, l_q+l_q)  ; LmaxK[3] = l_p+l_q  ; LminJ[3] = 0; LminK[3] = 0;
-        // This is correct but the author did not understand.
-        // LmaxJ[0] = 1;
-        // LmaxJ[1] = 1;
-        // LmaxJ[2] = 1;
-        // LmaxJ[3] = 0;
+        LmaxK[0] = l_p+l_q+2; LminJ[0] = 1; LminK[0] = 1;
+        LmaxK[1] = l_p+l_q  ; LminJ[1] = 1; LminK[1] = 1;
+        LmaxK[2] = l_p+l_q  ; LminJ[2] = 1; LminK[2] = 1;
+        LmaxK[3] = l_p+l_q  ; LminJ[3] = 0; LminK[3] = 0;
+        LmaxJ[0] = 1;
+        LmaxJ[1] = 1;
+        LmaxJ[2] = 1;
+        LmaxJ[3] = 0;
         double radial;
         int size_gtos_p = shell_list(pshell).coeff.rows(), size_gtos_q = shell_list(qshell).coeff.rows();
         int size_tmp_p = (l_p == 0) ? 1 : 2, size_tmp_q = (l_q == 0) ? 1 : 2;
@@ -834,8 +835,8 @@ int2eJK INT_SPH::get_h2e_JK_gauge_compact(const string& intType, const int& occM
             int ii = e1J/size_gtos_p, jj = e1J - ii*size_gtos_p;
             int kk = e2J/size_gtos_q, ll = e2J - kk*size_gtos_q;
             int e1K = ii*size_gtos_q+ll, e2K = kk*size_gtos_p+jj;
-            double a_i_J = shell_list(pshell).exp_a(ii), a_j_J = shell_list(pshell).exp_a(jj), a_k_J = shell_list(qshell).exp_a(kk), a_l_J = shell_list(qshell).exp_a(ll);
-            double a_i_K = shell_list(pshell).exp_a(ii), a_j_K = shell_list(qshell).exp_a(ll), a_k_K = shell_list(qshell).exp_a(kk), a_l_K = shell_list(pshell).exp_a(jj);
+            double a_i_J = shell_list[pshell].exp_a[ii], a_j_J = shell_list[pshell].exp_a[jj], a_k_J = shell_list[qshell].exp_a[kk], a_l_J = shell_list[qshell].exp_a[ll];
+            double a_i_K = shell_list[pshell].exp_a[ii], a_j_K = shell_list[qshell].exp_a[ll], a_k_K = shell_list[qshell].exp_a[kk], a_l_K = shell_list[pshell].exp_a[jj];
         
             if(intType.substr(0,4) == "LSLS")
             {
@@ -1170,8 +1171,8 @@ int2eJK INT_SPH::get_h2e_JK_gauge_compact(const string& intType, const int& occM
                 int ii = e1J/size_gtos_p, jj = e1J - ii*size_gtos_p;
                 int kk = e2J/size_gtos_q, ll = e2J - kk*size_gtos_q;
                 int e1K = ii*size_gtos_q+ll, e2K = kk*size_gtos_p+jj;
-                double norm_J = shell_list(pshell).norm(ii) * shell_list(pshell).norm(jj) * shell_list(qshell).norm(kk) * shell_list(qshell).norm(ll), norm_K = shell_list(pshell).norm(ii) * shell_list(qshell).norm(ll) * shell_list(qshell).norm(kk) * shell_list(pshell).norm(jj);
-                double lk1 = 1+l_p+k_p, lk2 = 1+l_p+k_p, lk3 = 1+l_q+k_q, lk4 = 1+l_q+k_q, a1 = shell_list(pshell).exp_a(ii), a2 = shell_list(pshell).exp_a(jj), a3 = shell_list(qshell).exp_a(kk), a4 = shell_list(qshell).exp_a(ll);
+                double norm_J = shell_list[pshell].norm[ii] * shell_list[pshell].norm[jj] * shell_list[qshell].norm[kk] * shell_list[qshell].norm[ll], norm_K = shell_list[pshell].norm[ii] * shell_list[qshell].norm[ll] * shell_list[qshell].norm[kk] * shell_list[pshell].norm[jj];
+                double lk1 = 1+l_p+k_p, lk2 = 1+l_p+k_p, lk3 = 1+l_q+k_q, lk4 = 1+l_q+k_q, a1 = shell_list[pshell].exp_a[ii], a2 = shell_list[pshell].exp_a[jj], a3 = shell_list[qshell].exp_a[kk], a4 = shell_list[qshell].exp_a[ll];
 
                 int_2e_JK.J[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q][e1J][e2J] = 0.0;
                 int_2e_JK.K[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q][e1K][e2K] = 0.0;
@@ -1233,7 +1234,7 @@ int2eJK INT_SPH::get_h2e_JK_gauge_compact(const string& intType, const int& occM
                     int_2e_JK.J[int_tmp1_p+int_tmp2_p][int_tmp1_q+int_tmp2_q][e1J][e2J] += radial * array_angular_Jpp[LL][int_tmp2_p][int_tmp2_q];
                 }
                 lk2 = 1+l_q+k_q; lk4 = 1+l_p+k_p; 
-                a2 = shell_list(qshell).exp_a(ll); a4 = shell_list(pshell).exp_a(jj);
+                a2 = shell_list[qshell].exp_a[ll]; a4 = shell_list[pshell].exp_a[jj];
                 for(int LL = LmaxK[0]-LminK[0]; LL >= 0; LL-=2)
                 {
                     if(intType == "LSLS")

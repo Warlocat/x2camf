@@ -40,7 +40,7 @@ public:
     vVectorXd ene_orb;
     VectorXd ene_orb_total;
 
-    DHF_SPH(INT_SPH& int_sph_, const string& filename, const bool& spinFree = false, const bool& twoC = false, const bool& with_gaunt_ = false, const bool& with_gauge_ = false, const bool& allInt = false, const bool& gaussian_nuc = false);
+    DHF_SPH(INT_SPH& int_sph_, const string& filename, const int& printLevel = 0, const bool& spinFree = false, const bool& twoC = false, const bool& with_gaunt_ = false, const bool& with_gauge_ = false, const bool& allInt = false, const bool& gaussian_nuc = false);
     virtual ~DHF_SPH();
 
     /* Renormalized small component s.t. the overlap is 1.0 */
@@ -57,7 +57,7 @@ public:
     void evaluateFock(MatrixXd& fock, const bool& twoC, const vMatrixXd& den, const int& size, const int& Iirrep);
 
     /* x2c2e picture change */
-    virtual vMatrixXd x2c2ePCC(vMatrixXd* coeff2c = NULL);
+    virtual vMatrixXd x2c2ePCC(bool amfi4c = false, vMatrixXd* coeff2c = NULL);
     vMatrixXd h_x2c2e(vMatrixXd* coeff2c = NULL);
     void evaluateFock_2e(MatrixXd& fock, const bool& twoC, const vMatrixXd& den, const int& size, const int& Iirrep);
     void evaluateFock_J(MatrixXd& fock, const bool& twoC, const vMatrixXd& den, const int& size, const int& Iirrep);

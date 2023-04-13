@@ -6,24 +6,15 @@
 using namespace std;
 using namespace Eigen;
 
-vMatrixXd DHF_SPH::x2c2ePCC(vMatrixXd* coeff2c)
+vMatrixXd DHF_SPH::x2c2ePCC(bool amfi4c, vMatrixXd* coeff2c)
 {
-    cout << "Running DHF_SPH::x2c2ePCC" << endl;
+    if(printLevel >= 4) cout << "Running DHF_SPH::x2c2ePCC" << endl;
     if(!converged)
     {
         cout << "SCF did not converge. x2c2ePCC cannot be used!" << endl;
         exit(99);
     }
     
-    //Special case for H-like atoms.
-    if(abs(nelec-1.0)<1e-5)
-    {
-        for(int ir = 0; ir < occMax_irrep; ir++)
-        {
-            fock_4c(ir) = h1e_4c(ir);
-        }
-    }
-
     vMatrixXd fock_pcc(occMax_irrep), fock_4c_2e(occMax_irrep), fock_x2c2e(occMax_irrep), fock_x2c2e_2e(occMax_irrep), JK_x2c2c(occMax_irrep), coeff_2c(occMax_irrep), density_2c(occMax_irrep), density_pcc(occMax_irrep), h1e_x2c2e(occMax_irrep), h1e_x2c1e(occMax_irrep);
     vMatrixXd XXX(occMax_irrep), RRR(occMax_irrep), XXX_1e(occMax_irrep), RRR_1e(occMax_irrep);
     vMatrixXd overlap_2c(occMax_irrep), overlap_h_i_2c(occMax_irrep);
@@ -73,7 +64,18 @@ vMatrixXd DHF_SPH::x2c2ePCC(vMatrixXd* coeff2c)
     x2cRRR = RRR;
     X_calculated = true;
 
-    return fock_pcc;
+    //Special case for H-like atoms.
+    if(abs(nelec-1.0)<1e-5)
+    {
+        for(int ir = 0; ir < occMax_irrep; ir++)
+        {
+            fock_pcc(ir) = MatrixXd::Zero(fock_pcc(ir).rows(),fock_pcc(ir).cols());
+            fock_4c_2e(ir) = MatrixXd::Zero(fock_4c_2e(ir).rows(),fock_4c_2e(ir).cols());
+        }
+    }
+
+    if(amfi4c)  return fock_4c_2e;
+    else return fock_pcc;
 }
 
 vMatrixXd DHF_SPH::h_x2c2e(vMatrixXd* coeff2c)

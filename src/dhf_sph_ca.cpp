@@ -10,8 +10,8 @@
 using namespace std;
 using namespace Eigen;
 
-DHF_SPH_CA::DHF_SPH_CA(INT_SPH& int_sph_, const string& filename, const bool& spinFree, const bool& twoC, const bool& with_gaunt_, const bool& with_gauge_, const bool& allInt, const bool& gaussian_nuc):
-DHF_SPH(int_sph_,filename,spinFree,twoC,with_gaunt_,with_gauge_,allInt,gaussian_nuc)
+DHF_SPH_CA::DHF_SPH_CA(INT_SPH& int_sph_, const string& filename, const int& printLevel, const bool& spinFree, const bool& twoC, const bool& with_gaunt_, const bool& with_gauge_, const bool& allInt, const bool& gaussian_nuc):
+DHF_SPH(int_sph_,filename,printLevel,spinFree,twoC,with_gaunt_,with_gauge_,allInt,gaussian_nuc)
 {
     vector<int> openIrreps;
     for(int ir = 0; ir < occMax_irrep; ir+=4*irrep_list(ir).l+2)
@@ -71,23 +71,26 @@ DHF_SPH(int_sph_,filename,spinFree,twoC,with_gaunt_,with_gauge_,allInt,gaussian_
         occNumberShells[NOpenShells+1](ir) = VectorXd::Ones(irrep_list(ir).size);
     }
 
-    cout << "Open shell occupations:" << endl;
-    for(int ir = 0; ir < occMax_irrep; ir+=irrep_list(ir).l*4+2)
+    if(printLevel >= 4)
     {
-        cout << "l = " << irrep_list(ir).l << endl;
-        for(int ii = 0; ii < occNumberShells.size(); ii++)
-            cout << ii << ": " << occNumberShells[ii](ir).transpose() << endl;
-    }
-    for(int ir = occMax_irrep; ir < irrep_list.rows(); ir++)
-    {
-        cout << occNumberShells.size()-1 << ": " << occNumberShells[occNumberShells.size()-1](ir).transpose() << endl;
-    }
-    cout << "Configuration-averaged HF initialization." << endl;
-    cout << "Number of open shells: " << NOpenShells << endl;
-    cout << "No.\tMM\tNN\tf=NN/MM" << endl;
-    for(int ii = 0; ii < NOpenShells; ii++)
-    {
-        cout << ii+1 << "\t" << MM_list[ii] << "\t" << NN_list[ii] << "\t" << f_list[ii] << endl;
+        cout << "Open shell occupations:" << endl;
+        for(int ir = 0; ir < occMax_irrep; ir+=irrep_list(ir).l*4+2)
+        {
+            cout << "l = " << irrep_list(ir).l << endl;
+            for(int ii = 0; ii < occNumberShells.size(); ii++)
+                cout << ii << ": " << occNumberShells[ii](ir).transpose() << endl;
+        }
+        for(int ir = occMax_irrep; ir < irrep_list.rows(); ir++)
+        {
+            cout << occNumberShells.size()-1 << ": " << occNumberShells[occNumberShells.size()-1](ir).transpose() << endl;
+        }
+        cout << "Configuration-averaged HF initialization." << endl;
+        cout << "Number of open shells: " << NOpenShells << endl;
+        cout << "No.\tMM\tNN\tf=NN/MM" << endl;
+        for(int ii = 0; ii < NOpenShells; ii++)
+        {
+            cout << ii+1 << "\t" << MM_list[ii] << "\t" << NN_list[ii] << "\t" << f_list[ii] << endl;
+        }
     }
 }
 
@@ -153,10 +156,14 @@ void DHF_SPH_CA::runSCF(const bool& twoC, const bool& renormSmall)
     Matrix<vector<MatrixXd>,-1,-1> error4DIIS(occMax_irrep,NOpenShells+2);
     vector<MatrixXd> fock4DIIS[occMax_irrep];
     countTime(StartTimeCPU,StartTimeWall);
-    cout << endl;
-    if(twoC) cout << "Start CA-X2C-1e Hartree-Fock iterations..." << endl;
-    else cout << "Start CA-Dirac Hartree-Fock iterations..." << endl;
-    cout << endl;
+    if(printLevel >= 1)
+    {
+        cout << endl;
+        if(twoC) cout << "Start CA-X2C-1e Hartree-Fock iterations..." << endl;
+        else cout << "Start CA-Dirac Hartree-Fock iterations..." << endl;
+        cout << endl;
+    }
+    
 
     densityShells.resize(NOpenShells+2);
     Matrix<vMatrixXd,-1,1> newDensityShells(NOpenShells+2);
@@ -236,23 +243,25 @@ void DHF_SPH_CA::runSCF(const bool& twoC, const bool& renormSmall)
         d_density = 0.0;
         for(int ii = 0; ii < NOpenShells+1; ii++)
             d_density += evaluateChange_irrep(densityShells[ii],newDensityShells[ii]); 
-        cout << "Iter #" << iter << " maximum density difference: " << d_density << endl;     
+        if(printLevel >= 4) cout << "Iter #" << iter << " maximum density difference: " << d_density << endl;     
         for(int ii = 0; ii < NOpenShells+2; ii++)
             densityShells[ii] = newDensityShells[ii];
 
         if(d_density < convControl) 
         {
             converged = true;
-            cout << endl << "CA-SCF converges after " << iter << " iterations." << endl;
-            cout << endl << "WARNING: CA-SCF orbital energies are fake!!!" << endl << endl;
-
-            cout << "\tOrbital\t\tEnergy(in hartree)\n";
-            cout << "\t*******\t\t******************\n";
-            for(int ir = 0; ir < occMax_irrep; ir += irrep_list(ir).two_j+1)
-            for(int ii = 1; ii <= irrep_list(ir).size; ii++)
+            if(printLevel >= 1) cout << endl << "CA-SCF converges after " << iter << " iterations." << endl;
+            if(printLevel >= 4) 
             {
-                if(twoC) cout << "\t" << ii << "\t\t" << setprecision(15) << ene_orb(ir)(ii - 1) << endl;
-                else cout << "\t" << ii << "\t\t" << setprecision(15) << ene_orb(ir)(irrep_list(ir).size + ii - 1) << endl;
+                cout << endl << "WARNING: CA-SCF orbital energies are fake!!!" << endl << endl;
+                cout << "\tOrbital\t\tEnergy(in hartree)\n";
+                cout << "\t*******\t\t******************\n";
+                for(int ir = 0; ir < occMax_irrep; ir += irrep_list(ir).two_j+1)
+                for(int ii = 1; ii <= irrep_list(ir).size; ii++)
+                {
+                    if(twoC) cout << "\t" << ii << "\t\t" << setprecision(15) << ene_orb(ir)(ii - 1) << endl;
+                    else cout << "\t" << ii << "\t\t" << setprecision(15) << ene_orb(ir)(irrep_list(ir).size + ii - 1) << endl;
+                }
             }
             
             ene_scf = evaluateEnergy(twoC);
@@ -301,7 +310,7 @@ void DHF_SPH_CA::runSCF(const bool& twoC, const bool& renormSmall)
     }
 
     countTime(EndTimeCPU,EndTimeWall);
-    printTime("DHF iterations");
+    if(printLevel >= 1) printTime("DHF iterations");
 }
 
 
