@@ -30,11 +30,11 @@ int main()
     DHF_SPH* scfer;
     if(aoc)
     {
-        scfer = new DHF_SPH_CA(intor,"input",spinFree,twoC,Gaunt,gauge,allint,gauNuc);
+        scfer = new DHF_SPH_CA(intor,"input",4,spinFree,twoC,Gaunt,gauge,allint,gauNuc);
     }
     else
     {
-        scfer = new DHF_SPH(intor,"input",spinFree,twoC,Gaunt,gauge,allint,gauNuc);
+        scfer = new DHF_SPH(intor,"input",4,spinFree,twoC,Gaunt,gauge,allint,gauNuc);
     }
     scfer->convControl = 1e-10;
     scfer->runSCF(twoC,renormS);

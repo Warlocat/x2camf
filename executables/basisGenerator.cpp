@@ -31,21 +31,21 @@ int main()
 
     if(aoc)
     {
-        scfer = new DHF_SPH_CA(intor,"input",spinFree,true,false,false,true,finiteN);
+        scfer = new DHF_SPH_CA(intor,"input",4,spinFree,true,false,false,true,finiteN);
     }
     else
     {
-        scfer = new DHF_SPH(intor,"input",spinFree,true,false,false,true,finiteN);
+        scfer = new DHF_SPH(intor,"input",4,spinFree,true,false,false,true,finiteN);
     }
     if(!spinFree)
     {
         if(aoc)
         {
-            scfer2 = new DHF_SPH_CA(intor,"input",false,false,false,false,true,finiteN);
+            scfer2 = new DHF_SPH_CA(intor,"input",4,false,false,false,false,true,finiteN);
         }
         else
         {
-            scfer2 = new DHF_SPH(intor,"input",false,false,false,false,true,finiteN);
+            scfer2 = new DHF_SPH(intor,"input",4,false,false,false,false,true,finiteN);
         }
         scfer2->convControl = 1e-9;
         scfer2->runSCF(false,false);

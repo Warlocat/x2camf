@@ -29,9 +29,9 @@ int main()
     readInput("input");
     INT_SPH intor(atomName, basisSet);
     //                           sf   2c   Gaunt gauge allint  gauNuc
-    DHF_SPH sfx2c(intor,"input",true,true,false,false,true,false);
-    DHF_SPH dc4c(intor,"input",false,false,false,false,true,false);
-    DHF_SPH dcb4c(intor,"input",false,false,true,true,true,false);
+    DHF_SPH sfx2c(intor,"input",4,true,true,false,false,true,false);
+    DHF_SPH dc4c(intor,"input",4,false,false,false,false,true,false);
+    DHF_SPH dcb4c(intor,"input",4,false,false,true,true,true,false);
 
     sfx2c.runSCF(true,false);
     dc4c.runSCF(false,false);

@@ -85,10 +85,10 @@ int main()
             /* Variational treatment */
             if(amfiMethod[0])
                 /* Average of configuration */
-                scfer = new DHF_SPH_CA(intor, "ZMAT", false, twoC, amfiMethod[1], amfiMethod[2],true, amfiMethod[4]);
+                scfer = new DHF_SPH_CA(intor, "ZMAT", 4, false, twoC, amfiMethod[1], amfiMethod[2],true, amfiMethod[4]);
             else
                 /* Fractional occupation */
-                scfer = new DHF_SPH(intor, "ZMAT", false, twoC, amfiMethod[1], amfiMethod[2],true, amfiMethod[4]);
+                scfer = new DHF_SPH(intor, "ZMAT", 4, false, twoC, amfiMethod[1], amfiMethod[2],true, amfiMethod[4]);
             scfer->convControl = amfiSCFconv;
             scfer->runSCF(false);
         }
@@ -97,10 +97,10 @@ int main()
             /* Perturbative treatment */
             if(amfiMethod[0])
                 /* Average of configuration */
-                scfer = new DHF_SPH_CA(intor, "ZMAT", true, twoC, amfiMethod[1], amfiMethod[2],true, amfiMethod[4]);
+                scfer = new DHF_SPH_CA(intor, "ZMAT", 4, true, twoC, amfiMethod[1], amfiMethod[2],true, amfiMethod[4]);
             else
                 /* Fractional occupation */
-                scfer = new DHF_SPH(intor, "ZMAT", true, twoC, amfiMethod[1], amfiMethod[2],true, amfiMethod[4]);
+                scfer = new DHF_SPH(intor, "ZMAT", 4, true, twoC, amfiMethod[1], amfiMethod[2],true, amfiMethod[4]);
             scfer->convControl = amfiSCFconv;
             scfer->runSCF(true,false);
         }

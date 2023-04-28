@@ -66,13 +66,13 @@ int main()
         {
             cout << "Average of configuration SCF amfi is suppressed for testing purpose." << endl;
             exit(99);
-            DHF_SPH_CA scfer(intor, "amf_input", false, false, amfiMethod[1], amfiMethod[2]);
+            DHF_SPH_CA scfer(intor, "amf_input", 4, false, false, amfiMethod[1], amfiMethod[2]);
             scfer.runSCF(false,false);
             amfiUnique.push_back(Rotate::unite_irrep(scfer.get_amfi_unc(intor,false), irrep_list_main));
         }
         else
         {
-            DHF_SPH scfer(intor, "amf_input", false, false, amfiMethod[1], amfiMethod[2]);
+            DHF_SPH scfer(intor, "amf_input", 4, false, false, amfiMethod[1], amfiMethod[2]);
             scfer.runSCF(false,false);
             amfiUnique.push_back(Rotate::unite_irrep(scfer.get_amfi_unc(intor,false), intor.irrep_list));
         }
