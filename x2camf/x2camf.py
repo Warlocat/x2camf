@@ -34,7 +34,7 @@ def amfi(x2cobj, printLevel = 0, with_gaunt = True, with_gauge = True, gaussian_
         amf_int[atom] = _amf(atom_number, shell, exp_a, soc_int_flavor, printLevel)
 
     
-    if(pt or int4c):
+    if(int4c):
         xmol, contr_coeff = x2cobj.get_xmol()
         n2c = xmol.nao_2c()
         amf_matrix = numpy.zeros((n2c*2, n2c*2))

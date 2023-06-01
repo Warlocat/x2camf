@@ -32,7 +32,7 @@ Eigen::MatrixXd amfi(const int input_string, const int atom_number,
     bool allint = true, renormS = false, spinFree, twoC; // internal parameters, don't change.
     if(pt)
     {
-        int4c = true; spinFree = true; twoC = true;
+        spinFree = true; twoC = true;
         if(pcc)
         {
             cout << "ERROR: PCC is not implemented for PT scheme." << endl;
