@@ -17,7 +17,7 @@ using namespace std;
 /* Global information */
 int n, l, twoj;
 string atomName, basisSet, flags;
-double dc_sfx2c, dcb_dc, qed = 0.0;
+double dc_sfx2c, dcb_dc, sfdc_sfx2c, qed = 0.0;
 
 /* Read input file and set global variables */
 void readInput(const string filename);
@@ -30,14 +30,16 @@ int main()
     INT_SPH intor(atomName, basisSet);
     //                           sf   2c   Gaunt gauge allint  gauNuc
     DHF_SPH sfx2c(intor,"input",4,true,true,false,false,true,false);
+    DHF_SPH sfdc4c(intor,"input",4,true,false,false,false,true,false);
     DHF_SPH dc4c(intor,"input",4,false,false,false,false,true,false);
     DHF_SPH dcb4c(intor,"input",4,false,false,true,true,true,false);
 
     sfx2c.runSCF(true,false);
+    sfdc4c.runSCF(false,false);
     dc4c.runSCF(false,false);
     dcb4c.runSCF(false,false);
     
-    vVectorXd mo_ene_sfx2c = sfx2c.ene_orb, mo_ene_dc = dc4c.ene_orb, mo_ene_dcb = dcb4c.ene_orb;
+    vVectorXd mo_ene_sfx2c = sfx2c.ene_orb, mo_ene_dc = dc4c.ene_orb, mo_ene_dcb = dcb4c.ene_orb, mo_ene_sfdc = sfdc4c.ene_orb;
     auto irrep_list = intor.irrep_list;
     for(int ir = 0; ir < irrep_list.rows(); ir++)
     {
@@ -45,6 +47,7 @@ int main()
         {
             int n_tmp = n - 1 - l, n2c = mo_ene_sfx2c(ir).rows();
             dc_sfx2c = mo_ene_dc(ir)(n2c + n_tmp) - mo_ene_sfx2c(ir)(n_tmp);
+            sfdc_sfx2c = mo_ene_sfdc(ir)(n2c + n_tmp) - mo_ene_sfx2c(ir)(n_tmp);
             dcb_dc = mo_ene_dcb(ir)(n2c + n_tmp) - mo_ene_dc(ir)(n2c + n_tmp);
             break;
         }
@@ -55,6 +58,7 @@ int main()
 
     cout << "The correction (in eV) to orbital energy of " << orbitalName << endl;
     cout << fixed << setprecision(4);
+    cout << "SFDC - SFX2C1e:\t\t" << sfdc_sfx2c*au2ev << endl; 
     cout << "DC - SFX2C1e:\t\t" << dc_sfx2c*au2ev << endl; 
     cout << "Breit term:\t\t" << dcb_dc*au2ev << endl;
     cout << "QED term:\t\t" << qed*au2ev << endl;

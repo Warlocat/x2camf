@@ -5,9 +5,11 @@
 #include <Eigen/Core>
 #include <Eigen/LU>
 #include <bitset>
+#include <vector>
 #include <iostream>
 #include <pybind11/eigen.h>
 #include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
 
 using namespace Eigen;
 using namespace std;
@@ -15,10 +17,11 @@ using namespace std;
 namespace py = pybind11;
 
 // SOC integrals within X2CAMF scheme
-Eigen::MatrixXd amfi(const int input_string, const int atom_number,
+vector<MatrixXd> amfi(const int input_string, const int atom_number,
                         const int nshell, const int nbas, const int printLevel,
                         const Eigen::MatrixXi &shell,
-                        const Eigen::MatrixXd &exp_a)
+                        const Eigen::MatrixXd &exp_a,
+                        bool return_den4c)
 {
     // input_string is a internally coded string
     auto input_config = std::bitset<7>(input_string);
@@ -54,13 +57,6 @@ Eigen::MatrixXd amfi(const int input_string, const int atom_number,
     DHF_SPH *scfer;
     if (aoc)
     {
-        cout << endl << endl;
-        cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << endl;
-        cout << "!!  WARNING: Average-of-configuration calculations MIGHT BE WRONG  !!" << endl;
-        cout << "!!  for atoms with more than one partially occupied l-shell, e.g., !!" << endl;
-        cout << "!!  uranium atom with both 5f and 6d partially occupied.           !!" << endl;
-        cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << endl;
-        cout << endl << endl;
         scfer = new DHF_SPH_CA(intor, "input", printLevel, spinFree, twoC, Gaunt, gauge, allint,
                                gauNuc);
     }
@@ -74,9 +70,14 @@ Eigen::MatrixXd amfi(const int input_string, const int atom_number,
     vMatrixXd amfi;
     if(!pcc) amfi = scfer->get_amfi_unc(intor, twoC, "partialFock", Gaunt, gauge, int4c);
     else amfi = scfer->x2c2ePCC(int4c);
-    MatrixXd amfi_all;
+    MatrixXd amfi_all, den_4c;
     if(int4c) amfi_all = Rotate::unite_irrep_4c(amfi, intor.irrep_list);
     else amfi_all = Rotate::unite_irrep(amfi, intor.irrep_list);
+    den_4c = Rotate::unite_irrep_4c(scfer->get_density(), intor.irrep_list);
+
+    vector<MatrixXd> results;
+    results.push_back(amfi_all);
+    if(return_den4c) results.push_back(den_4c);
 
     if(printLevel >= 4)
     {
@@ -84,7 +85,7 @@ Eigen::MatrixXd amfi(const int input_string, const int atom_number,
     }
 
     delete scfer;
-    return amfi_all;
+    return results;
 }
 
 PYBIND11_MODULE(libx2camf, m)

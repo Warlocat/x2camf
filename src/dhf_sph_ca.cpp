@@ -75,6 +75,7 @@ DHF_SPH(int_sph_,filename,printLevel,spinFree,twoC,with_gaunt_,with_gauge_,allIn
     {
         cout << "Open shell occupations:" << endl;
         for(int ir = 0; ir < occMax_irrep; ir+=irrep_list(ir).l*4+2)
+        // for(int ir = 0; ir < occMax_irrep; ir+=irrep_list(ir).two_j+1)
         {
             cout << "l = " << irrep_list(ir).l << endl;
             for(int ii = 0; ii < occNumberShells.size(); ii++)

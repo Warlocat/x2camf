@@ -5,6 +5,23 @@ from pyscf.x2c import x2c
 from pyscf.gto import mole
 import numpy
 
+def construct_molecular_matrix(atm_blocks, atom_slices, xmol, n2c, four_component):
+    if four_component:
+        mol_matrix = numpy.zeros((n2c*2, n2c*2))
+        for ia in range(xmol.natm):
+            n2ca = atm_blocks[xmol.elements[ia]].shape[0]//2
+            _, _, c0, c1 = atom_slices[ia]
+            mol_matrix[c0:c1,c0:c1] = atm_blocks[xmol.elements[ia]][:n2ca,:n2ca]
+            mol_matrix[n2c+c0:n2c+c1,c0:c1] = atm_blocks[xmol.elements[ia]][n2ca:,:n2ca]
+            mol_matrix[c0:c1,n2c+c0:n2c+c1] = atm_blocks[xmol.elements[ia]][:n2ca,n2ca:]
+            mol_matrix[n2c+c0:n2c+c1,n2c+c0:n2c+c1] = atm_blocks[xmol.elements[ia]][n2ca:,n2ca:]
+    else:
+        mol_matrix = numpy.zeros((n2c, n2c))
+        for ia in range(xmol.natm):
+            _, _, c0, c1 = atom_slices[ia]
+            mol_matrix[c0:c1,c0:c1] = atm_blocks[xmol.elements[ia]]
+    return mol_matrix
+
 def amfi(x2cobj, printLevel = 0, with_gaunt = True, with_gauge = True, gaussian_nuclear = False, aoc = False, pt = False, pcc = False, int4c = False):
     mol = x2cobj.mol
     #computes the internal integer for soc integral flavor.
@@ -19,6 +36,7 @@ def amfi(x2cobj, printLevel = 0, with_gaunt = True, with_gauge = True, gaussian_
 
     uniq_atoms = set([a[0] for a in mol._atom])
     amf_int = {}
+    den_4c = {}
     for atom in uniq_atoms:
         symbol = mole._std_symbol(atom)
         atom_number = elements.charge(symbol)
@@ -31,34 +49,16 @@ def amfi(x2cobj, printLevel = 0, with_gaunt = True, with_gauge = True, gaussian_
             exp_a.append(bas[-1][0])
         shell = numpy.asarray(shell)
         exp_a = numpy.asarray(exp_a)
-        amf_int[atom] = _amf(atom_number, shell, exp_a, soc_int_flavor, printLevel)
+        amf_int[atom], den_4c[atom] = _amf(atom_number, shell, exp_a, soc_int_flavor, printLevel)
 
+    xmol, _ = x2cobj.get_xmol()
+    n2c = xmol.nao_2c()
+    atom_slices = xmol.aoslice_2c_by_atom()
     
-    if(int4c):
-        xmol, contr_coeff = x2cobj.get_xmol()
-        n2c = xmol.nao_2c()
-        amf_matrix = numpy.zeros((n2c*2, n2c*2))
-        atom_slices = xmol.aoslice_2c_by_atom()
-        if(printLevel >= 4):
-            print("Generating 4c integrals")
-        for ia in range(xmol.natm):
-            n2ca = amf_int[xmol.elements[ia]].shape[0]//2
-            ishl0, ishl1, c0, c1 = atom_slices[ia]
-            amf_matrix[c0:c1,c0:c1] = amf_int[xmol.elements[ia]][:n2ca,:n2ca]
-            amf_matrix[n2c+c0:n2c+c1,c0:c1] = amf_int[xmol.elements[ia]][n2ca:,:n2ca]
-            amf_matrix[c0:c1,n2c+c0:n2c+c1] = amf_int[xmol.elements[ia]][:n2ca,n2ca:]
-            amf_matrix[n2c+c0:n2c+c1,n2c+c0:n2c+c1] = amf_int[xmol.elements[ia]][n2ca:,n2ca:]
-        return amf_matrix
-    else:
-        xmol, contr_coeff = x2cobj.get_xmol()
-        amf_matrix = numpy.zeros((xmol.nao_2c(), xmol.nao_2c()))
-        atom_slices = xmol.aoslice_2c_by_atom()
-        if(printLevel >= 4):
-            print("Generating 2c integrals")
-        for ia in range(xmol.natm):
-            ishl0, ishl1, c0, c1 = atom_slices[ia]
-            amf_matrix[c0:c1,c0:c1] = amf_int[xmol.elements[ia]]
-        return amf_matrix
+    amf_matrix = construct_molecular_matrix(amf_int, atom_slices, xmol, n2c, int4c)
+    den_4c_matrix = construct_molecular_matrix(den_4c, atom_slices, xmol, n2c, True)
+
+    return amf_matrix, den_4c_matrix
 
 
 # takes an atom number basis and flavor of soc integral and returns the amf matrix
@@ -72,9 +72,10 @@ def _amf(atom_number, shell, exp_a, soc_int_flavor, printLevel):
 
     nbas = shell.shape[0]
     nshell = shell[-1]+1
-
-    amf_mat = libx2camf.amfi(soc_int_flavor, atom_number, nshell, nbas, printLevel, shell, exp_a)
-    return amf_mat
+    results = libx2camf.amfi(soc_int_flavor, atom_number, nshell, nbas, printLevel, shell, exp_a, True)
+    amf_mat = results[0]
+    den_mat = results[1]
+    return amf_mat, den_mat
 
 if __name__ == '__main__':
     from pyscf import scf

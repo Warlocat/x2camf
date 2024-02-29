@@ -21,7 +21,6 @@ protected:
     void readBasis();
     void normalization();
     /* auxiliary functions used to evaluate 1e and 2e intergals */
-    double auxiliary_1e(const int& l, const double& a) const;
     double auxiliary_2e_0_r(const int& l1, const int& l2, const double& a1, const double& a2) const;
     double auxiliary_2e_r_inf(const int& l1, const int& l2, const double& a1, const double& a2) const;
     /* evaluate radial part and angular part in 2e integrals */
@@ -79,6 +78,8 @@ public:
     INT_SPH(const string& atomName_, const string& basisSet_);
     INT_SPH(const int atom_number, const int nshell, const int nbas, const Eigen::VectorXi & shell, const Eigen::VectorXd & exp_a);
     ~INT_SPH();
+
+    double auxiliary_1e(const int& l, const double& a) const;
 
     /* Evaluate one-electron integral */
     vMatrixXd get_h1e(const string& intType) const;
