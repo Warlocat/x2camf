@@ -1,4 +1,4 @@
-import libx2camf
+from x2camf import libx2camf
 from pyscf import gto
 from pyscf.data import elements
 from pyscf.x2c import x2c
@@ -22,7 +22,7 @@ def construct_molecular_matrix(atm_blocks, atom_slices, xmol, n2c, four_componen
             mol_matrix[c0:c1,c0:c1] = atm_blocks[xmol.elements[ia]]
     return mol_matrix
 
-def amfi(x2cobj, printLevel = 0, with_gaunt = True, with_gauge = True, gaussian_nuclear = False, aoc = False, pt = False, pcc = False, int4c = False):
+def amfi(x2cobj, printLevel = 0, with_gaunt = True, with_gauge = True, gaussian_nuclear = False, aoc = False, pt = False, pcc = False, int4c = False, density=False):
     mol = x2cobj.mol
     #computes the internal integer for soc integral flavor.
     soc_int_flavor = 0
@@ -57,8 +57,10 @@ def amfi(x2cobj, printLevel = 0, with_gaunt = True, with_gauge = True, gaussian_
     
     amf_matrix = construct_molecular_matrix(amf_int, atom_slices, xmol, n2c, int4c)
     den_4c_matrix = construct_molecular_matrix(den_4c, atom_slices, xmol, n2c, True)
-
-    return amf_matrix, den_4c_matrix
+    if density is False:
+        return amf_matrix
+    else:
+        return amf_matrix, den_4c_matrix
 
 
 # takes an atom number basis and flavor of soc integral and returns the amf matrix
