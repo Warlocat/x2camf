@@ -956,7 +956,7 @@ void DHF_SPH::setOCC(const string& filename, const string& atomName)
         fullFock:       Fock                Fock
     When necessary, the program will recalculate two-electron integrals.
 */
-vMatrixXd DHF_SPH::get_amfi_unc(INT_SPH& int_sph_, const bool& twoC, const string& Xmethod, bool amfi_with_gaunt, bool amfi_with_gauge, bool amfi4c)
+vMatrixXd DHF_SPH::get_amfi_unc(INT_SPH& int_sph_, const bool& twoC, const string& Xmethod, bool amfi_with_gaunt, bool amfi_with_gauge, bool amfi4c, bool sd_gaunt)
 {    
     if(printLevel >= 4) cout << "Running DHF_SPH::get_amfi_unc" << endl;
     if(with_gaunt && !amfi_with_gaunt)
@@ -1010,31 +1010,43 @@ vMatrixXd DHF_SPH::get_amfi_unc(INT_SPH& int_sph_, const bool& twoC, const strin
     int2eJK gauntLSLS_SD, gauntLSSL_SD;
     if(amfi_with_gaunt)
     {
-        /* Enable SD gaunt */ 
-        // int_sph_.get_h2e_JK_gaunt_direct(gauntLSLS_SD,gauntLSSL_SD,-1,true);
-        // if(renormalizedSmall)
-        // {
-        //     renormalize_h2e(gauntLSLS_SD,"LSLS");
-        //     renormalize_h2e(gauntLSSL_SD,"LSSL");
-        // }
-        // symmetrize_JK_gaunt(gauntLSLS_SD,Nirrep_compact);
-        // for(int ir = 0; ir < Nirrep_compact; ir++)
-        // for(int jr = 0; jr < Nirrep_compact; jr++)
-        // {
-        //     int size_i = irrep_list(compact2all(ir)).size, size_j = irrep_list(compact2all(jr)).size;
-        //     #pragma omp parallel  for
-        //     for(int nn = 0; nn < size_i*size_i*size_j*size_j; nn++)
-        //     {
-        //         int kk = nn / (size_j * size_j), ll = nn - kk*size_j*size_j;
-        //         gauntLSLS_SD.J[ir][jr][kk][ll] = gauntLSLS_JK.J[ir][jr][kk][ll] - gauntLSLS_SD.J[ir][jr][kk][ll];
-        //         gauntLSSL_SD.J[ir][jr][kk][ll] = gauntLSSL_JK.J[ir][jr][kk][ll] - gauntLSSL_SD.J[ir][jr][kk][ll];
-        //         kk = nn / (size_i * size_j), ll = nn - kk*size_i*size_j;
-        //         gauntLSLS_SD.K[ir][jr][kk][ll] = gauntLSLS_JK.K[ir][jr][kk][ll] - gauntLSLS_SD.K[ir][jr][kk][ll];
-        //         gauntLSSL_SD.K[ir][jr][kk][ll] = gauntLSSL_JK.K[ir][jr][kk][ll] - gauntLSSL_SD.K[ir][jr][kk][ll];
-        //     }
-        // }
-        gauntLSLS_SD = gauntLSLS_JK;
-        gauntLSSL_SD = gauntLSSL_JK;
+        if(sd_gaunt)
+        {
+            if(amfi_with_gauge)
+            {
+                cout << "ERROR: Gauge term is not supported in SD gaunt term." << endl;
+                exit(99);
+            }
+            if(printLevel >= 4) cout << "Calculate only SD gaunt terms..." << endl;
+            /* Enable SD gaunt */ 
+            int_sph_.get_h2e_JK_gaunt_direct(gauntLSLS_SD,gauntLSSL_SD,-1,true);
+            if(renormalizedSmall)
+            {
+                renormalize_h2e(gauntLSLS_SD,"LSLS");
+                renormalize_h2e(gauntLSSL_SD,"LSSL");
+            }
+            symmetrize_JK_gaunt(gauntLSLS_SD,Nirrep_compact);
+            for(int ir = 0; ir < Nirrep_compact; ir++)
+            for(int jr = 0; jr < Nirrep_compact; jr++)
+            {
+                int size_i = irrep_list(compact2all(ir)).size, size_j = irrep_list(compact2all(jr)).size;
+                #pragma omp parallel  for
+                for(int nn = 0; nn < size_i*size_i*size_j*size_j; nn++)
+                {
+                    int kk = nn / (size_j * size_j), ll = nn - kk*size_j*size_j;
+                    gauntLSLS_SD.J[ir][jr][kk][ll] = gauntLSLS_JK.J[ir][jr][kk][ll] - gauntLSLS_SD.J[ir][jr][kk][ll];
+                    gauntLSSL_SD.J[ir][jr][kk][ll] = gauntLSSL_JK.J[ir][jr][kk][ll] - gauntLSSL_SD.J[ir][jr][kk][ll];
+                    kk = nn / (size_i * size_j), ll = nn - kk*size_i*size_j;
+                    gauntLSLS_SD.K[ir][jr][kk][ll] = gauntLSLS_JK.K[ir][jr][kk][ll] - gauntLSLS_SD.K[ir][jr][kk][ll];
+                    gauntLSSL_SD.K[ir][jr][kk][ll] = gauntLSSL_JK.K[ir][jr][kk][ll] - gauntLSSL_SD.K[ir][jr][kk][ll];
+                }
+            }
+        }
+        else
+        {
+            gauntLSLS_SD = gauntLSLS_JK;
+            gauntLSSL_SD = gauntLSSL_JK;
+        }
     }
     int2eJK SSLL_SD, SSSS_SD;
     countTime(StartTimeCPU,StartTimeWall);

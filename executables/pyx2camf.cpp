@@ -24,7 +24,7 @@ vector<MatrixXd> amfi(const int input_string, const int atom_number,
                         bool return_den4c)
 {
     // input_string is a internally coded string
-    auto input_config = std::bitset<7>(input_string);
+    auto input_config = std::bitset<8>(input_string);
     bool Gaunt = input_config[0];
     bool gauge = input_config[1];
     bool gauNuc = input_config[2];
@@ -32,6 +32,7 @@ vector<MatrixXd> amfi(const int input_string, const int atom_number,
     bool pt = input_config[4];
     bool pcc = input_config[5];
     bool int4c = input_config[6];
+    bool sdGaunt = input_config[7];
     bool allint = true, renormS = false, spinFree, twoC; // internal parameters, don't change.
     if(pt)
     {
@@ -68,7 +69,7 @@ vector<MatrixXd> amfi(const int input_string, const int atom_number,
     scfer->convControl = 1e-9;
     scfer->runSCF(twoC, renormS);
     vMatrixXd amfi;
-    if(!pcc) amfi = scfer->get_amfi_unc(intor, twoC, "partialFock", Gaunt, gauge, int4c);
+    if(!pcc) amfi = scfer->get_amfi_unc(intor, twoC, "partialFock", Gaunt, gauge, int4c, sdGaunt);
     else amfi = scfer->x2c2ePCC(int4c);
     MatrixXd amfi_all, den_4c;
     if(int4c) amfi_all = Rotate::unite_irrep_4c(amfi, intor.irrep_list);

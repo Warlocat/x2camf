@@ -81,7 +81,7 @@ public:
     virtual void runSCF(const bool& twoC, const bool& renormSmall, vMatrixXd* initialGuess);
 
     /* Evaluate amfi SOC integrals */
-    vMatrixXd get_amfi_unc(INT_SPH& int_sph_, const bool& twoC = false, const string& Xmethod = "partialFock", bool amfi_with_gaunt = false, bool amfi_with_gauge = false, bool amfi4c = false);
+    vMatrixXd get_amfi_unc(INT_SPH& int_sph_, const bool& twoC = false, const string& Xmethod = "partialFock", bool amfi_with_gaunt = false, bool amfi_with_gauge = false, bool amfi4c = false, bool sd_gaunt = false);
     vMatrixXd get_amfi_unc(const int2eJK& h2eSSLL_SD, const int2eJK& h2eSSSS_SD, const int2eJK& gauntLSLS_SD, const int2eJK& gauntLSSL_SD, const vMatrixXd& density_, const string& Xmethod = "partialFock", const bool& amfi_with_gaunt = false, bool amfi4c = false);
     vMatrixXd get_amfi_unc_2c(const int2eJK& h2eSSLL_SD, const int2eJK& h2eSSSS_SD, const bool& amfi_with_gaunt = false, bool amfi4c = false);
     /* Return SO_4c before x2c transformation */
