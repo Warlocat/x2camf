@@ -22,7 +22,7 @@ def construct_molecular_matrix(atm_blocks, atom_slices, xmol, n2c, four_componen
             mol_matrix[c0:c1,c0:c1] = atm_blocks[xmol.elements[ia]]
     return mol_matrix
 
-def amfi(x2cobj, printLevel = 0, with_gaunt = True, with_gauge = True, gaussian_nuclear = False, aoc = False, pt = False, pcc = False, int4c = False, density=False):
+def amfi(x2cobj, printLevel = 0, with_gaunt = True, with_gauge = True, with_gaunt_sd=False, gaussian_nuclear = False, aoc = False, pt = False, pcc = False, int4c = False, density=False):
     mol = x2cobj.mol
     #computes the internal integer for soc integral flavor.
     soc_int_flavor = 0
@@ -33,6 +33,7 @@ def amfi(x2cobj, printLevel = 0, with_gaunt = True, with_gauge = True, gaussian_
     soc_int_flavor += pt << 4
     soc_int_flavor += pcc << 5
     soc_int_flavor += int4c << 6
+    soc_int_flavor += with_gaunt_sd << 7
 
     uniq_atoms = set([a[0] for a in mol._atom])
     amf_int = {}
