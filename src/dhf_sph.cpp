@@ -1014,7 +1014,7 @@ vMatrixXd DHF_SPH::get_amfi_unc(INT_SPH& int_sph_, const bool& twoC, const strin
         {
             if(amfi_with_gauge)
             {
-                cout << "ERROR: Gauge term is not supported in SD gaunt term." << endl;
+                cout << "ERROR: Gauge term is not supported with SD gaunt term." << endl;
                 exit(99);
             }
             if(printLevel >= 4) cout << "Calculate only SD gaunt terms..." << endl;
@@ -1417,6 +1417,15 @@ vMatrixXd DHF_SPH::get_fock_4c()
 {
     return fock_4c;
 }
+vMatrixXd DHF_SPH::get_fock_fw()
+{
+    vMatrixXd fock_fw(occMax_irrep);
+    for(int ir = 0; ir < occMax_irrep; ir++)
+    {
+        fock_fw(ir) = X2C::transform_4c_2c(fock_4c(ir),x2cXXX(ir),x2cRRR(ir));
+    }
+    return fock_fw;
+}
 vMatrixXd DHF_SPH::get_fock_4c_2ePart()
 {
     vMatrixXd fock_2e(occMax_irrep);
@@ -1436,6 +1445,17 @@ vMatrixXd DHF_SPH::get_density()
 {
     return density;
 }
+vMatrixXd DHF_SPH::get_density_fw()
+{
+    vMatrixXd den_fw(occMax_irrep);
+    for(int ir = 0; ir < occMax_irrep; ir++)
+    {
+        // R C_2c = C_L
+        auto C2c = x2cRRR(ir).inverse() * coeff(ir).block(0,coeff(ir).cols()/2,coeff(ir).rows()/2,coeff(ir).cols()/2);
+        den_fw(ir) = evaluateDensity_spinor(C2c,occNumber(ir),true);
+    }
+    return den_fw;
+}
 vVectorXd DHF_SPH::get_occNumber()
 {
     return occNumber;
@@ -1447,6 +1467,16 @@ vMatrixXd DHF_SPH::get_X()
     else
     {
         cout << "ERROR: get_X was called before X matrices calculated!" << endl;
+        exit(99);
+    }
+}
+vMatrixXd DHF_SPH::get_R()
+{
+    if(X_calculated)
+        return x2cRRR;
+    else
+    {
+        cout << "ERROR: get_R was called before X matrices calculated!" << endl;
         exit(99);
     }
 }

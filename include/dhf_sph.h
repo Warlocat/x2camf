@@ -10,7 +10,6 @@ using namespace Eigen;
 class DHF_SPH
 {
 protected:
-    
     VectorXi all2compact,compact2all;
     vMatrixXd overlap, kinetic, WWW, Vnuc;
     int2eJK h2eLLLL_JK, h2eSSLL_JK, h2eSSSS_JK, gauntLSLS_JK, gauntLSSL_JK;
@@ -67,12 +66,15 @@ public:
 
     /* Get private variables */
     vMatrixXd get_fock_4c();
+    vMatrixXd get_fock_fw();
     vMatrixXd get_fock_4c_2ePart();
     vMatrixXd get_h1e_4c();
     vMatrixXd get_overlap_4c();
     vMatrixXd get_density();
+    vMatrixXd get_density_fw();
     vVectorXd get_occNumber();
     vMatrixXd get_X();
+    vMatrixXd get_R();
     vMatrixXd get_X_normalized();
     void set_h1e_4c(const vMatrixXd& inputM);
 

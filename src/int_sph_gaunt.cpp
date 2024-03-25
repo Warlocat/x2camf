@@ -418,7 +418,7 @@ int2eJK INT_SPH::get_h2e_JK_gaunt(const string& intType, const int& occMaxL) con
             int ii = e1J/size_gtos_p, jj = e1J - ii*size_gtos_p;
             int kk = e2J/size_gtos_q, ll = e2J - kk*size_gtos_q;
             int e1K = ii*size_gtos_q+ll, e2K = kk*size_gtos_p+jj;
-            vector<double> radial_2e_list_J[LmaxJ+1], radial_2e_list_K[LmaxK+1];
+            double radial_2e_list_J[LmaxJ+1][4], radial_2e_list_K[LmaxK+1][4];
             double a_i_J = shell_list[pshell].exp_a[ii], a_j_J = shell_list[pshell].exp_a[jj], a_k_J = shell_list[qshell].exp_a[kk], a_l_J = shell_list[qshell].exp_a[ll];
             double a_i_K = shell_list[pshell].exp_a[ii], a_j_K = shell_list[qshell].exp_a[ll], a_k_K = shell_list[qshell].exp_a[kk], a_l_K = shell_list[pshell].exp_a[jj];
         
@@ -426,7 +426,6 @@ int2eJK INT_SPH::get_h2e_JK_gaunt(const string& intType, const int& occMaxL) con
             {
                 for(int LL = LmaxJ; LL >= 0; LL -= 2)
                 {
-                    radial_2e_list_J[LL].resize(4);
                     radial_2e_list_J[LL][0] = int2e_get_radial(l_p,a_i_J,l_p+1,a_j_J,l_q,a_k_J,l_q+1,a_l_J,LL);
                     if(l_p != 0)
                         radial_2e_list_J[LL][1] = int2e_get_radial(l_p,a_i_J,l_p-1,a_j_J,l_q,a_k_J,l_q+1,a_l_J,LL);
@@ -437,7 +436,6 @@ int2eJK INT_SPH::get_h2e_JK_gaunt(const string& intType, const int& occMaxL) con
                 }
                 for(int LL = LmaxK; LL >= 0; LL -= 2)
                 {
-                    radial_2e_list_K[LL].resize(4);
                     radial_2e_list_K[LL][0] = int2e_get_radial(l_p,a_i_K,l_q+1,a_j_K,l_q,a_k_K,l_p+1,a_l_K,LL);
                     if(l_q != 0)
                         radial_2e_list_K[LL][1] = int2e_get_radial(l_p,a_i_K,l_q-1,a_j_K,l_q,a_k_K,l_p+1,a_l_K,LL);
@@ -451,7 +449,6 @@ int2eJK INT_SPH::get_h2e_JK_gaunt(const string& intType, const int& occMaxL) con
             {
                 for(int LL = LmaxJ; LL >= 0; LL -= 2)
                 {
-                    radial_2e_list_J[LL].resize(4);
                     radial_2e_list_J[LL][0] = int2e_get_radial(l_p,a_i_J,l_p+1,a_j_J,l_q+1,a_k_J,l_q,a_l_J,LL);
                     if(l_p != 0)
                         radial_2e_list_J[LL][1] = int2e_get_radial(l_p,a_i_J,l_p-1,a_j_J,l_q+1,a_k_J,l_q,a_l_J,LL);
@@ -462,7 +459,6 @@ int2eJK INT_SPH::get_h2e_JK_gaunt(const string& intType, const int& occMaxL) con
                 }
                 for(int LL = LmaxK; LL >= 0; LL -= 2)
                 {
-                    radial_2e_list_K[LL].resize(4);
                     radial_2e_list_K[LL][0] = int2e_get_radial(l_p,a_i_K,l_q+1,a_j_K,l_q+1,a_k_K,l_p,a_l_K,LL);
                     if(l_q != 0)
                     {
@@ -816,7 +812,6 @@ int2eJK INT_SPH::get_h2e_JK_gaunt_compact(const string& intType, const int& occM
 }
 int2eJK INT_SPH::get_h2e_JK_gauntSF_compact(const string& intType, const int& occMaxL)
 {
-    double time_a = 0.0, time_r = 0.0, time_c = 0.0;
     int occMaxShell = 0, Nirrep_compact = 0;
     if(occMaxL == -1)    occMaxShell = size_shell;
     else
@@ -865,8 +860,73 @@ int2eJK INT_SPH::get_h2e_JK_gauntSF_compact(const string& intType, const int& oc
         double array_angular_J12[LmaxJ+1][size_tmp_p][size_tmp_q], array_angular_K12[LmaxK+1][size_tmp_p][size_tmp_q];
         double array_angular_J21[LmaxJ+1][size_tmp_p][size_tmp_q], array_angular_K21[LmaxK+1][size_tmp_p][size_tmp_q];
         double array_angular_J22[LmaxJ+1][size_tmp_p][size_tmp_q], array_angular_K22[LmaxK+1][size_tmp_p][size_tmp_q];
+        double radial_2e_list_J[size_gtos_p*size_gtos_p*size_gtos_q*size_gtos_q][LmaxJ+1][4];
+        double radial_2e_list_K[size_gtos_p*size_gtos_p*size_gtos_q*size_gtos_q][LmaxK+1][4];
 
-        countTime(StartTimeCPU,StartTimeWall);
+        #pragma omp parallel  for
+        for(int tt = 0; tt < size_gtos_p*size_gtos_p*size_gtos_q*size_gtos_q; tt++)
+        {
+            int e1J = tt/(size_gtos_q*size_gtos_q);
+            int e2J = tt - e1J*(size_gtos_q*size_gtos_q);
+            int ii = e1J/size_gtos_p, jj = e1J - ii*size_gtos_p;
+            int kk = e2J/size_gtos_q, ll = e2J - kk*size_gtos_q;
+            int e1K = ii*size_gtos_q+ll, e2K = kk*size_gtos_p+jj;
+            double a_i_J = shell_list[pshell].exp_a[ii], a_j_J = shell_list[pshell].exp_a[jj], a_k_J = shell_list[qshell].exp_a[kk], a_l_J = shell_list[qshell].exp_a[ll];
+            double a_i_K = shell_list[pshell].exp_a[ii], a_j_K = shell_list[qshell].exp_a[ll], a_k_K = shell_list[qshell].exp_a[kk], a_l_K = shell_list[pshell].exp_a[jj];
+        
+            if(intType.substr(0,4) == "LSLS")
+            {
+                for(int LL = LmaxJ; LL >= 0; LL -= 2)
+                {
+                    radial_2e_list_J[tt][LL][0] = int2e_get_radial(l_p,a_i_J,l_p+1,a_j_J,l_q,a_k_J,l_q+1,a_l_J,LL);
+                    if(l_p != 0)
+                        radial_2e_list_J[tt][LL][1] = int2e_get_radial(l_p,a_i_J,l_p-1,a_j_J,l_q,a_k_J,l_q+1,a_l_J,LL);
+                    if(l_q != 0)
+                        radial_2e_list_J[tt][LL][2] = int2e_get_radial(l_p,a_i_J,l_p+1,a_j_J,l_q,a_k_J,l_q-1,a_l_J,LL);
+                    if(l_p != 0 && l_q != 0)
+                        radial_2e_list_J[tt][LL][3] = int2e_get_radial(l_p,a_i_J,l_p-1,a_j_J,l_q,a_k_J,l_q-1,a_l_J,LL);
+                }
+                for(int LL = LmaxK; LL >= 0; LL -= 2)
+                {
+                    radial_2e_list_K[tt][LL][0] = int2e_get_radial(l_p,a_i_K,l_q+1,a_j_K,l_q,a_k_K,l_p+1,a_l_K,LL);
+                    if(l_q != 0)
+                        radial_2e_list_K[tt][LL][1] = int2e_get_radial(l_p,a_i_K,l_q-1,a_j_K,l_q,a_k_K,l_p+1,a_l_K,LL);
+                    if(l_p != 0)
+                        radial_2e_list_K[tt][LL][2] = int2e_get_radial(l_p,a_i_K,l_q+1,a_j_K,l_q,a_k_K,l_p-1,a_l_K,LL);
+                    if(l_p != 0 && l_q != 0)
+                        radial_2e_list_K[tt][LL][3] = int2e_get_radial(l_p,a_i_K,l_q-1,a_j_K,l_q,a_k_K,l_p-1,a_l_K,LL);
+                }
+            }
+            else if(intType.substr(0,4) == "LSSL")
+            {
+                for(int LL = LmaxJ; LL >= 0; LL -= 2)
+                {
+                    radial_2e_list_J[tt][LL][0] = int2e_get_radial(l_p,a_i_J,l_p+1,a_j_J,l_q+1,a_k_J,l_q,a_l_J,LL);
+                    if(l_p != 0)
+                        radial_2e_list_J[tt][LL][1] = int2e_get_radial(l_p,a_i_J,l_p-1,a_j_J,l_q+1,a_k_J,l_q,a_l_J,LL);
+                    if(l_q != 0)
+                        radial_2e_list_J[tt][LL][2] = int2e_get_radial(l_p,a_i_J,l_p+1,a_j_J,l_q-1,a_k_J,l_q,a_l_J,LL);
+                    if(l_p != 0 && l_q != 0)
+                        radial_2e_list_J[tt][LL][3] = int2e_get_radial(l_p,a_i_J,l_p-1,a_j_J,l_q-1,a_k_J,l_q,a_l_J,LL);
+                }
+                for(int LL = LmaxK; LL >= 0; LL -= 2)
+                {
+                    radial_2e_list_K[tt][LL][0] = int2e_get_radial(l_p,a_i_K,l_q+1,a_j_K,l_q+1,a_k_K,l_p,a_l_K,LL);
+                    if(l_q != 0)
+                    {
+                        radial_2e_list_K[tt][LL][1] = int2e_get_radial(l_p,a_i_K,l_q-1,a_j_K,l_q+1,a_k_K,l_p,a_l_K,LL);
+                        radial_2e_list_K[tt][LL][2] = int2e_get_radial(l_p,a_i_K,l_q+1,a_j_K,l_q-1,a_k_K,l_p,a_l_K,LL);
+                        radial_2e_list_K[tt][LL][3] = int2e_get_radial(l_p,a_i_K,l_q-1,a_j_K,l_q-1,a_k_K,l_p,a_l_K,LL);
+                    }
+                }
+            }
+            else
+            {
+                cout << "ERROR: Unkonwn intType in get_h2e_JK_gaunt." << endl;
+                exit(99);
+            }
+        }
+
         #pragma omp parallel  for
         for(int twojj_p = abs(2*l_p-1); twojj_p <= 2*l_p+1; twojj_p = twojj_p + 2)
         for(int twojj_q = abs(2*l_q-1); twojj_q <= 2*l_q+1; twojj_q = twojj_q + 2)
@@ -916,10 +976,7 @@ int2eJK INT_SPH::get_h2e_JK_gauntSF_compact(const string& intType, const int& oc
                 tmp_d22 /= (twojj_q + 1);   array_angular_K22[tmp][index_tmp_p][index_tmp_q] = tmp_d22;
             }
         }
-        countTime(EndTimeCPU,EndTimeWall);
-        time_a += (EndTimeCPU - StartTimeCPU)/(double)CLOCKS_PER_SEC;
 
-        countTime(StartTimeCPU,StartTimeWall);
         #pragma omp parallel  for
         for(int tt = 0; tt < size_gtos_p*size_gtos_p*size_gtos_q*size_gtos_q; tt++)
         {
@@ -928,65 +985,8 @@ int2eJK INT_SPH::get_h2e_JK_gauntSF_compact(const string& intType, const int& oc
             int ii = e1J/size_gtos_p, jj = e1J - ii*size_gtos_p;
             int kk = e2J/size_gtos_q, ll = e2J - kk*size_gtos_q;
             int e1K = ii*size_gtos_q+ll, e2K = kk*size_gtos_p+jj;
-            vector<double> radial_2e_list_J[LmaxJ+1], radial_2e_list_K[LmaxK+1];
             double a_i_J = shell_list[pshell].exp_a[ii], a_j_J = shell_list[pshell].exp_a[jj], a_k_J = shell_list[qshell].exp_a[kk], a_l_J = shell_list[qshell].exp_a[ll];
             double a_i_K = shell_list[pshell].exp_a[ii], a_j_K = shell_list[qshell].exp_a[ll], a_k_K = shell_list[qshell].exp_a[kk], a_l_K = shell_list[pshell].exp_a[jj];
-        
-            if(intType.substr(0,4) == "LSLS")
-            {
-                for(int LL = LmaxJ; LL >= 0; LL -= 2)
-                {
-                    radial_2e_list_J[LL].resize(4);
-                    radial_2e_list_J[LL][0] = int2e_get_radial(l_p,a_i_J,l_p+1,a_j_J,l_q,a_k_J,l_q+1,a_l_J,LL);
-                    if(l_p != 0)
-                        radial_2e_list_J[LL][1] = int2e_get_radial(l_p,a_i_J,l_p-1,a_j_J,l_q,a_k_J,l_q+1,a_l_J,LL);
-                    if(l_q != 0)
-                        radial_2e_list_J[LL][2] = int2e_get_radial(l_p,a_i_J,l_p+1,a_j_J,l_q,a_k_J,l_q-1,a_l_J,LL);
-                    if(l_p != 0 && l_q != 0)
-                        radial_2e_list_J[LL][3] = int2e_get_radial(l_p,a_i_J,l_p-1,a_j_J,l_q,a_k_J,l_q-1,a_l_J,LL);
-                }
-                for(int LL = LmaxK; LL >= 0; LL -= 2)
-                {
-                    radial_2e_list_K[LL].resize(4);
-                    radial_2e_list_K[LL][0] = int2e_get_radial(l_p,a_i_K,l_q+1,a_j_K,l_q,a_k_K,l_p+1,a_l_K,LL);
-                    if(l_q != 0)
-                        radial_2e_list_K[LL][1] = int2e_get_radial(l_p,a_i_K,l_q-1,a_j_K,l_q,a_k_K,l_p+1,a_l_K,LL);
-                    if(l_p != 0)
-                        radial_2e_list_K[LL][2] = int2e_get_radial(l_p,a_i_K,l_q+1,a_j_K,l_q,a_k_K,l_p-1,a_l_K,LL);
-                    if(l_p != 0 && l_q != 0)
-                        radial_2e_list_K[LL][3] = int2e_get_radial(l_p,a_i_K,l_q-1,a_j_K,l_q,a_k_K,l_p-1,a_l_K,LL);
-                }
-            }
-            else if(intType.substr(0,4) == "LSSL")
-            {
-                for(int LL = LmaxJ; LL >= 0; LL -= 2)
-                {
-                    radial_2e_list_J[LL].resize(4);
-                    radial_2e_list_J[LL][0] = int2e_get_radial(l_p,a_i_J,l_p+1,a_j_J,l_q+1,a_k_J,l_q,a_l_J,LL);
-                    if(l_p != 0)
-                        radial_2e_list_J[LL][1] = int2e_get_radial(l_p,a_i_J,l_p-1,a_j_J,l_q+1,a_k_J,l_q,a_l_J,LL);
-                    if(l_q != 0)
-                        radial_2e_list_J[LL][2] = int2e_get_radial(l_p,a_i_J,l_p+1,a_j_J,l_q-1,a_k_J,l_q,a_l_J,LL);
-                    if(l_p != 0 && l_q != 0)
-                        radial_2e_list_J[LL][3] = int2e_get_radial(l_p,a_i_J,l_p-1,a_j_J,l_q-1,a_k_J,l_q,a_l_J,LL);
-                }
-                for(int LL = LmaxK; LL >= 0; LL -= 2)
-                {
-                    radial_2e_list_K[LL].resize(4);
-                    radial_2e_list_K[LL][0] = int2e_get_radial(l_p,a_i_K,l_q+1,a_j_K,l_q+1,a_k_K,l_p,a_l_K,LL);
-                    if(l_q != 0)
-                    {
-                        radial_2e_list_K[LL][1] = int2e_get_radial(l_p,a_i_K,l_q-1,a_j_K,l_q+1,a_k_K,l_p,a_l_K,LL);
-                        radial_2e_list_K[LL][2] = int2e_get_radial(l_p,a_i_K,l_q+1,a_j_K,l_q-1,a_k_K,l_p,a_l_K,LL);
-                        radial_2e_list_K[LL][3] = int2e_get_radial(l_p,a_i_K,l_q-1,a_j_K,l_q-1,a_k_K,l_p,a_l_K,LL);
-                    }
-                }
-            }
-            else
-            {
-                cout << "ERROR: Unkonwn intType in get_h2e_JK_gaunt." << endl;
-                exit(99);
-            }
                 
             for(int twojj_p = abs(2*l_p-1); twojj_p <= 2*l_p+1; twojj_p = twojj_p + 2)
             for(int twojj_q = abs(2*l_q-1); twojj_q <= 2*l_q+1; twojj_q = twojj_q + 2)
@@ -1002,27 +1002,27 @@ int2eJK INT_SPH::get_h2e_JK_gauntSF_compact(const string& intType, const int& oc
                 {
                     if(intType == "LSLS")
                     {
-                        array_radial_J11[tmp][e1J][e2J][index_tmp_p][index_tmp_q] = 4.0*a2*a4 * radial_2e_list_J[tmp][0];
-                        array_radial_J12[tmp][e1J][e2J][index_tmp_p][index_tmp_q] = 4.0*a2*a4 * radial_2e_list_J[tmp][0];
-                        array_radial_J21[tmp][e1J][e2J][index_tmp_p][index_tmp_q] = 4.0*a2*a4 * radial_2e_list_J[tmp][0];
-                        array_radial_J22[tmp][e1J][e2J][index_tmp_p][index_tmp_q] = 4.0*a2*a4 * radial_2e_list_J[tmp][0];
+                        array_radial_J11[tmp][e1J][e2J][index_tmp_p][index_tmp_q] = 4.0*a2*a4 * radial_2e_list_J[tt][tmp][0];
+                        array_radial_J12[tmp][e1J][e2J][index_tmp_p][index_tmp_q] = 4.0*a2*a4 * radial_2e_list_J[tt][tmp][0];
+                        array_radial_J21[tmp][e1J][e2J][index_tmp_p][index_tmp_q] = 4.0*a2*a4 * radial_2e_list_J[tt][tmp][0];
+                        array_radial_J22[tmp][e1J][e2J][index_tmp_p][index_tmp_q] = 4.0*a2*a4 * radial_2e_list_J[tt][tmp][0];
                         if(l_p != 0 && l_q != 0)
                         {
-                            array_radial_J11[tmp][e1J][e2J][index_tmp_p][index_tmp_q] += lk2*lk4 * radial_2e_list_J[tmp][3]
-                                    - 2.0*a4*lk2 * radial_2e_list_J[tmp][1] - 2.0*a2*lk4 * radial_2e_list_J[tmp][2];
-                            array_radial_J12[tmp][e1J][e2J][index_tmp_p][index_tmp_q] -= 2.0*a4*lk2 * radial_2e_list_J[tmp][1];
-                            array_radial_J21[tmp][e1J][e2J][index_tmp_p][index_tmp_q] -= 2.0*a2*lk4 * radial_2e_list_J[tmp][2];
+                            array_radial_J11[tmp][e1J][e2J][index_tmp_p][index_tmp_q] += lk2*lk4 * radial_2e_list_J[tt][tmp][3]
+                                    - 2.0*a4*lk2 * radial_2e_list_J[tt][tmp][1] - 2.0*a2*lk4 * radial_2e_list_J[tt][tmp][2];
+                            array_radial_J12[tmp][e1J][e2J][index_tmp_p][index_tmp_q] -= 2.0*a4*lk2 * radial_2e_list_J[tt][tmp][1];
+                            array_radial_J21[tmp][e1J][e2J][index_tmp_p][index_tmp_q] -= 2.0*a2*lk4 * radial_2e_list_J[tt][tmp][2];
                         }
                         else if(l_p != 0 && l_q == 0)
                         {
-                            array_radial_J11[tmp][e1J][e2J][index_tmp_p][index_tmp_q] -= 2.0*a4*lk2 * radial_2e_list_J[tmp][1];
-                            array_radial_J12[tmp][e1J][e2J][index_tmp_p][index_tmp_q] -= 2.0*a4*lk2 * radial_2e_list_J[tmp][1];
+                            array_radial_J11[tmp][e1J][e2J][index_tmp_p][index_tmp_q] -= 2.0*a4*lk2 * radial_2e_list_J[tt][tmp][1];
+                            array_radial_J12[tmp][e1J][e2J][index_tmp_p][index_tmp_q] -= 2.0*a4*lk2 * radial_2e_list_J[tt][tmp][1];
                         }   
                             
                         else if(l_p == 0 && l_q != 0)
                         {
-                            array_radial_J11[tmp][e1J][e2J][index_tmp_p][index_tmp_q] -= 2.0*a2*lk4 * radial_2e_list_J[tmp][2];
-                            array_radial_J21[tmp][e1J][e2J][index_tmp_p][index_tmp_q] -= 2.0*a2*lk4 * radial_2e_list_J[tmp][2];
+                            array_radial_J11[tmp][e1J][e2J][index_tmp_p][index_tmp_q] -= 2.0*a2*lk4 * radial_2e_list_J[tt][tmp][2];
+                            array_radial_J21[tmp][e1J][e2J][index_tmp_p][index_tmp_q] -= 2.0*a2*lk4 * radial_2e_list_J[tt][tmp][2];
                         }
                         array_radial_J11[tmp][e1J][e2J][index_tmp_p][index_tmp_q] /= norm_J * 4.0 * pow(speedOfLight,2);
                         array_radial_J12[tmp][e1J][e2J][index_tmp_p][index_tmp_q] /= norm_J * 4.0 * pow(speedOfLight,2);
@@ -1031,26 +1031,26 @@ int2eJK INT_SPH::get_h2e_JK_gauntSF_compact(const string& intType, const int& oc
                     }
                     else if(intType == "LSSL")
                     {
-                        array_radial_J11[tmp][e1J][e2J][index_tmp_p][index_tmp_q] = 4.0*a2*a3 * radial_2e_list_J[tmp][0];
-                        array_radial_J12[tmp][e1J][e2J][index_tmp_p][index_tmp_q] = 4.0*a2*a3 * radial_2e_list_J[tmp][0];
-                        array_radial_J21[tmp][e1J][e2J][index_tmp_p][index_tmp_q] = 4.0*a2*a3 * radial_2e_list_J[tmp][0];
-                        array_radial_J22[tmp][e1J][e2J][index_tmp_p][index_tmp_q] = 4.0*a2*a3 * radial_2e_list_J[tmp][0];
+                        array_radial_J11[tmp][e1J][e2J][index_tmp_p][index_tmp_q] = 4.0*a2*a3 * radial_2e_list_J[tt][tmp][0];
+                        array_radial_J12[tmp][e1J][e2J][index_tmp_p][index_tmp_q] = 4.0*a2*a3 * radial_2e_list_J[tt][tmp][0];
+                        array_radial_J21[tmp][e1J][e2J][index_tmp_p][index_tmp_q] = 4.0*a2*a3 * radial_2e_list_J[tt][tmp][0];
+                        array_radial_J22[tmp][e1J][e2J][index_tmp_p][index_tmp_q] = 4.0*a2*a3 * radial_2e_list_J[tt][tmp][0];
                         if(l_p != 0 && l_q != 0)
                         {
-                            array_radial_J11[tmp][e1J][e2J][index_tmp_p][index_tmp_q] += lk2*lk3 * radial_2e_list_J[tmp][3]
-                                    - 2.0*a3*lk2 * radial_2e_list_J[tmp][1] - 2.0*a2*lk3 * radial_2e_list_J[tmp][2];
-                            array_radial_J12[tmp][e1J][e2J][index_tmp_p][index_tmp_q] -= 2.0*a3*lk2 * radial_2e_list_J[tmp][1];
-                            array_radial_J21[tmp][e1J][e2J][index_tmp_p][index_tmp_q] -= 2.0*a2*lk3 * radial_2e_list_J[tmp][2];
+                            array_radial_J11[tmp][e1J][e2J][index_tmp_p][index_tmp_q] += lk2*lk3 * radial_2e_list_J[tt][tmp][3]
+                                    - 2.0*a3*lk2 * radial_2e_list_J[tt][tmp][1] - 2.0*a2*lk3 * radial_2e_list_J[tt][tmp][2];
+                            array_radial_J12[tmp][e1J][e2J][index_tmp_p][index_tmp_q] -= 2.0*a3*lk2 * radial_2e_list_J[tt][tmp][1];
+                            array_radial_J21[tmp][e1J][e2J][index_tmp_p][index_tmp_q] -= 2.0*a2*lk3 * radial_2e_list_J[tt][tmp][2];
                         }
                         else if(l_p != 0 && l_q == 0)
                         {
-                            array_radial_J11[tmp][e1J][e2J][index_tmp_p][index_tmp_q] -= 2.0*a3*lk2 * radial_2e_list_J[tmp][1];
-                            array_radial_J12[tmp][e1J][e2J][index_tmp_p][index_tmp_q] -= 2.0*a3*lk2 * radial_2e_list_J[tmp][1];
+                            array_radial_J11[tmp][e1J][e2J][index_tmp_p][index_tmp_q] -= 2.0*a3*lk2 * radial_2e_list_J[tt][tmp][1];
+                            array_radial_J12[tmp][e1J][e2J][index_tmp_p][index_tmp_q] -= 2.0*a3*lk2 * radial_2e_list_J[tt][tmp][1];
                         }
                         else if(l_p == 0 && l_q != 0)
                         {
-                            array_radial_J11[tmp][e1J][e2J][index_tmp_p][index_tmp_q] -= 2.0*a2*lk3 * radial_2e_list_J[tmp][2];
-                            array_radial_J21[tmp][e1J][e2J][index_tmp_p][index_tmp_q] -= 2.0*a2*lk3 * radial_2e_list_J[tmp][2];
+                            array_radial_J11[tmp][e1J][e2J][index_tmp_p][index_tmp_q] -= 2.0*a2*lk3 * radial_2e_list_J[tt][tmp][2];
+                            array_radial_J21[tmp][e1J][e2J][index_tmp_p][index_tmp_q] -= 2.0*a2*lk3 * radial_2e_list_J[tt][tmp][2];
                         }
                         array_radial_J11[tmp][e1J][e2J][index_tmp_p][index_tmp_q] /= -1.0 * norm_J * 4.0 * pow(speedOfLight,2);
                         array_radial_J12[tmp][e1J][e2J][index_tmp_p][index_tmp_q] /= -1.0 * norm_J * 4.0 * pow(speedOfLight,2);
@@ -1069,26 +1069,26 @@ int2eJK INT_SPH::get_h2e_JK_gauntSF_compact(const string& intType, const int& oc
                 {
                     if(intType == "LSLS")
                     {
-                        array_radial_K11[tmp][e1K][e2K][index_tmp_p][index_tmp_q] = 4.0*a2*a4 * radial_2e_list_K[tmp][0];
-                        array_radial_K12[tmp][e1K][e2K][index_tmp_p][index_tmp_q] = 4.0*a2*a4 * radial_2e_list_K[tmp][0];
-                        array_radial_K21[tmp][e1K][e2K][index_tmp_p][index_tmp_q] = 4.0*a2*a4 * radial_2e_list_K[tmp][0];
-                        array_radial_K22[tmp][e1K][e2K][index_tmp_p][index_tmp_q] = 4.0*a2*a4 * radial_2e_list_K[tmp][0];
+                        array_radial_K11[tmp][e1K][e2K][index_tmp_p][index_tmp_q] = 4.0*a2*a4 * radial_2e_list_K[tt][tmp][0];
+                        array_radial_K12[tmp][e1K][e2K][index_tmp_p][index_tmp_q] = 4.0*a2*a4 * radial_2e_list_K[tt][tmp][0];
+                        array_radial_K21[tmp][e1K][e2K][index_tmp_p][index_tmp_q] = 4.0*a2*a4 * radial_2e_list_K[tt][tmp][0];
+                        array_radial_K22[tmp][e1K][e2K][index_tmp_p][index_tmp_q] = 4.0*a2*a4 * radial_2e_list_K[tt][tmp][0];
                         if(l_p != 0 && l_q != 0)
                         {
-                            array_radial_K11[tmp][e1K][e2K][index_tmp_p][index_tmp_q] += lk2*lk4 * radial_2e_list_K[tmp][3] 
-                                    - 2.0*a4*lk2 * radial_2e_list_K[tmp][1] - 2.0*a2*lk4 * radial_2e_list_K[tmp][2];
-                            array_radial_K12[tmp][e1K][e2K][index_tmp_p][index_tmp_q] -= 2.0*a4*lk2 * radial_2e_list_K[tmp][1];
-                            array_radial_K21[tmp][e1K][e2K][index_tmp_p][index_tmp_q] -= 2.0*a2*lk4 * radial_2e_list_K[tmp][2];
+                            array_radial_K11[tmp][e1K][e2K][index_tmp_p][index_tmp_q] += lk2*lk4 * radial_2e_list_K[tt][tmp][3] 
+                                    - 2.0*a4*lk2 * radial_2e_list_K[tt][tmp][1] - 2.0*a2*lk4 * radial_2e_list_K[tt][tmp][2];
+                            array_radial_K12[tmp][e1K][e2K][index_tmp_p][index_tmp_q] -= 2.0*a4*lk2 * radial_2e_list_K[tt][tmp][1];
+                            array_radial_K21[tmp][e1K][e2K][index_tmp_p][index_tmp_q] -= 2.0*a2*lk4 * radial_2e_list_K[tt][tmp][2];
                         }
                         else if(l_p == 0 && l_q != 0)
                         {
-                            array_radial_K11[tmp][e1K][e2K][index_tmp_p][index_tmp_q] -= 2.0*a4*lk2 * radial_2e_list_K[tmp][1];
-                            array_radial_K12[tmp][e1K][e2K][index_tmp_p][index_tmp_q] -= 2.0*a4*lk2 * radial_2e_list_K[tmp][1];
+                            array_radial_K11[tmp][e1K][e2K][index_tmp_p][index_tmp_q] -= 2.0*a4*lk2 * radial_2e_list_K[tt][tmp][1];
+                            array_radial_K12[tmp][e1K][e2K][index_tmp_p][index_tmp_q] -= 2.0*a4*lk2 * radial_2e_list_K[tt][tmp][1];
                         }
                         else if(l_p != 0 && l_q == 0)
                         {
-                            array_radial_K11[tmp][e1K][e2K][index_tmp_p][index_tmp_q] -= 2.0*a2*lk4 * radial_2e_list_K[tmp][2];
-                            array_radial_K21[tmp][e1K][e2K][index_tmp_p][index_tmp_q] -= 2.0*a2*lk4 * radial_2e_list_K[tmp][2];
+                            array_radial_K11[tmp][e1K][e2K][index_tmp_p][index_tmp_q] -= 2.0*a2*lk4 * radial_2e_list_K[tt][tmp][2];
+                            array_radial_K21[tmp][e1K][e2K][index_tmp_p][index_tmp_q] -= 2.0*a2*lk4 * radial_2e_list_K[tt][tmp][2];
                         }
                         array_radial_K11[tmp][e1K][e2K][index_tmp_p][index_tmp_q] /= norm_K * 4.0 * pow(speedOfLight,2);
                         array_radial_K12[tmp][e1K][e2K][index_tmp_p][index_tmp_q] /= norm_K * 4.0 * pow(speedOfLight,2);
@@ -1097,16 +1097,16 @@ int2eJK INT_SPH::get_h2e_JK_gauntSF_compact(const string& intType, const int& oc
                     }
                     else if(intType == "LSSL")
                     {
-                        array_radial_K11[tmp][e1K][e2K][index_tmp_p][index_tmp_q] = 4.0*a2*a3 * radial_2e_list_K[tmp][0];
-                        array_radial_K12[tmp][e1K][e2K][index_tmp_p][index_tmp_q] = 4.0*a2*a3 * radial_2e_list_K[tmp][0];
-                        array_radial_K21[tmp][e1K][e2K][index_tmp_p][index_tmp_q] = 4.0*a2*a3 * radial_2e_list_K[tmp][0];
-                        array_radial_K22[tmp][e1K][e2K][index_tmp_p][index_tmp_q] = 4.0*a2*a3 * radial_2e_list_K[tmp][0];
+                        array_radial_K11[tmp][e1K][e2K][index_tmp_p][index_tmp_q] = 4.0*a2*a3 * radial_2e_list_K[tt][tmp][0];
+                        array_radial_K12[tmp][e1K][e2K][index_tmp_p][index_tmp_q] = 4.0*a2*a3 * radial_2e_list_K[tt][tmp][0];
+                        array_radial_K21[tmp][e1K][e2K][index_tmp_p][index_tmp_q] = 4.0*a2*a3 * radial_2e_list_K[tt][tmp][0];
+                        array_radial_K22[tmp][e1K][e2K][index_tmp_p][index_tmp_q] = 4.0*a2*a3 * radial_2e_list_K[tt][tmp][0];
                         if(l_q != 0)
                         {
-                            array_radial_K11[tmp][e1K][e2K][index_tmp_p][index_tmp_q] += lk2*lk3 * radial_2e_list_K[tmp][3] 
-                                    - 2.0*a3*lk2 * radial_2e_list_K[tmp][1] - 2.0*a2*lk3 * radial_2e_list_K[tmp][2];
-                            array_radial_K12[tmp][e1K][e2K][index_tmp_p][index_tmp_q] -= 2.0*a3*lk2 * radial_2e_list_K[tmp][1];
-                            array_radial_K21[tmp][e1K][e2K][index_tmp_p][index_tmp_q] -= 2.0*a2*lk3 * radial_2e_list_K[tmp][2];
+                            array_radial_K11[tmp][e1K][e2K][index_tmp_p][index_tmp_q] += lk2*lk3 * radial_2e_list_K[tt][tmp][3] 
+                                    - 2.0*a3*lk2 * radial_2e_list_K[tt][tmp][1] - 2.0*a2*lk3 * radial_2e_list_K[tt][tmp][2];
+                            array_radial_K12[tmp][e1K][e2K][index_tmp_p][index_tmp_q] -= 2.0*a3*lk2 * radial_2e_list_K[tt][tmp][1];
+                            array_radial_K21[tmp][e1K][e2K][index_tmp_p][index_tmp_q] -= 2.0*a2*lk3 * radial_2e_list_K[tt][tmp][2];
                         }
                         array_radial_K11[tmp][e1K][e2K][index_tmp_p][index_tmp_q] /= -1.0 * norm_K * 4.0 * pow(speedOfLight,2);
                         array_radial_K12[tmp][e1K][e2K][index_tmp_p][index_tmp_q] /= -1.0 * norm_K * 4.0 * pow(speedOfLight,2);
@@ -1121,10 +1121,7 @@ int2eJK INT_SPH::get_h2e_JK_gauntSF_compact(const string& intType, const int& oc
                 }
             }
         }
-        countTime(EndTimeCPU,EndTimeWall);
-        time_r += (EndTimeCPU - StartTimeCPU)/(double)CLOCKS_PER_SEC;
 
-        countTime(StartTimeCPU,StartTimeWall);
         int l_p_cycle = (l_p == 0) ? 1 : 2, l_q_cycle = (l_q == 0) ? 1 : 2;
         for(int int_tmp2_p = 0; int_tmp2_p < l_p_cycle; int_tmp2_p++)
         for(int int_tmp2_q = 0; int_tmp2_q < l_q_cycle; int_tmp2_q++)
@@ -1158,14 +1155,11 @@ int2eJK INT_SPH::get_h2e_JK_gauntSF_compact(const string& intType, const int& oc
                     array_radial_K22[tmp][e1K][e2K][int_tmp2_p][int_tmp2_q] * array_angular_K22[tmp][int_tmp2_p][int_tmp2_q];
             }
         }
-        countTime(EndTimeCPU,EndTimeWall);
-        time_c += (EndTimeCPU - StartTimeCPU)/(double)CLOCKS_PER_SEC;
         int_tmp1_q += (l_q == 0) ? 1 : 2;
     }
     int_tmp1_p += (l_p == 0) ? 1 : 2;
     }
 
-    cout << time_a << "\t" << time_r << "\t" << time_c <<endl;
     return int_2e_JK;
 }
 
