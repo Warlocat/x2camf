@@ -57,9 +57,11 @@ public:
 
     /* x2c2e picture change */
     virtual vMatrixXd x2c2ePCC(bool amfi4c = false, vMatrixXd* coeff2c = NULL);
+    virtual vMatrixXd x2c2ePCC_K(bool amfi4c = false, vMatrixXd* coeff2c = NULL);
     vMatrixXd h_x2c2e(vMatrixXd* coeff2c = NULL);
     void evaluateFock_2e(MatrixXd& fock, const bool& twoC, const vMatrixXd& den, const int& size, const int& Iirrep);
     void evaluateFock_J(MatrixXd& fock, const bool& twoC, const vMatrixXd& den, const int& size, const int& Iirrep);
+    void evaluateFock_K(MatrixXd& fock, const bool& twoC, const vMatrixXd& den, const int& size, const int& Iirrep);
 
     /* Get Coeff for basis set */
     vMatrixXd get_coeff_bs(const bool& twoC = true);

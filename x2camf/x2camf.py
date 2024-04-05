@@ -22,7 +22,7 @@ def construct_molecular_matrix(atm_blocks, atom_slices, xmol, n2c, four_componen
             mol_matrix[c0:c1,c0:c1] = atm_blocks[xmol.elements[ia]]
     return mol_matrix
 
-def amfi(x2cobj, printLevel = 0, with_gaunt = True, with_gauge = True, with_gaunt_sd=False, gaussian_nuclear = False, aoc = False, pt = False, pcc = False, int4c = False, density=False):
+def amfi(x2cobj, printLevel = 0, with_gaunt = True, with_gauge = True, with_gaunt_sd=False, gaussian_nuclear = False, aoc = False, pt = False, pcc = False, int4c = False):
     mol = x2cobj.mol
     #computes the internal integer for soc integral flavor.
     soc_int_flavor = 0
@@ -50,18 +50,50 @@ def amfi(x2cobj, printLevel = 0, with_gaunt = True, with_gauge = True, with_gaun
             exp_a.append(bas[-1][0])
         shell = numpy.asarray(shell)
         exp_a = numpy.asarray(exp_a)
-        amf_int[atom], den_4c[atom] = _amf(atom_number, shell, exp_a, soc_int_flavor, printLevel)
+        amf_int[atom] = _amf(atom_number, shell, exp_a, soc_int_flavor, printLevel)
 
     xmol, _ = x2cobj.get_xmol()
     n2c = xmol.nao_2c()
     atom_slices = xmol.aoslice_2c_by_atom()
     
     amf_matrix = construct_molecular_matrix(amf_int, atom_slices, xmol, n2c, int4c)
-    den_4c_matrix = construct_molecular_matrix(den_4c, atom_slices, xmol, n2c, True)
-    if density is False:
-        return amf_matrix
-    else:
-        return amf_matrix, den_4c_matrix
+    return amf_matrix
+
+def pcc_k(x2cobj, printLevel = 0, with_gaunt = True, with_gauge = True, with_gaunt_sd=False, gaussian_nuclear = False, aoc = False, pt = False, pcc = False, int4c = False):
+    mol = x2cobj.mol
+    #computes the internal integer for soc integral flavor.
+    soc_int_flavor = 0
+    soc_int_flavor += with_gaunt << 0
+    soc_int_flavor += with_gauge << 1
+    soc_int_flavor += gaussian_nuclear << 2
+    soc_int_flavor += aoc << 3
+    soc_int_flavor += pt << 4
+    soc_int_flavor += pcc << 5
+    soc_int_flavor += int4c << 6
+    soc_int_flavor += with_gaunt_sd << 7
+
+    uniq_atoms = set([a[0] for a in mol._atom])
+    pcc_int = {}
+    for atom in uniq_atoms:
+        symbol = mole._std_symbol(atom)
+        atom_number = elements.charge(symbol)
+        raw_bas = mole.uncontracted_basis(mol._basis[atom])
+        #amf_internal_basis
+        shell = []
+        exp_a = []
+        for bas in raw_bas:
+            shell.append(bas[0])
+            exp_a.append(bas[-1][0])
+        shell = numpy.asarray(shell)
+        exp_a = numpy.asarray(exp_a)
+        pcc_int[atom] = _pcc_k(atom_number, shell, exp_a, soc_int_flavor, printLevel)
+
+    xmol, _ = x2cobj.get_xmol()
+    n2c = xmol.nao_2c()
+    atom_slices = xmol.aoslice_2c_by_atom()
+    
+    pcc_matrix = construct_molecular_matrix(pcc_int, atom_slices, xmol, n2c, int4c)
+    return pcc_matrix
 
 
 # takes an atom number basis and flavor of soc integral and returns the amf matrix
@@ -71,14 +103,22 @@ def amfi(x2cobj, printLevel = 0, with_gaunt = True, with_gauge = True, with_gaun
 def _amf(atom_number, shell, exp_a, soc_int_flavor, printLevel):
     if atom_number > 118 or atom_number < 1:
         raise ValueError("atom number must be between 1 and 118")
-    
 
     nbas = shell.shape[0]
     nshell = shell[-1]+1
-    results = libx2camf.amfi(soc_int_flavor, atom_number, nshell, nbas, printLevel, shell, exp_a, True)
+    results = libx2camf.amfi(soc_int_flavor, atom_number, nshell, nbas, printLevel, shell, exp_a)
     amf_mat = results[0]
-    den_mat = results[1]
-    return amf_mat, den_mat
+    return amf_mat
+
+def _pcc_k(atom_number, shell, exp_a, soc_int_flavor, printLevel):
+    if atom_number > 118 or atom_number < 1:
+        raise ValueError("atom number must be between 1 and 118")
+
+    nbas = shell.shape[0]
+    nshell = shell[-1]+1
+    results = libx2camf.pcc_K(soc_int_flavor, atom_number, nshell, nbas, printLevel, shell, exp_a)
+    pcc_mat = results[0]
+    return pcc_mat
 
 if __name__ == '__main__':
     from pyscf import scf
