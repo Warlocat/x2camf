@@ -1426,11 +1426,18 @@ vMatrixXd DHF_SPH::get_fock_fw()
     }
     return fock_fw;
 }
-vMatrixXd DHF_SPH::get_fock_4c_2ePart()
+vMatrixXd DHF_SPH::get_fock_4c_K(const vMatrixXd& den, const bool& twoC)
+{
+    vMatrixXd fock_K(occMax_irrep);
+    for(int ii = 0; ii < occMax_irrep; ii++)
+        evaluateFock_K(fock_K(ii), twoC, den, irrep_list(ii).size, ii);
+    return fock_K;
+}
+vMatrixXd DHF_SPH::get_fock_4c_2ePart(const vMatrixXd& den, const bool& twoC)
 {
     vMatrixXd fock_2e(occMax_irrep);
     for(int ii = 0; ii < occMax_irrep; ii++)
-        fock_2e(ii) = fock_4c(ii) - h1e_4c(ii);
+        evaluateFock_2e(fock_2e(ii), twoC, den, irrep_list(ii).size, ii);
     return fock_2e;
 }
 vMatrixXd DHF_SPH::get_h1e_4c()

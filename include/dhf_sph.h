@@ -69,7 +69,8 @@ public:
     /* Get private variables */
     vMatrixXd get_fock_4c();
     vMatrixXd get_fock_fw();
-    vMatrixXd get_fock_4c_2ePart();
+    vMatrixXd get_fock_4c_K(const vMatrixXd& den, const bool& twoC = false);
+    vMatrixXd get_fock_4c_2ePart(const vMatrixXd& den, const bool& twoC = false);
     vMatrixXd get_h1e_4c();
     vMatrixXd get_overlap_4c();
     vMatrixXd get_density();

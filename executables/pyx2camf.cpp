@@ -122,8 +122,13 @@ vector<MatrixXd> atm_integrals(const int input_string, const int atom_number,
     scfer->runSCF(twoC, renormS);
     
     auto so_2c = Rotate::unite_irrep(scfer->get_amfi_unc(intor, twoC, "partialFock", Gaunt, gauge, false, sdGaunt), intor.irrep_list);
+    // The den_fw should be called after so_2c, since the X and R matrices are not available before that.
+    vMatrixXd den_fw = scfer->get_density_fw();
     auto fock_2c = Rotate::unite_irrep(scfer->get_fock_fw(), intor.irrep_list);
-    auto den_2c = Rotate::unite_irrep(scfer->get_density_fw(), intor.irrep_list);
+    auto den_2c = Rotate::unite_irrep(den_fw, intor.irrep_list);
+    //
+    auto fock_2c_2e = Rotate::unite_irrep(scfer->get_fock_4c_2ePart(den_fw, true), intor.irrep_list);
+    auto fock_2c_K = Rotate::unite_irrep(scfer->get_fock_4c_K(den_fw, true), intor.irrep_list);
 
     auto atm_X = Rotate::unite_irrep(scfer->get_X(), intor.irrep_list);
     auto atm_R = Rotate::unite_irrep(scfer->get_R(), intor.irrep_list);
@@ -131,9 +136,31 @@ vector<MatrixXd> atm_integrals(const int input_string, const int atom_number,
     auto so_4c = Rotate::unite_irrep_4c(scfer->get_amfi_unc(intor, twoC, "partialFock", Gaunt, gauge, true, sdGaunt), intor.irrep_list);
     auto fock_4c = Rotate::unite_irrep_4c(scfer->get_fock_4c(), intor.irrep_list);
     auto den_4c = Rotate::unite_irrep_4c(scfer->get_density(), intor.irrep_list);
+    auto h1e_4c = Rotate::unite_irrep_4c(scfer->get_h1e_4c(), intor.irrep_list);
+    auto fock_4c_2e = Rotate::unite_irrep_4c(scfer->get_fock_4c_2ePart(scfer->get_density(), false), intor.irrep_list);
+    auto fock_4c_K = Rotate::unite_irrep_4c(scfer->get_fock_4c_K(scfer->get_density(), false), intor.irrep_list);
 
     delete scfer;
-    vector<MatrixXd> results{so_2c, fock_2c, den_2c, atm_X, atm_R, so_4c, fock_4c, den_4c};
+    
+    /*
+        fock_4c: 4c Fock matrix (h1e_4c + fock_4c_2e)
+        h1e_4c: 4c one-electron Hamiltonian
+        fock_4c_2e: 4c effective two-electron Veff
+        fock_4c_K: 4c exchange part of Coulomb and the entire Breit term
+        so_4c: Spin-dependent Coulomb and the entire Breit term
+        den_4c: 4c density matrix
+
+        so_2c is the FW transformed so_4c
+        fock_2c is the FW transformed fock_4c
+        den_2c is the "FW transformed" den_4c (NOT the 2c density matrix from the SCF procedure)
+        fock_2c_2e: 2c Veff obtained using den_2c (NOT the FW transformed fock_4c_2e)
+        fock_2c_K: 2c exchange obtained using den_2c (NOT the FW transformed fock_4c_K)
+
+        atm_X: X matrix from atomic fock_4c
+        atm_R: R matrix from atm_X
+    */
+    
+    vector<MatrixXd> results{atm_X, atm_R, h1e_4c, fock_4c, fock_2c, fock_4c_2e, fock_2c_2e, fock_4c_K, fock_2c_K, so_4c, so_2c, den_4c, den_2c};
 
     if(printLevel >= 4)
     {
