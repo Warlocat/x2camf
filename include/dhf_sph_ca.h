@@ -24,6 +24,7 @@ private:
 public:
     DHF_SPH_CA(INT_SPH& int_sph_, const string& filename, const int& printLevel,const bool& spinFree = false, const bool& twoC = false, const bool& with_gaunt_ = false, const bool& with_gauge_ = false, const bool& allInt = false, const bool& gaussian_nuc = false);
     virtual ~DHF_SPH_CA();
+    void coreIonization(const vector<vector<int>> coreHoleInfo);
     virtual void runSCF(const bool& twoC = false, const bool& renormSmall = true) override;
 };
 

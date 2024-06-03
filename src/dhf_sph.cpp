@@ -946,6 +946,52 @@ void DHF_SPH::setOCC(const string& filename, const string& atomName)
     return;
 }
 
+/* 
+    Set up core ionization calculations 
+*/
+void DHF_SPH::coreIonization(const vector<vector<int>> coreHoleInfo)
+{
+    if(printLevel >= 4) cout << "Setting up core holes" << endl;
+    for(int ir = 0; ir < occMax_irrep; ir+=irrep_list(ir).two_j+1)
+    {
+        for(int ihole = 0; ihole < coreHoleInfo.size(); ihole++)
+        {
+            // coreHoleInfo[ihole][0] is the shell number K=1, L=2, ...
+            // coreHoleInfo[ihole][1] is the angular momentum l
+            // coreHoleInfo[ihole][2] is the two_j value
+            if(coreHoleInfo[ihole][1] == irrep_list(ir).l and coreHoleInfo[ihole][2] == irrep_list(ir).two_j)
+            {
+                int tmp_i = coreHoleInfo[ihole][0] - 1 - coreHoleInfo[ihole][1];
+                if(tmp_i < 0)
+                {
+                    cout << "ERROR: Core hole in " << coreHoleInfo[ihole][0] << ", " << coreHoleInfo[ihole][1] << " is not allowed." << endl;
+                    exit(99);
+                }
+                if(round(occNumber(ir)(tmp_i)*(irrep_list(ir).two_j+1)) < 1)
+                {
+                    cout << "ERROR: Not enough electrons in " << coreHoleInfo[ihole][0] << ", " << coreHoleInfo[ihole][1] << " to create a core hole." << endl;
+                    exit(99);
+                }
+                for(int jj = 0; jj < irrep_list(ir).two_j+1; jj++)
+                {
+                    occNumber(ir+jj)(tmp_i) -= 1.0/double(irrep_list(ir).two_j+1);
+                }
+            }
+        }
+    }
+    if(printLevel >= 4)
+    {
+        cout << "Occupation number vector after core ionization:" << endl;
+        cout << "l\t2j\t2mj\tOcc" << endl;
+        for(int ii = 0; ii < Nirrep; ii++)
+        {
+            cout << irrep_list(ii).l << "\t" << irrep_list(ii).two_j << "\t" << irrep_list(ii).two_mj << "\t" << occNumber(ii).transpose() << endl;
+        }
+        cout << "Highest occupied irrep: " << occMax_irrep << endl;
+        cout << "Total number of electrons: " << nelec << endl << endl;
+    }
+}
+
 
 /* 
     Evaluate amfi SOC integrals in j-adapted spinor basis

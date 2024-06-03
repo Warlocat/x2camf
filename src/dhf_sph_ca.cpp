@@ -14,8 +14,8 @@ DHF_SPH_CA::DHF_SPH_CA(INT_SPH& int_sph_, const string& filename, const int& pri
 DHF_SPH(int_sph_,filename,printLevel,spinFree,twoC,with_gaunt_,with_gauge_,allInt,gaussian_nuc)
 {
     vector<int> openIrreps;
-    for(int ir = 0; ir < occMax_irrep; ir+=4*irrep_list(ir).l+2)
-    // for(int ir = 0; ir < occMax_irrep; ir+=irrep_list(ir).two_j+1)
+    // for(int ir = 0; ir < occMax_irrep; ir+=4*irrep_list(ir).l+2)
+    for(int ir = 0; ir < occMax_irrep; ir+=irrep_list(ir).two_j+1)
     {
         for(int ii = 0; ii < occNumber(ir).rows(); ii++)
         {
@@ -31,8 +31,8 @@ DHF_SPH(int_sph_,filename,printLevel,spinFree,twoC,with_gaunt_,with_gauge_,allIn
     occNumberShells.resize(NOpenShells+2);
     for(int ii = 0; ii < NOpenShells; ii++)
     {
-        MM_list.push_back(irrep_list(openIrreps[ii]).l*4+2);  
-        // MM_list.push_back(irrep_list(openIrreps[ii]).two_j+1);   
+        // MM_list.push_back(irrep_list(openIrreps[ii]).l*4+2);  
+        MM_list.push_back(irrep_list(openIrreps[ii]).two_j+1);   
     }
     occNumberShells[0] = occNumber;
     for(int ii = 1; ii < occNumberShells.size()-1; ii++)
@@ -74,8 +74,8 @@ DHF_SPH(int_sph_,filename,printLevel,spinFree,twoC,with_gaunt_,with_gauge_,allIn
     if(printLevel >= 4)
     {
         cout << "Open shell occupations:" << endl;
-        for(int ir = 0; ir < occMax_irrep; ir+=irrep_list(ir).l*4+2)
-        // for(int ir = 0; ir < occMax_irrep; ir+=irrep_list(ir).two_j+1)
+        // for(int ir = 0; ir < occMax_irrep; ir+=irrep_list(ir).l*4+2)
+        for(int ir = 0; ir < occMax_irrep; ir+=irrep_list(ir).two_j+1)
         {
             cout << "l = " << irrep_list(ir).l << endl;
             for(int ii = 0; ii < occNumberShells.size(); ii++)
@@ -100,7 +100,97 @@ DHF_SPH_CA::~DHF_SPH_CA()
 {
 }
 
+/* Set up core ionization calculations */
+void DHF_SPH_CA::coreIonization(const vector<vector<int>> coreHoleInfo)
+{
+    DHF_SPH::coreIonization(coreHoleInfo);
+    NN_list.resize(0); MM_list.resize(0); f_list.resize(0);
+    occNumberShells.resize(0);
+    vector<int> openIrreps;
+    for(int ir = 0; ir < occMax_irrep; ir+=irrep_list(ir).two_j+1)
+    {
+        int nopen = 0;
+        for(int ii = 0; ii < occNumber(ir).rows(); ii++)
+        {
+            // if 1 > occNumber(ir)(ii) > 0
+            if(abs(occNumber(ir)(ii)) > 1e-4 && occNumber(ir)(ii) < 0.9999)
+            {
+                openIrreps.push_back(ir);
+                nopen++;
+            }
+        }
+        if(nopen > 1)
+        {
+            cout << "ERROR: More than one open shell in the same Irrep." << endl;
+            cout << "Not implemented for this situation." << endl;
+            exit(99);
+        }
+    }
+    NOpenShells = openIrreps.size();
+    occNumberShells.resize(NOpenShells+2);
+    for(int ii = 0; ii < NOpenShells; ii++)
+    {
+        MM_list.push_back(irrep_list(openIrreps[ii]).two_j+1);   
+    }
+    occNumberShells[0] = occNumber;
+    for(int ii = 1; ii < occNumberShells.size()-1; ii++)
+        occNumberShells[ii].resize(occMax_irrep);
+    occNumberShells[NOpenShells+1].resize(irrep_list.rows());
 
+    for(int ir = 0; ir < occMax_irrep; ir++)
+    {
+        for(int ii = 1; ii < occNumberShells.size()-1; ii++)
+        {
+            occNumberShells[ii](ir) = VectorXd::Zero(irrep_list(ir).size);
+        }
+        occNumberShells[NOpenShells+1](ir) = VectorXd::Ones(irrep_list(ir).size);
+            
+        for(int ii = 0; ii < occNumber(ir).rows(); ii++)
+        {
+            if(abs(occNumber(ir)(ii)) > 1e-4)
+            {
+                // if 1 > occNumber(ir)(ii) > 0
+                if(occNumber(ir)(ii) < 0.9999)
+                {
+                    if(ir == openIrreps[f_list.size()])
+                    {
+                        f_list.push_back(occNumber(ir)(ii));
+                        NN_list.push_back(f_list[f_list.size()-1]*MM_list[f_list.size()-1]);
+                    }
+                    occNumberShells[0](ir)(ii) = 0.0;
+                    occNumberShells[f_list.size()](ir)(ii) = 1.0;
+                }
+                occNumberShells[NOpenShells+1](ir)(ii) = 0.0;
+            }
+        }
+    }
+    for(int ir = occMax_irrep; ir < irrep_list.rows(); ir++)
+    {
+        occNumberShells[NOpenShells+1](ir) = VectorXd::Ones(irrep_list(ir).size);
+    }
+
+    if(printLevel >= 4)
+    {
+        cout << "Open shell occupations after core ionization:" << endl;
+        for(int ir = 0; ir < occMax_irrep; ir+=irrep_list(ir).two_j+1)
+        {
+            cout << "l = " << irrep_list(ir).l << endl;
+            for(int ii = 0; ii < occNumberShells.size(); ii++)
+                cout << ii << ": " << occNumberShells[ii](ir).transpose() << endl;
+        }
+        for(int ir = occMax_irrep; ir < irrep_list.rows(); ir++)
+        {
+            cout << occNumberShells.size()-1 << ": " << occNumberShells[occNumberShells.size()-1](ir).transpose() << endl;
+        }
+        cout << "Configuration-averaged HF initialization." << endl;
+        cout << "Number of open shells: " << NOpenShells << endl;
+        cout << "No.\tMM\tNN\tf=NN/MM" << endl;
+        for(int ii = 0; ii < NOpenShells; ii++)
+        {
+            cout << ii+1 << "\t" << MM_list[ii] << "\t" << NN_list[ii] << "\t" << f_list[ii] << endl;
+        }
+    }
+}
 
 /*
     Evaluate density matrix

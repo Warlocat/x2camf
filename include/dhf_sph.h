@@ -52,6 +52,9 @@ public:
     /* Read occupation numbers */
     void setOCC(const string& filename, const string& atomName);
 
+    /* Set up core ionization calculations */
+    virtual void coreIonization(const vector<vector<int>> coreHoleInfo);
+
     /* evaluate Fock matrix */
     void evaluateFock(MatrixXd& fock, const bool& twoC, const vMatrixXd& den, const int& size, const int& Iirrep);
 
