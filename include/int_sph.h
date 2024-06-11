@@ -81,6 +81,9 @@ public:
 
     double auxiliary_1e(const int& l, const double& a) const;
 
+    /* Numerical radial integral */
+    double numerical_radial(double (*f)(double)) const;
+
     /* Evaluate one-electron integral */
     vMatrixXd get_h1e(const string& intType) const;
     /* Evaluate two-electron integral in J-K form */

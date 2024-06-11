@@ -19,9 +19,10 @@ using namespace std;
 
 /* Global information */
 vector<vector<int>> coreHoleInfo;
-string atomName, basisSet;
-bool gaussian_nuc;
+string atomName, basisSet, inputFile = "";
+bool gaussian_nuc, relax_hole_x2camf = false;
 int methodVariant = -1, qedVariant = -1, nuc_model = -1;
+ifstream ifs;
 
 void interactiveInput();
 
@@ -32,6 +33,19 @@ vector<string> parseInput(const string& inputString);
 bool yesnoInput(const string& printInfo);
 int numberInput(const string& printInfo, const int& max, const int& min = 1);
 vector<string> findBasisSet(const string& atomName, const string& basisFile = "GENBAS");
+
+inline void readline(string& flags)
+{
+    if(ifs.is_open())
+    {
+        getline(ifs, flags);
+    }
+    else
+    {
+        getline(cin, flags);
+    }
+    return;
+}
 
 int main()
 {
@@ -53,8 +67,11 @@ void calculate(int methodVariant)
         4: Dirac-Coulomb-4c
         5: Dirac-Coulomb-Gaunt-4c
         6: Dirac-Coulomb-Breit-4c
+        7: X2CAMF(DC)
+        8: X2CAMF(DCG)
+        9: X2CAMF(DCB)
     */
-    bool spinFree, twoC, with_gaunt, with_gauge, allInt = true;
+    bool spinFree, twoC, with_gaunt, with_gauge, allInt = true, x2camf = false;
     switch (methodVariant)
     {
     case 1:
@@ -75,6 +92,18 @@ void calculate(int methodVariant)
     case 6:
         spinFree = false; twoC = false; with_gaunt = true; with_gauge = true;
         break;
+    case 7:
+        spinFree = false; twoC = true; with_gaunt = false; with_gauge = false;
+        x2camf = true;
+        break;
+    case 8:
+        spinFree = false; twoC = true; with_gaunt = true; with_gauge = false;
+        x2camf = true;
+        break;
+    case 9:
+        spinFree = false; twoC = true; with_gaunt = true; with_gauge = true;
+        x2camf = true;
+        break;
     default:
         cout << "Invalid method variant!" << endl;
         exit(99);
@@ -83,19 +112,55 @@ void calculate(int methodVariant)
 
     double ene, ene_ip;
     INT_SPH intor(atomName, basisSet);
-    DHF_SPH_CA neutral(intor,"input",4,spinFree,twoC,with_gaunt,with_gauge,true,gaussian_nuc);
-    neutral.runSCF(twoC, false);
-    ene = neutral.ene_scf;
-    vVectorXd mo_ene_n = neutral.ene_orb;
-    DHF_SPH_CA ionized(intor,"input",4,spinFree,twoC,with_gaunt,with_gauge,true,gaussian_nuc);
-    ionized.coreIonization(coreHoleInfo);
-    ionized.runSCF(twoC, false);
-    ene_ip = ionized.ene_scf;
+    vVectorXd mo_ene_n;
+    if(not x2camf)
+    {
+        DHF_SPH_CA neutral(intor,inputFile,4,spinFree,twoC,with_gaunt,with_gauge,true,gaussian_nuc);
+        neutral.runSCF(twoC, false);
+        ene = neutral.ene_scf;
+        mo_ene_n = neutral.ene_orb;
+        DHF_SPH_CA ionized(intor,inputFile,4,spinFree,twoC,with_gaunt,with_gauge,true,gaussian_nuc);
+        ionized.coreIonization(coreHoleInfo);
+        ionized.runSCF(twoC, false);
+        ene_ip = ionized.ene_scf;
+    }
+    else
+    {
+        DHF_SPH_CA neutral_4c(intor,inputFile,4,spinFree,false,with_gaunt,with_gauge,true,gaussian_nuc);
+        neutral_4c.runSCF(false, false);
+        // auto amf = neutral_4c.x2c2ePCC();
+        auto amf = neutral_4c.get_amfi_unc(intor, false);
+        vMatrixXd amf2(amf.size());
+        if(relax_hole_x2camf)
+        {
+            DHF_SPH_CA ionized_4c(intor,inputFile,4,spinFree,false,with_gaunt,with_gauge,true,gaussian_nuc);
+            ionized_4c.coreIonization(coreHoleInfo);
+            ionized_4c.runSCF(false, false);
+            // amf2 = ionized_4c.x2c2ePCC(true, &amf);
+            amf2 = ionized_4c.get_amfi_unc(intor, false);
+        }
+        else
+        {
+            amf2 = amf;
+        }
+        DHF_SPH_CA neutral(intor,inputFile,4,spinFree,true,false,false,true,gaussian_nuc);
+        neutral.set_h1e_4c(amf, true);
+        neutral.runSCF(true, false);
+        ene = neutral.ene_scf;
+        mo_ene_n = neutral.ene_orb;
+        DHF_SPH_CA ionized(intor,inputFile,4,spinFree,true,false,false,true,gaussian_nuc);
+        ionized.set_h1e_4c(amf2, true);
+        ionized.coreIonization(coreHoleInfo);
+        ionized.runSCF(true, false);
+        ene_ip = ionized.ene_scf;
+    }
+    
 
     cout << "Core ionization potential (in eV) to orbitals/spinors of " << endl;
-    double ene_orb_ip = 0.0;
+    double ene_orb_ip = 0.0, sum_qed = 0.0;
     for(int ihole = 0; ihole < coreHoleInfo.size(); ihole++)
     {
+        double qed, ene_orb;
         int n = coreHoleInfo[ihole][0], l = coreHoleInfo[ihole][1], twoj = coreHoleInfo[ihole][2];
         for(int ir = 0; ir < intor.irrep_list.rows(); ir++)
         {
@@ -103,19 +168,33 @@ void calculate(int methodVariant)
             {
                 int n_tmp = n - 1 - l;
                 if(twoC)
-                    ene_orb_ip += mo_ene_n(ir)(n_tmp);
+                    ene_orb = mo_ene_n(ir)(n_tmp);
                 else
-                    ene_orb_ip += mo_ene_n(ir)(mo_ene_n(ir).rows()/2 + n_tmp);
+                    ene_orb = mo_ene_n(ir)(mo_ene_n(ir).rows()/2 + n_tmp);
+                ene_orb_ip += ene_orb;
                 break;
             }
         }
         string orbitalName = to_string(n) + orbL[l] + "_" + to_string(twoj) + "/2";
         cout << orbitalName << endl;
+        cout << fixed << setprecision(2);
+        cout << "Corrections for orbital energy/Koopman theorem:" << -ene_orb*au2ev << endl;
+        if(qedVariant == 2)
+        {
+            qed = QEDcorrection(n,l,twoj,elem_map.find(atomName)->second);
+            cout << "QED correction: " << -qed*au2ev << endl;
+            sum_qed += qed;
+        }
     }
 
+    cout << "Calculated core ionization energy from all core holes: " << endl;
     cout << fixed << setprecision(2);
     cout << "using orbital energy/Koopman theorem: " << -ene_orb_ip*au2ev << endl;
     cout << "using Delta SCF: " << (ene_ip - ene)*au2ev << endl;
+    if(qedVariant == 2)
+    {
+        cout << "QED correction: " << -sum_qed*au2ev << endl;
+    }
 }
 
 void correction()
@@ -124,10 +203,10 @@ void correction()
     double sfx2c_orb_ene, dc_sfx2c, dcb_dc, sfdc_sfx2c, qed = 0.0;
     INT_SPH intor(atomName, basisSet);
     //                           sf   2c   Gaunt gauge allint  gauNuc
-    DHF_SPH sfx2c(intor,"input",4,true,true,false,false,true,gaussian_nuc);
-    DHF_SPH sfdc4c(intor,"input",4,true,false,false,false,true,gaussian_nuc);
-    DHF_SPH dc4c(intor,"input",4,false,false,false,false,true,gaussian_nuc);
-    DHF_SPH dcb4c(intor,"input",4,false,false,true,true,true,gaussian_nuc);
+    DHF_SPH sfx2c(intor,inputFile,4,true,true,false,false,true,gaussian_nuc);
+    DHF_SPH sfdc4c(intor,inputFile,4,true,false,false,false,true,gaussian_nuc);
+    DHF_SPH dc4c(intor,inputFile,4,false,false,false,false,true,gaussian_nuc);
+    DHF_SPH dcb4c(intor,inputFile,4,false,false,true,true,true,gaussian_nuc);
 
     sfx2c.runSCF(true,false);
     sfdc4c.runSCF(false,false);
@@ -200,6 +279,7 @@ void correction()
 
 void interactiveInput()
 {
+    cleanScreen;
     string flags;
     vector<string> parsed;
     cout << "**********************************************************************\n"
@@ -212,18 +292,34 @@ void interactiveInput()
             "*   spherical symmetry.                                              *\n"
             "**********************************************************************\n\n\n" << endl;
     cout << "You can terminate program by typing -1 or q at any time." << endl;
-    cout << "Press enter to continue..." << endl;
+    cout << "Press enter to continue the interactive input" << endl;
+    cout << "or input a string as the input file name." << endl;
     getline(cin, flags);
     if(flags == "-1" or flags == "q")
     {
         cout << "Exiting the program..." << endl;
         exit(-1);
     }
+    if(flags.size() > 0)
+    {
+        inputFile = flags;
+        cout << "Reading input file " << inputFile << "..." << endl;
+        ifs.open(inputFile);
+        if(!ifs.is_open())
+        {
+            cout << "ERROR opening file " << inputFile << endl;
+            exit(99);
+        }        
+    }
+    else
+    {
+        cout << "No input file provided. Continue interactive input..." << endl;
+    }
     cleanScreen;
 
     cout << "Please provide the following information:" << endl;
     cout << "Atom name (e.g. H, He, Li, ...): " << endl;
-    getline(cin, flags);
+    readline(flags);
     parsed = parseInput(flags);
     toupperstr(parsed[0]);
     atomName = parsed[0];
@@ -232,7 +328,7 @@ void interactiveInput()
     auto availBasis = findBasisSet(atomName);
     cout << "Basis set name (e.g. " + availBasis[0] + "...): " << endl;
     cout << "Input 0 to see all available basis sets." << endl;
-    getline(cin, flags);
+    readline(flags);
     parsed = parseInput(flags);
     if (parsed[0] == "0")
     {
@@ -241,7 +337,7 @@ void interactiveInput()
             cout << availBasis[ii] << endl;
         }
         cout << "Please input one basis set name from above (including " + atomName + ":)" << endl;
-        getline(cin, flags);
+        readline(flags);
         parsed = parseInput(flags);
     }
     toupperstr(parsed[0]);
@@ -267,7 +363,7 @@ void interactiveInput()
             }
             cout << "Invalid basis set name!\n"
                     "Please input one basis set name from above (including " + atomName + ":)" << endl;
-            getline(cin, flags);
+            readline(flags);
             parsed = parseInput(flags);
             toupperstr(parsed[0]);
             basisSet = parsed[0];
@@ -278,13 +374,13 @@ void interactiveInput()
     nuc_model = numberInput("Nuclear model:\n"
                             "1. Point charge\n" 
                             "2. Gaussian Nuclear Model\n"
-                            "3. Two-parameter Fermi Model (Woods-Saxon Potential)", 3);
+                            "3. Two-parameter Fermi Model (Woods-Saxon Potential) (NOT implemented yet)", 3);
     cleanScreen;
 
     qedVariant = numberInput("Method to include QED correction:\n"
                              "1. No QED\n"
                              "2. Fitted QED corrections\n"
-                             "3. Variational Effective QED potential", 3);
+                             "3. Variational Effective QED potential (NOT implemented yet)", 3);
     cleanScreen;
     
 
@@ -295,14 +391,25 @@ void interactiveInput()
                                 "3. Spin-free Dirac-Coulomb-4c Delta SCF\n"
                                 "4. Dirac-Coulomb-4c Delta SCF\n"
                                 "5. Dirac-Coulomb-Gaunt-4c Delta SCF\n"
-                                "6. Dirac-Coulomb-Breit-4c Delta SCF\n\n"
+                                "6. Dirac-Coulomb-Breit-4c Delta SCF\n"
+                                "7. X2CAMF(DC) Delta SCF\n"
+                                "8. X2CAMF(DCG) Delta SCF\n"
+                                "9. X2CAMF(DCB) Delta SCF\n"
                                 "Attention:\n"
                                 "Delta SCF (variant > 0) is not available for atoms which have open shell electrons\n"
                                 "in the same irrep as the core hole. In this case, the program will automatically\n"
                                 "terminate. For example, for uranium atom, the open shell electrons are in 5f and 6d\n"
                                 "shells. The core hole in d and f shells thus can not be calculated using Delta SCF.\n",
-    6, 0);
+    9, 0);
     cleanScreen;
+
+    // if(methodVariant >= 7 and methodVariant <= 9)
+    // {
+    //     relax_hole_x2camf = yesnoInput("Relax core hole in X2CAMF?\n"
+    //                                    "If yes, the AMF integrals for the core ionized state will be recalculated\n"
+    //                                    "using the core ionized DHF wavefunction.\n");
+    //     cleanScreen;
+    // }
 
     int nholes = numberInput("Number of core holes:", 5, 1);
     coreHoleInfo.resize(nholes);
@@ -317,9 +424,9 @@ void interactiveInput()
     {
         while(true)
         {
-            getline(cin, flags);
+            readline(flags);
             parsed = parseInput(flags);
-            if(parsed.size() == 3)
+            if(parsed.size() >= 3)
             {
                 int n, l, tj;
                 coreHoleInfo[ii].resize(3);
@@ -369,6 +476,7 @@ void interactiveInput()
 
 vector<string> parseInput(const string& inputString)
 {
+    cout << "Your input: " << inputString << endl;
     vector<string> parsed = stringSplit(inputString);
     if(parsed.size() == 0)
     {
@@ -420,8 +528,8 @@ bool yesnoInput(const string& printInfo)
     while(true)
     {
         cout << "Please input y or n:" << endl;
-        getline(cin, flags);
-        flags = removeSpaces(flags);
+        readline(flags);
+        flags = parseInput(flags)[0];
         if(flags == "y" or flags == "Y")
             return true;
         else if(flags == "n" or flags == "N")
@@ -438,7 +546,7 @@ int numberInput(const string& printInfo, const int& max, const int& min)
     while(true)
     {
         cout << "Please input a number between " << min << " and " << max << ":" << endl;
-        getline(cin, flags);
+        readline(flags);
         flags = parseInput(flags)[0];
         int tmp_i;
         try

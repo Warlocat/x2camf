@@ -255,6 +255,14 @@ void INT_SPH::normalization()
     return;
 }
 
+/* 
+    Numerical radial integral 
+*/
+double INT_SPH::numerical_radial(double (*f)(double)) const
+{
+    
+}
+
 /*
     auxiliary_1e is to evaluate \int_0^inf x^l exp(-ax^2) dx
 */

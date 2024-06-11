@@ -82,7 +82,7 @@ public:
     vMatrixXd get_X();
     vMatrixXd get_R();
     vMatrixXd get_X_normalized();
-    void set_h1e_4c(const vMatrixXd& inputM);
+    void set_h1e_4c(const vMatrixXd& inputM, const bool& addto = false);
 
     /* SCF iterations */
     virtual void runSCF(const bool& twoC = false, const bool& renormSmall = true);

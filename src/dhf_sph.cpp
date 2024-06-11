@@ -1566,12 +1566,15 @@ vMatrixXd DHF_SPH::get_X_normalized()
 /*
     Set private variable
 */
-void DHF_SPH::set_h1e_4c(const vMatrixXd& inputM)
+void DHF_SPH::set_h1e_4c(const vMatrixXd& inputM, const bool& addto)
 {
     cout << "VERY DANGEROUS!! You changed h1e_4c!!" << endl;
     for(int ir = 0; ir < h1e_4c.rows(); ir++)
     {
-        h1e_4c(ir) = inputM(ir);
+        if(addto)
+            h1e_4c(ir) += inputM(ir);
+        else
+            h1e_4c(ir) = inputM(ir);
     }
     return;
 }
