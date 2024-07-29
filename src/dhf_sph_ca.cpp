@@ -54,10 +54,13 @@ DHF_SPH(int_sph_,filename,printLevel,spinFree,twoC,with_gaunt_,with_gauge_,allIn
                 // if 1 > occNumber(ir)(ii) > 0
                 if(occNumber(ir)(ii) < 0.9999)
                 {
-                    if(ir == openIrreps[f_list.size()])
+                    if(f_list.size() < openIrreps.size())
                     {
-                        f_list.push_back(occNumber(ir)(ii));
-                        NN_list.push_back(f_list[f_list.size()-1]*MM_list[f_list.size()-1]);
+                        if(ir == openIrreps[f_list.size()])
+                        {
+                            f_list.push_back(occNumber(ir)(ii));
+                            NN_list.push_back(f_list[f_list.size()-1]*MM_list[f_list.size()-1]);
+                        }
                     }
                     occNumberShells[0](ir)(ii) = 0.0;
                     occNumberShells[f_list.size()](ir)(ii) = 1.0;
