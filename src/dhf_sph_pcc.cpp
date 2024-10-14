@@ -386,9 +386,6 @@ void DHF_SPH::evaluateFock_K(MatrixXd& fock, const bool& twoC, const vMatrixXd& 
                     fock(mm+size,nn+size) -= twojP1*den(Jirrep)(size_tmp2+ss,size_tmp2+rr) * h2eSSSS_JK.K[ir][jr][emr][esn];
                     if(with_gaunt)
                     {
-                        cout << "WARNING: Gaunt term not implemented in evaluateFock_K." << endl;
-                        cout << "It will return the exchange part of Coulomb and" << endl;
-                        cout << "the entire Gaunt/Breit term!!!!" << endl;
                         int enm = nn*size+mm, ers = rr*size_tmp2+ss, erm = rr*size+mm, ens = nn*size_tmp2+ss;
                         fock(mm,nn) -= twojP1*den(Jirrep)(size_tmp2+ss,size_tmp2+rr) * gauntLSSL_JK.K[ir][jr][emr][esn];
                         fock(mm+size,nn+size) -= twojP1*den(Jirrep)(ss,rr) * gauntLSSL_JK.K[jr][ir][esn][emr];

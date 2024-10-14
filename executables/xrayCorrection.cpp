@@ -50,7 +50,7 @@ inline void readline(string& flags)
 int main()
 {
     interactiveInput();
-    gaussian_nuc = (nuc_model == 1);
+    gaussian_nuc = (nuc_model == 2);
     if (methodVariant == 0)
         correction();
     else
