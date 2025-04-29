@@ -914,7 +914,15 @@ void DHF_SPH::setOCC(const string& filename, const string& atomName)
         else if(atomName == "SG") {int_tmp = 7; vecd_tmp(0) = 14.0; vecd_tmp(1) = 10.0; vecd_tmp(2) = 20.0; vecd_tmp(3) = 34.0/2.5; vecd_tmp(4) = 51.0/2.5; vecd_tmp(5) = 12.0; vecd_tmp(6) = 16.0;}
         else if(atomName == "BH") {int_tmp = 7; vecd_tmp(0) = 14.0; vecd_tmp(1) = 10.0; vecd_tmp(2) = 20.0; vecd_tmp(3) = 14.0; vecd_tmp(4) = 21.0; vecd_tmp(5) = 12.0; vecd_tmp(6) = 16.0;}
         else if(atomName == "HS") {int_tmp = 7; vecd_tmp(0) = 14.0; vecd_tmp(1) = 10.0; vecd_tmp(2) = 20.0; vecd_tmp(3) = 36.0/2.5; vecd_tmp(4) = 54.0/2.5; vecd_tmp(5) = 12.0; vecd_tmp(6) = 16.0;}
-
+        else if(atomName == "MT") {int_tmp = 7; vecd_tmp(0) = 14.0; vecd_tmp(1) = 10.0; vecd_tmp(2) = 20.0; vecd_tmp(3) = 37.0/2.5; vecd_tmp(4) = 55.5/2.5; vecd_tmp(5) = 12.0; vecd_tmp(6) = 16.0;}
+        else if(atomName == "DS") {int_tmp = 7; vecd_tmp(0) = 13.0; vecd_tmp(1) = 10.0; vecd_tmp(2) = 20.0; vecd_tmp(3) = 39.0/2.5; vecd_tmp(4) = 58.5/2.5; vecd_tmp(5) = 12.0; vecd_tmp(6) = 16.0;}
+        else if(atomName == "RG") {int_tmp = 7; vecd_tmp(0) = 14.0; vecd_tmp(1) = 10.0; vecd_tmp(2) = 20.0; vecd_tmp(3) = 39.0/2.5; vecd_tmp(4) = 58.5/2.5; vecd_tmp(5) = 12.0; vecd_tmp(6) = 16.0;}
+        else if(atomName == "CN") {int_tmp = 7; vecd_tmp(0) = 14.0; vecd_tmp(1) = 10.0; vecd_tmp(2) = 20.0; vecd_tmp(3) = 16; vecd_tmp(4) = 24; vecd_tmp(5) = 12.0; vecd_tmp(6) = 16.0;}
+        else if(atomName == "NH") {int_tmp = 7; vecd_tmp(0) = 14.0; vecd_tmp(1) = 31.0/3.0; vecd_tmp(2) = 62.0/3.0; vecd_tmp(3) = 16; vecd_tmp(4) = 24; vecd_tmp(5) = 12.0; vecd_tmp(6) = 16.0;}
+        else if(atomName == "FL") {int_tmp = 7; vecd_tmp(0) = 14.0; vecd_tmp(1) = 32.0/3.0; vecd_tmp(2) = 64.0/3.0; vecd_tmp(3) = 16; vecd_tmp(4) = 24; vecd_tmp(5) = 12.0; vecd_tmp(6) = 16.0;}
+        else if(atomName == "MC") {int_tmp = 7; vecd_tmp(0) = 14.0; vecd_tmp(1) = 33.0/3.0; vecd_tmp(2) = 66.0/3.0; vecd_tmp(3) = 16; vecd_tmp(4) = 24; vecd_tmp(5) = 12.0; vecd_tmp(6) = 16.0;}
+        else if(atomName == "LV") {int_tmp = 7; vecd_tmp(0) = 14.0; vecd_tmp(1) = 34.0/3.0; vecd_tmp(2) = 68.0/3.0; vecd_tmp(3) = 16; vecd_tmp(4) = 24; vecd_tmp(5) = 12.0; vecd_tmp(6) = 16.0;}
+        else if(atomName == "TS") {int_tmp = 7; vecd_tmp(0) = 14.0; vecd_tmp(1) = 35.0/3.0; vecd_tmp(2) = 70.0/3.0; vecd_tmp(3) = 16; vecd_tmp(4) = 24; vecd_tmp(5) = 12.0; vecd_tmp(6) = 16.0;}
         else if(atomName == "OG") {int_tmp = 7; vecd_tmp(0) = 14.0; vecd_tmp(1) = 12.0; vecd_tmp(2) = 24.0; vecd_tmp(3) = 16.0; vecd_tmp(4) = 24.0; vecd_tmp(5) = 12.0; vecd_tmp(6) = 16.0;}
         else
         {
