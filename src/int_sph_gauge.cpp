@@ -811,7 +811,6 @@ int2eJK INT_SPH::get_h2e_JK_gauge_compact(const string& intType, const int& occM
         LmaxJ[1] = 1;
         LmaxJ[2] = 1;
         LmaxJ[3] = 0;
-        double radial;
         int size_gtos_p = shell_list(pshell).coeff.rows(), size_gtos_q = shell_list(qshell).coeff.rows();
         int size_tmp_p = (l_p == 0) ? 1 : 2, size_tmp_q = (l_q == 0) ? 1 : 2;
         double array_angular_Jmm[LmaxJ[0]-LminJ[0]+1][size_tmp_p][size_tmp_q], array_angular_Kmm[LmaxK[0]-LminK[0]+1][size_tmp_p][size_tmp_q];
@@ -1166,6 +1165,7 @@ int2eJK INT_SPH::get_h2e_JK_gauge_compact(const string& intType, const int& occM
             #pragma omp parallel  for
             for(int tt = 0; tt < size_gtos_p*size_gtos_p*size_gtos_q*size_gtos_q; tt++)
             {
+                double radial;
                 int e1J = tt/(size_gtos_q*size_gtos_q);
                 int e2J = tt - e1J*(size_gtos_q*size_gtos_q);
                 int ii = e1J/size_gtos_p, jj = e1J - ii*size_gtos_p;
