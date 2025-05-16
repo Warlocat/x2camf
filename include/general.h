@@ -2,6 +2,7 @@
 #define GENERAL_H_
 
 #include<Eigen/Dense>
+#include<cassert>
 #include<complex>
 #include<string>
 #include<vector>
