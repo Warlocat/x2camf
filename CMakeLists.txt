@@ -2,9 +2,9 @@ cmake_minimum_required(VERSION 3.9)
 project(x2camf)
 
 # Put the compiled files in the x2camf directory
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/../x2camf)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/x2camf)
 
-find_package (Eigen3 3.3 REQUIRED NO_MODULE)
+#find_package (Eigen3 3.3 REQUIRED NO_MODULE)
 find_package(OpenMP)
 set(SHARED_SRC
   src/dhf_sph_ca.cpp
@@ -21,7 +21,8 @@ set(SHARED_SRC
 
 add_subdirectory(pybind11)
 include_directories(include)
-link_libraries(Eigen3::Eigen)
+include_directories(eigen)
+#link_libraries(Eigen3::Eigen)
 link_libraries(OpenMP::OpenMP_CXX)
 
 add_library(shared_objects OBJECT ${SHARED_SRC})
@@ -30,7 +31,7 @@ pybind11_add_module(libx2camf ${SHARED_SRC} executables/pyx2camf.cpp)
 # add_executable(amf_pyscf $<TARGET_OBJECTS:shared_objects> executables/pyscf_interface.cpp)
 
 # 
-#add_executable(xray      $<TARGET_OBJECTS:shared_objects> executables/xrayCorrection.cpp)
+add_executable(xray      $<TARGET_OBJECTS:shared_objects> executables/xrayCorrection.cpp)
 #add_executable(basisGenerator      $<TARGET_OBJECTS:shared_objects> executables/basisGenerator.cpp)
 #add_executable(main      $<TARGET_OBJECTS:shared_objects> executables/main.cpp)
 #add_executable(test      $<TARGET_OBJECTS:shared_objects> executables/test.cpp)
