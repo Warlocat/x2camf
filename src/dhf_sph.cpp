@@ -19,7 +19,7 @@ irrep_list(int_sph_.irrep_list), with_gaunt(with_gaunt_), with_gauge(with_gauge_
     else method = "4c-" + method;
     if(spinFree) method = "SF-" + method;
     if(with_gaunt_) method = method + " with Gaunt";
-    if(with_gauge_) method = method + " with Gaunt";
+    if(with_gauge_) method = method + " with gauge";
     if(gaussian_nuc) method = method + " with Gaussian nuclear model";
     cout << "Initializing " << method << " for " << int_sph_.atomName << " atom." << endl;
     Nirrep = int_sph_.irrep_list.rows();
