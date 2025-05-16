@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.9)
 project(x2camf)
 
 # Put the compiled files in the x2camf directory
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/x2camf)
+#set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/x2camf)
 
 #find_package (Eigen3 3.3 REQUIRED NO_MODULE)
 find_package(OpenMP)
