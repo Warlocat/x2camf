@@ -12,18 +12,28 @@ please see https://pubs.acs.org/doi/pdf/10.1021/acs.jpca.2c02181.
 The X2CAMF program has been embarrassingly interfaced with CFOUR and PySCF. 
 The interface to PySCF makes use of pybind.
 
-To install the program, you must have Eigen3 C++ and CMake version >= 3.9. One can modify 
-the cmake list to adjust what to install.
+To install the program, the quick way is to use pip.
 
-    git submodule update --init --recursive  (to enable git submodule pybind)
+    pip install git+https://github.com/warlocat/x2camf
+
+Please let us konw if you have trouble pip installing. To manually install the library, you have to 
+(the third line is to enable pybind11 and eigen)
+
+    git clone https://github.com/Warlocat/x2camf.git
+    cd x2camf
+    git submodule update --init --recursive
     mkdir build
     cd build
     cmake ..
     make
+    cp libx2camf.*.so ../x2camf
 
+If you are not using pip, after compiling the library, you have to manually add the x2camf directory (NOT the x2camf/x2camf) to PYTHONPATH.
+
+<br />
 Known problems:
 
-    The default stack size is not enough for larger systems. Use "ulimit -s unlimited" to solve this. 
+The default stack size might not be enough for larger systems due to the implementation. Use "ulimit -s unlimited" to solve this. 
 
  
 
