@@ -14,8 +14,8 @@ using namespace std;
 using namespace Eigen;
 
 extern clock_t StartTimeCPU, EndTimeCPU;
-extern std::chrono::_V2::system_clock::time_point StartTimeWall, EndTimeWall; 
-void countTime(clock_t& timeCPU, std::chrono::_V2::system_clock::time_point& timeWall);
+extern std::chrono::high_resolution_clock::time_point StartTimeWall, EndTimeWall; 
+void countTime(clock_t& timeCPU, std::chrono::high_resolution_clock::time_point& timeWall);
 void printTime(const string& processName);
 
 const double speedOfLight = 137.0359991;
