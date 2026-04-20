@@ -14,11 +14,11 @@ using namespace Eigen;
     Count and print CPU & wall time
 */
 clock_t StartTimeCPU, EndTimeCPU;
-std::chrono::_V2::system_clock::time_point StartTimeWall, EndTimeWall; 
-void countTime(clock_t& timeCPU, std::chrono::_V2::system_clock::time_point& timeWall)
+std::chrono::system_clock::time_point StartTimeWall, EndTimeWall;
+void countTime(clock_t& timeCPU, std::chrono::system_clock::time_point& timeWall)
 {
     timeCPU = clock();
-    timeWall = chrono::high_resolution_clock::now();
+    timeWall = chrono::system_clock::now();
 }
 void printTime(const string& processName)
 {
