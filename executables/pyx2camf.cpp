@@ -92,7 +92,8 @@ vector<MatrixXd> atm_integrals(const int input_string, const int atom_number,
                                const int nshell, const int nbas, const int printLevel,
                                const Eigen::MatrixXi &shell,
                                const Eigen::MatrixXd &exp_a,
-                               const double speed_of_light = SPEED_OF_LIGHT_DEFAULT)
+                               const double speed_of_light = SPEED_OF_LIGHT_DEFAULT,
+                               const bool spin_free = false)
 {
     speedOfLight = speed_of_light;
     // input_string is a internally coded string
@@ -102,7 +103,8 @@ vector<MatrixXd> atm_integrals(const int input_string, const int atom_number,
     bool gauNuc = input_config[2];
     bool aoc = input_config[3];
     bool sdGaunt = input_config[4];
-    bool allint = true, renormS = false, spinFree = false, twoC = false; // internal parameters, don't change.
+    bool allint = true, renormS = false, twoC = false;
+    bool spinFree = spin_free; // 4c SF-DHF when true; 4c DC otherwise
     Eigen::VectorXi shell_vec(nbas);
     Eigen::VectorXd exp_a_vec(nbas);
     for (int i = 0; i < nbas; i++){
@@ -257,7 +259,8 @@ PYBIND11_MODULE(libx2camf, m)
           py::arg("input_string"), py::arg("atom_number"),
           py::arg("nshell"), py::arg("nbas"), py::arg("printLevel"),
           py::arg("shell"), py::arg("exp_a"),
-          py::arg("speed_of_light") = SPEED_OF_LIGHT_DEFAULT);
+          py::arg("speed_of_light") = SPEED_OF_LIGHT_DEFAULT,
+          py::arg("spin_free") = false);
     m.def("pcc_K", &pcc_K, "Compute the exchange-only 2e-PCC matrix",
           py::arg("input_string"), py::arg("atom_number"),
           py::arg("nshell"), py::arg("nbas"), py::arg("printLevel"),
