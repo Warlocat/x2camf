@@ -18,7 +18,8 @@ extern std::chrono::system_clock::time_point StartTimeWall, EndTimeWall;
 void countTime(clock_t& timeCPU, std::chrono::system_clock::time_point& timeWall);
 void printTime(const string& processName);
 
-const double speedOfLight = 137.0359991;
+constexpr double SPEED_OF_LIGHT_DEFAULT = 137.0359991;
+extern double speedOfLight;
 const double au2cm_1 = 219474.63;
 const double au2ev = 27.21138386;
 

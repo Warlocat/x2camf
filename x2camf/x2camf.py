@@ -1,5 +1,5 @@
 from x2camf import libx2camf
-from pyscf import gto
+from pyscf import gto, lib
 from pyscf.data import elements
 from pyscf.x2c import x2c
 from pyscf.gto import mole
@@ -106,7 +106,8 @@ def _amf(atom_number, shell, exp_a, soc_int_flavor, printLevel):
 
     nbas = shell.shape[0]
     nshell = shell[-1]+1
-    results = libx2camf.amfi(soc_int_flavor, atom_number, nshell, nbas, printLevel, shell, exp_a)
+    results = libx2camf.amfi(soc_int_flavor, atom_number, nshell, nbas, printLevel, shell, exp_a,
+                             speed_of_light=lib.param.LIGHT_SPEED)
     amf_mat = results[0]
     return amf_mat
 
@@ -116,7 +117,8 @@ def _pcc_k(atom_number, shell, exp_a, soc_int_flavor, printLevel):
 
     nbas = shell.shape[0]
     nshell = shell[-1]+1
-    results = libx2camf.pcc_K(soc_int_flavor, atom_number, nshell, nbas, printLevel, shell, exp_a)
+    results = libx2camf.pcc_K(soc_int_flavor, atom_number, nshell, nbas, printLevel, shell, exp_a,
+                              speed_of_light=lib.param.LIGHT_SPEED)
     pcc_mat = results[0]
     return pcc_mat
 

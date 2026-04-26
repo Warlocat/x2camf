@@ -11,6 +11,12 @@ using namespace std;
 using namespace Eigen;
 
 /*
+    Speed of light in atomic units. Each pybind11 entry overwrites this
+    from its `speed_of_light` argument, so callers (e.g. pyscf) decide.
+*/
+double speedOfLight = SPEED_OF_LIGHT_DEFAULT;
+
+/*
     Count and print CPU & wall time
 */
 clock_t StartTimeCPU, EndTimeCPU;

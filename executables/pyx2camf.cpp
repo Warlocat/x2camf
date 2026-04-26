@@ -20,8 +20,10 @@ namespace py = pybind11;
 vector<MatrixXd> amfi(const int input_string, const int atom_number,
                       const int nshell, const int nbas, const int printLevel,
                       const Eigen::MatrixXi &shell,
-                      const Eigen::MatrixXd &exp_a)
+                      const Eigen::MatrixXd &exp_a,
+                      const double speed_of_light = SPEED_OF_LIGHT_DEFAULT)
 {
+    speedOfLight = speed_of_light;
     // input_string is a internally coded string
     auto input_config = std::bitset<8>(input_string);
     bool Gaunt = input_config[0];
@@ -89,8 +91,10 @@ vector<MatrixXd> amfi(const int input_string, const int atom_number,
 vector<MatrixXd> atm_integrals(const int input_string, const int atom_number,
                                const int nshell, const int nbas, const int printLevel,
                                const Eigen::MatrixXi &shell,
-                               const Eigen::MatrixXd &exp_a)
+                               const Eigen::MatrixXd &exp_a,
+                               const double speed_of_light = SPEED_OF_LIGHT_DEFAULT)
 {
+    speedOfLight = speed_of_light;
     // input_string is a internally coded string
     auto input_config = std::bitset<8>(input_string);
     bool Gaunt = input_config[0];
@@ -173,8 +177,10 @@ vector<MatrixXd> atm_integrals(const int input_string, const int atom_number,
 vector<MatrixXd> pcc_K(const int input_string, const int atom_number,
                        const int nshell, const int nbas, const int printLevel,
                        const Eigen::MatrixXi &shell,
-                       const Eigen::MatrixXd &exp_a)
+                       const Eigen::MatrixXd &exp_a,
+                       const double speed_of_light = SPEED_OF_LIGHT_DEFAULT)
 {
+    speedOfLight = speed_of_light;
     // input_string is a internally coded string
     auto input_config = std::bitset<8>(input_string);
     bool Gaunt = input_config[0];
@@ -242,7 +248,19 @@ vector<MatrixXd> pcc_K(const int input_string, const int atom_number,
 PYBIND11_MODULE(libx2camf, m)
 {
     m.doc() = "Python Interface to X2CAMF code."; // optional module docstring
-    m.def("amfi", &amfi, "Compute the AMFI matrix");
-    m.def("atm_integrals", &atm_integrals, "Compute all the atomic integrals");
-    m.def("pcc_K", &pcc_K, "Compute the exchange-only 2e-PCC matrix");
+    m.def("amfi", &amfi, "Compute the AMFI matrix",
+          py::arg("input_string"), py::arg("atom_number"),
+          py::arg("nshell"), py::arg("nbas"), py::arg("printLevel"),
+          py::arg("shell"), py::arg("exp_a"),
+          py::arg("speed_of_light") = SPEED_OF_LIGHT_DEFAULT);
+    m.def("atm_integrals", &atm_integrals, "Compute all the atomic integrals",
+          py::arg("input_string"), py::arg("atom_number"),
+          py::arg("nshell"), py::arg("nbas"), py::arg("printLevel"),
+          py::arg("shell"), py::arg("exp_a"),
+          py::arg("speed_of_light") = SPEED_OF_LIGHT_DEFAULT);
+    m.def("pcc_K", &pcc_K, "Compute the exchange-only 2e-PCC matrix",
+          py::arg("input_string"), py::arg("atom_number"),
+          py::arg("nshell"), py::arg("nbas"), py::arg("printLevel"),
+          py::arg("shell"), py::arg("exp_a"),
+          py::arg("speed_of_light") = SPEED_OF_LIGHT_DEFAULT);
 }
