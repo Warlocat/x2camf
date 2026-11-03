@@ -37,3 +37,9 @@ The default stack size might not be enough for larger systems due to the impleme
 
  
 
+
+## License
+
+x2camf is distributed under the Apache License, Version 2.0 (see `LICENSE`).
+The `pybind11` and `eigen` submodules are separate projects under their own
+licenses.

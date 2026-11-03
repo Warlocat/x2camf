@@ -79,6 +79,8 @@ setup(
     description=DESCRIPTION,
     long_description=LONG_DESCRIPTION,
     long_description_content_type="text/markdown",
+    license='Apache-2.0',
+    classifiers=['License :: OSI Approved :: Apache Software License'],
     packages=find_packages(),
     ext_modules=[CMakeExtension("libx2camf")],
     cmdclass={"build_ext": CMakeBuild},
