@@ -28,6 +28,8 @@ protected:
     /* solver for generalized eigen equation MC=SCE, s_h_i = S^{1/2} */
     void eigensolverG_irrep(const vMatrixXd& inputM, const vMatrixXd& s_h_i, vVectorXd& values, vMatrixXd& vectors);
     double evaluateChange_irrep(const vMatrixXd& M1, const vMatrixXd& M2);
+    /* release two-electron integrals stored for all compact irreps */
+    void free_h2e(int2eJK& h2e);
 
 public:
     Matrix<intShell, Dynamic, 1> shell_list;
