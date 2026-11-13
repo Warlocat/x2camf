@@ -154,6 +154,8 @@ irrep_list(int_sph_.irrep_list), with_gaunt(with_gaunt_), with_gauge(with_gauge_
                 gauntLSSL_JK.K[ir][jr][emr][esn] -= tmp2.K[ir][jr][emr][esn];
             }
         }
+        free_h2e(tmp1);
+        free_h2e(tmp2);
         countTime(EndTimeCPU,EndTimeWall);
         if(printLevel >= 1) printTime("2e-gauge-integrals");
     }
@@ -219,6 +221,38 @@ irrep_list(int_sph_.irrep_list), with_gaunt(with_gaunt_), with_gauge(with_gauge_
 
 DHF_SPH::~DHF_SPH()
 {
+    // Only when all irreps were filled (allInt): otherwise part of the pointers is unset.
+    if(occMax_irrep != Nirrep) return;
+    free_h2e(h2eLLLL_JK);
+    free_h2e(h2eSSLL_JK);
+    free_h2e(h2eSSSS_JK);
+    free_h2e(gauntLSLS_JK);
+    free_h2e(gauntLSSL_JK);
+}
+
+/*
+    Release two-electron integrals stored for all compact irreps:
+    J[ir][jr][n_i*n_i][n_j*n_j] and K[ir][jr][n_i*n_j][n_i*n_j]
+*/
+void DHF_SPH::free_h2e(int2eJK& h2e)
+{
+    if(h2e.J == nullptr || h2e.K == nullptr) return;
+    for(int ir = 0; ir < Nirrep_compact; ir++)
+    {
+        for(int jr = 0; jr < Nirrep_compact; jr++)
+        {
+            const int ni = irrep_list(compact2all(ir)).size, nj = irrep_list(compact2all(jr)).size;
+            for(int ii = 0; ii < ni*ni; ii++) delete[] h2e.J[ir][jr][ii];
+            for(int ii = 0; ii < ni*nj; ii++) delete[] h2e.K[ir][jr][ii];
+            delete[] h2e.J[ir][jr];
+            delete[] h2e.K[ir][jr];
+        }
+        delete[] h2e.J[ir];
+        delete[] h2e.K[ir];
+    }
+    delete[] h2e.J;
+    delete[] h2e.K;
+    h2e.J = nullptr; h2e.K = nullptr;
 }
 
 /*
@@ -1023,6 +1057,9 @@ vMatrixXd DHF_SPH::get_amfi_unc(INT_SPH& int_sph_, const bool& twoC, const strin
     if((!with_gaunt && amfi_with_gaunt) || (twoC && amfi_with_gaunt))
     {
         countTime(StartTimeCPU,StartTimeWall);
+        // (the integrals of an earlier call are replaced)
+        free_h2e(gauntLSLS_JK);
+        free_h2e(gauntLSSL_JK);
         int_sph_.get_h2e_JK_gaunt_direct(gauntLSLS_JK,gauntLSSL_JK);
         countTime(EndTimeCPU,EndTimeWall);
         if(printLevel >= 1) printTime("2e-Gaunt-integrals");
@@ -1046,6 +1083,8 @@ vMatrixXd DHF_SPH::get_amfi_unc(INT_SPH& int_sph_, const bool& twoC, const strin
                     gauntLSSL_JK.K[ir][jr][emr][esn] -= tmp2.K[ir][jr][emr][esn];
                 }
             }
+            free_h2e(tmp1);
+            free_h2e(tmp2);
             countTime(EndTimeCPU,EndTimeWall);
             if(printLevel >= 1) printTime("2e-gauge-integrals");
         }
@@ -1113,11 +1152,15 @@ vMatrixXd DHF_SPH::get_amfi_unc(INT_SPH& int_sph_, const bool& twoC, const strin
     }
     countTime(EndTimeCPU,EndTimeWall);
     if(printLevel >= 1) printTime("2e-SO Coulomb integrals");
+    vMatrixXd result;
     if(twoC)
     {
-        return get_amfi_unc_2c(SSLL_SD, SSSS_SD, amfi_with_gaunt, amfi4c);
+        countTime(StartTimeCPU,StartTimeWall);
+        result = get_amfi_unc_2c(SSLL_SD, SSSS_SD, amfi_with_gaunt, amfi4c);
+        countTime(EndTimeCPU,EndTimeWall);
+        if(printLevel >= 1) printTime("amfi 4c->2c transformation (get_amfi_unc_2c)");
     }
-    else 
+    else
     {
         if(occMax_irrep < Nirrep && Xmethod == "fullFock")
         {
@@ -1135,8 +1178,20 @@ vMatrixXd DHF_SPH::get_amfi_unc(INT_SPH& int_sph_, const bool& twoC, const strin
             countTime(EndTimeCPU,EndTimeWall);
             if(printLevel >= 1) printTime("Extra 2e-integrals");
         }
-        return get_amfi_unc(SSLL_SD, SSSS_SD, gauntLSLS_SD, gauntLSSL_SD, density, Xmethod, amfi_with_gaunt, amfi4c);
+        countTime(StartTimeCPU,StartTimeWall);
+        result = get_amfi_unc(SSLL_SD, SSSS_SD, gauntLSLS_SD, gauntLSSL_SD, density, Xmethod, amfi_with_gaunt, amfi4c);
+        countTime(EndTimeCPU,EndTimeWall);
+        if(printLevel >= 1) printTime("amfi 4c->2c transformation (get_amfi_unc)");
     }
+    // the spin-dependent integrals are temporaries; gauntLS*_SD alias the members unless sd_gaunt
+    free_h2e(SSLL_SD);
+    free_h2e(SSSS_SD);
+    if(amfi_with_gaunt && sd_gaunt)
+    {
+        free_h2e(gauntLSLS_SD);
+        free_h2e(gauntLSSL_SD);
+    }
+    return result;
 }
 
 vMatrixXd DHF_SPH::get_amfi_unc(const int2eJK& h2eSSLL_SD, const int2eJK& h2eSSSS_SD, const int2eJK& gauntLSLS_SD, const int2eJK& gauntLSSL_SD, const vMatrixXd& density_, const string& Xmethod, const bool& amfi_with_gaunt, bool amfi4c)

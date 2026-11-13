@@ -114,7 +114,7 @@ struct irrep_jm
 */
 struct int2eJK
 {
-    double ****J, ****K;
+    double ****J = nullptr, ****K = nullptr;
 };
 
 /* factorial and double factorial functions */
